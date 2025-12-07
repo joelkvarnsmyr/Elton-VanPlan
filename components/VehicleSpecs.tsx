@@ -1,25 +1,94 @@
 
 import React, { useState } from 'react';
-import { VEHICLE_TIPS, WORKSHOP_CONTACTS } from '../constants';
-import { ServiceItem, Task, FuelLogItem, VehicleData } from '../types';
-import { Scale, Settings, Activity, FileText, Users, AlertTriangle, Wrench, Zap, ShieldAlert, Plus, MapPin, Award, Fuel } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { ServiceItem, Task, FuelLogItem, VehicleData, Project } from '../types';
+import { Scale, Settings, Activity, FileText, AlertTriangle, Fuel, Plus, Save, X, Edit2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { sv } from 'date-fns/locale';
 
 interface VehicleSpecsProps {
     vehicleData: VehicleData;
     tasks?: Task[];
+    serviceLog?: ServiceItem[];
+    fuelLog?: FuelLogItem[];
+    onAddService?: (entry: ServiceItem) => void;
+    onAddFuel?: (entry: FuelLogItem) => void;
+    onUpdateSpecs?: (data: Partial<VehicleData>) => void;
 }
 
-export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({ vehicleData, tasks = [] }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'service' | 'fuel' | 'contacts'>('overview');
+export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({ 
+    vehicleData, 
+    tasks = [], 
+    serviceLog = [], 
+    fuelLog = [], 
+    onAddService, 
+    onAddFuel,
+    onUpdateSpecs
+}) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'service' | 'fuel'>('overview');
+  const [isEditingSpecs, setIsEditingSpecs] = useState(false);
   
-  // Service Log (Placeholder logic, should come from Project data)
-  const [newService, setNewService] = useState({ description: '', date: '', mileage: '', performer: '' });
-  const [newFuel, setNewFuel] = useState({ date: '', mileage: '', liters: '', price: '', full: true });
+  // Forms State
+  const [newService, setNewService] = useState({ description: '', date: '', mileage: '', performer: '', type: 'Service' as const });
+  const [newFuel, setNewFuel] = useState({ date: '', mileage: '', liters: '', pricePerLiter: '', full: true });
+  
+  // Edit Specs State (Flat structure for simpler form)
+  const [editSpecs, setEditSpecs] = useState<any>({});
 
-  // Note: Logs should be passed as props in a real implementation, keeping local state simple for demo
-  const [serviceLog, setServiceLog] = useState<ServiceItem[]>([]);
-  const [fuelLog, setFuelLog] = useState<FuelLogItem[]>([]);
+  const startEditing = () => {
+      setEditSpecs({
+          load: vehicleData.weights.load,
+          curb: vehicleData.weights.curb,
+          total: vehicleData.weights.total,
+          trailer: vehicleData.weights.trailer,
+          length: vehicleData.dimensions.length,
+          width: vehicleData.dimensions.width,
+          power: vehicleData.engine.power,
+          fuel: vehicleData.engine.fuel,
+          gearbox: vehicleData.gearbox,
+          tires: vehicleData.wheels.tiresFront,
+          mileage: vehicleData.inspection.mileage
+      });
+      setIsEditingSpecs(true);
+  };
+
+  const saveSpecs = () => {
+      if (!onUpdateSpecs) return;
+      onUpdateSpecs({
+          weights: { ...vehicleData.weights, load: Number(editSpecs.load), curb: Number(editSpecs.curb), total: Number(editSpecs.total), trailer: Number(editSpecs.trailer) },
+          dimensions: { ...vehicleData.dimensions, length: Number(editSpecs.length), width: Number(editSpecs.width) },
+          engine: { ...vehicleData.engine, power: editSpecs.power, fuel: editSpecs.fuel },
+          gearbox: editSpecs.gearbox,
+          wheels: { ...vehicleData.wheels, tiresFront: editSpecs.tires, tiresRear: editSpecs.tires },
+          inspection: { ...vehicleData.inspection, mileage: editSpecs.mileage }
+      });
+      setIsEditingSpecs(false);
+  };
+
+  const handleAddService = () => {
+      if (!newService.description || !onAddService) return;
+      onAddService({
+          id: Math.random().toString(36).substr(2, 9),
+          ...newService,
+          type: newService.type as any
+      });
+      setNewService({ description: '', date: '', mileage: '', performer: '', type: 'Service' });
+  };
+
+  const handleAddFuel = () => {
+      if (!newFuel.liters || !onAddFuel) return;
+      const liters = parseFloat(newFuel.liters);
+      const price = parseFloat(newFuel.pricePerLiter);
+      onAddFuel({
+          id: Math.random().toString(36).substr(2, 9),
+          date: newFuel.date || new Date().toISOString().split('T')[0],
+          mileage: parseInt(newFuel.mileage) || 0,
+          liters,
+          pricePerLiter: price,
+          totalCost: liters * price,
+          fullTank: newFuel.full
+      });
+      setNewFuel({ date: '', mileage: '', liters: '', pricePerLiter: '', full: true });
+  };
 
   // Calculate Weights
   const totalTaskWeight = tasks.reduce((sum, task) => sum + (task.weightKg || 0), 0);
@@ -27,8 +96,8 @@ export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({ vehicleData, tasks =
   const remainingLoad = maxLoad - totalTaskWeight;
   const loadPercentage = Math.min((totalTaskWeight / maxLoad) * 100, 100);
 
-  const Card = ({ title, icon: Icon, children, warning }: any) => (
-    <div className="bg-white dark:bg-nordic-dark-surface rounded-3xl p-6 border border-nordic-ice dark:border-nordic-dark-bg shadow-sm h-full transition-colors">
+  const Card = ({ title, icon: Icon, children, warning, onEdit }: any) => (
+    <div className="bg-white dark:bg-nordic-dark-surface rounded-3xl p-6 border border-nordic-ice dark:border-nordic-dark-bg shadow-sm h-full relative group">
       <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-nordic-ice dark:bg-nordic-charcoal rounded-xl text-nordic-charcoal dark:text-nordic-ice">
@@ -36,7 +105,14 @@ export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({ vehicleData, tasks =
             </div>
             <h3 className="font-serif font-bold text-lg text-nordic-charcoal dark:text-nordic-ice">{title}</h3>
           </div>
-          {warning && <AlertTriangle size={18} className="text-amber-500" />}
+          <div className="flex gap-2">
+            {warning && <AlertTriangle size={18} className="text-amber-500" />}
+            {onEdit && !isEditingSpecs && (
+                <button onClick={onEdit} className="p-1 text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 transition-all">
+                    <Edit2 size={16} />
+                </button>
+            )}
+          </div>
       </div>
       <div className="space-y-3">
         {children}
@@ -44,10 +120,18 @@ export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({ vehicleData, tasks =
     </div>
   );
 
-  const Row = ({ label, value, highlight = false }: { label: string, value: string | number, highlight?: boolean }) => (
+  const Row = ({ label, value, highlight = false, editKey }: { label: string, value: string | number, highlight?: boolean, editKey?: string }) => (
     <div className={`flex justify-between items-center py-2 border-b border-slate-50 dark:border-nordic-charcoal last:border-0 ${highlight ? 'bg-teal-50/50 dark:bg-teal-900/20 -mx-2 px-2 rounded-lg' : ''}`}>
       <span className="text-sm text-slate-500 dark:text-nordic-dark-muted font-medium">{label}</span>
-      <span className={`text-sm font-bold text-right ${highlight ? 'text-teal-700 dark:text-teal-400' : 'text-nordic-charcoal dark:text-nordic-ice'}`}>{value}</span>
+      {isEditingSpecs && editKey ? (
+          <input 
+            className="text-sm font-bold text-right bg-white dark:bg-black/20 border border-slate-200 dark:border-nordic-charcoal rounded px-2 py-1 w-24"
+            value={editSpecs[editKey]}
+            onChange={(e) => setEditSpecs({...editSpecs, [editKey]: e.target.value})}
+          />
+      ) : (
+          <span className={`text-sm font-bold text-right ${highlight ? 'text-teal-700 dark:text-teal-400' : 'text-nordic-charcoal dark:text-nordic-ice'}`}>{value}</span>
+      )}
     </div>
   );
 
@@ -55,7 +139,7 @@ export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({ vehicleData, tasks =
     <div className="space-y-6 pb-20 animate-fade-in">
         
       {/* Navigation Tabs */}
-      <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide bg-white dark:bg-nordic-dark-surface p-2 rounded-2xl border border-nordic-ice dark:border-nordic-dark-bg sticky top-0 z-20">
+      <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide bg-white dark:bg-nordic-dark-surface p-2 rounded-2xl border border-nordic-ice dark:border-nordic-dark-bg sticky top-0 z-20 shadow-sm">
           <button onClick={() => setActiveTab('overview')} className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === 'overview' ? 'bg-nordic-charcoal text-white dark:bg-teal-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-nordic-charcoal'}`}>Garage & Data</button>
           <button onClick={() => setActiveTab('service')} className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === 'service' ? 'bg-nordic-charcoal text-white dark:bg-teal-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-nordic-charcoal'}`}>Servicebok</button>
           <button onClick={() => setActiveTab('fuel')} className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeTab === 'fuel' ? 'bg-nordic-charcoal text-white dark:bg-teal-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-nordic-charcoal'}`}>Bränsle</button>
@@ -87,29 +171,34 @@ export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({ vehicleData, tasks =
             </div>
         </div>
 
+        {isEditingSpecs && (
+            <div className="flex justify-end gap-2">
+                <button onClick={() => setIsEditingSpecs(false)} className="px-4 py-2 text-slate-500 hover:bg-white rounded-xl">Avbryt</button>
+                <button onClick={saveSpecs} className="px-6 py-2 bg-teal-600 text-white rounded-xl font-bold shadow-lg hover:bg-teal-700">Spara Ändringar</button>
+            </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            <Card title="Last & Mått" icon={Scale}>
-                <Row label="Max Lastvikt" value={`${vehicleData.weights.load} kg`} highlight />
-                <Row label="Tjänstevikt" value={`${vehicleData.weights.curb} kg`} />
-                <Row label="Totalvikt" value={`${vehicleData.weights.total} kg`} />
-                <Row label="Max Släpvagn" value={`${vehicleData.weights.trailer} kg`} />
+            <Card title="Last & Mått" icon={Scale} onEdit={startEditing}>
+                <Row label="Max Lastvikt" value={`${vehicleData.weights.load} kg`} highlight editKey="load" />
+                <Row label="Tjänstevikt" value={`${vehicleData.weights.curb} kg`} editKey="curb" />
+                <Row label="Totalvikt" value={`${vehicleData.weights.total} kg`} editKey="total" />
+                <Row label="Max Släpvagn" value={`${vehicleData.weights.trailer} kg`} editKey="trailer" />
                 <div className="pt-2"></div>
-                <Row label="Längd" value={`${vehicleData.dimensions.length} mm`} />
-                <Row label="Bredd" value={`${vehicleData.dimensions.width} mm`} />
+                <Row label="Längd" value={`${vehicleData.dimensions.length} mm`} editKey="length" />
+                <Row label="Bredd" value={`${vehicleData.dimensions.width} mm`} editKey="width" />
             </Card>
 
-            <Card title="Drivlina & Hjul" icon={Settings}>
-                <Row label="Motor" value={vehicleData.engine.power} highlight />
-                <Row label="Bränsle" value={vehicleData.engine.fuel} />
-                <Row label="Växellåda" value={vehicleData.gearbox} />
-                <Row label="Drivning" value={vehicleData.wheels.drive} />
+            <Card title="Drivlina & Hjul" icon={Settings} onEdit={startEditing}>
+                <Row label="Motor" value={vehicleData.engine.power} highlight editKey="power" />
+                <Row label="Bränsle" value={vehicleData.engine.fuel} editKey="fuel" />
+                <Row label="Växellåda" value={vehicleData.gearbox} editKey="gearbox" />
                 <div className="pt-2"></div>
-                <Row label="Däck" value={vehicleData.wheels.tiresFront} />
-                <Row label="Bultmönster" value={vehicleData.wheels.boltPattern} />
+                <Row label="Däck" value={vehicleData.wheels.tiresFront} editKey="tires" />
             </Card>
 
-            <Card title="Historik & Status" icon={FileText} warning={true}>
-                <Row label="Mätarställning" value={vehicleData.inspection.mileage} highlight />
+            <Card title="Historik & Status" icon={FileText} warning={true} onEdit={startEditing}>
+                <Row label="Mätarställning" value={vehicleData.inspection.mileage} highlight editKey="mileage" />
                 <Row label="Senast Besiktigad" value={vehicleData.inspection.last} />
                 <Row label="Antal Ägare" value={vehicleData.history.owners} />
                 <Row label="Första Trafik" value={vehicleData.regDate} />
@@ -118,18 +207,62 @@ export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({ vehicleData, tasks =
       </>
       )}
 
-      {/* Service & Fuel tabs would map over props.project.serviceLog/fuelLog in real implementation */}
-      {/* Keeping simplified placeholders to focus on architecture change */}
       {activeTab === 'service' && (
-          <div className="bg-white dark:bg-nordic-dark-surface p-8 rounded-3xl border border-nordic-ice dark:border-nordic-dark-bg text-center">
-              <Activity className="mx-auto text-slate-300 mb-4" size={48} />
-              <p className="text-slate-500">Serviceboken är tom i detta projekt.</p>
+          <div className="space-y-6">
+              <div className="bg-white dark:bg-nordic-dark-surface p-6 rounded-3xl border border-nordic-ice dark:border-nordic-dark-bg">
+                  <h3 className="font-bold text-lg text-nordic-charcoal dark:text-nordic-ice mb-4 flex items-center gap-2"><Plus size={20} /> Ny Servicehändelse</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input className="p-3 bg-slate-50 dark:bg-nordic-dark-bg rounded-xl border border-slate-200 dark:border-nordic-charcoal" placeholder="Beskrivning (t.ex. Oljebyte)" value={newService.description} onChange={e => setNewService({...newService, description: e.target.value})} />
+                      <input className="p-3 bg-slate-50 dark:bg-nordic-dark-bg rounded-xl border border-slate-200 dark:border-nordic-charcoal" placeholder="Utförare (t.ex. Mekonomen / Jag)" value={newService.performer} onChange={e => setNewService({...newService, performer: e.target.value})} />
+                      <input type="date" className="p-3 bg-slate-50 dark:bg-nordic-dark-bg rounded-xl border border-slate-200 dark:border-nordic-charcoal" value={newService.date} onChange={e => setNewService({...newService, date: e.target.value})} />
+                      <input className="p-3 bg-slate-50 dark:bg-nordic-dark-bg rounded-xl border border-slate-200 dark:border-nordic-charcoal" placeholder="Mätarställning (mil)" value={newService.mileage} onChange={e => setNewService({...newService, mileage: e.target.value})} />
+                  </div>
+                  <button onClick={handleAddService} className="mt-4 w-full py-3 bg-nordic-charcoal dark:bg-teal-600 text-white font-bold rounded-xl hover:bg-slate-800 dark:hover:bg-teal-700">Spara till Serviceboken</button>
+              </div>
+
+              <div className="space-y-4">
+                  {serviceLog.length === 0 && <p className="text-center text-slate-400 py-8">Inga poster än.</p>}
+                  {serviceLog.map((item, idx) => (
+                      <div key={idx} className="bg-white dark:bg-nordic-dark-surface p-4 rounded-2xl border border-slate-100 dark:border-nordic-dark-bg flex justify-between items-center">
+                          <div>
+                              <h4 className="font-bold text-nordic-charcoal dark:text-nordic-ice">{item.description}</h4>
+                              <p className="text-xs text-slate-500">{item.date} • {item.mileage}</p>
+                          </div>
+                          <span className="px-3 py-1 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 text-xs font-bold rounded-lg">{item.performer}</span>
+                      </div>
+                  ))}
+              </div>
           </div>
       )}
+
       {activeTab === 'fuel' && (
-          <div className="bg-white dark:bg-nordic-dark-surface p-8 rounded-3xl border border-nordic-ice dark:border-nordic-dark-bg text-center">
-              <Fuel className="mx-auto text-slate-300 mb-4" size={48} />
-              <p className="text-slate-500">Inga tankningar registrerade.</p>
+          <div className="space-y-6">
+              <div className="bg-white dark:bg-nordic-dark-surface p-6 rounded-3xl border border-nordic-ice dark:border-nordic-dark-bg">
+                  <h3 className="font-bold text-lg text-nordic-charcoal dark:text-nordic-ice mb-4 flex items-center gap-2"><Fuel size={20} /> Logga Tankning</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <input type="date" className="p-3 bg-slate-50 dark:bg-nordic-dark-bg rounded-xl border border-slate-200 dark:border-nordic-charcoal" value={newFuel.date} onChange={e => setNewFuel({...newFuel, date: e.target.value})} />
+                      <input className="p-3 bg-slate-50 dark:bg-nordic-dark-bg rounded-xl border border-slate-200 dark:border-nordic-charcoal" placeholder="Liter" type="number" value={newFuel.liters} onChange={e => setNewFuel({...newFuel, liters: e.target.value})} />
+                      <input className="p-3 bg-slate-50 dark:bg-nordic-dark-bg rounded-xl border border-slate-200 dark:border-nordic-charcoal" placeholder="Pris/L" type="number" value={newFuel.pricePerLiter} onChange={e => setNewFuel({...newFuel, pricePerLiter: e.target.value})} />
+                      <input className="p-3 bg-slate-50 dark:bg-nordic-dark-bg rounded-xl border border-slate-200 dark:border-nordic-charcoal" placeholder="Mätare (mil)" type="number" value={newFuel.mileage} onChange={e => setNewFuel({...newFuel, mileage: e.target.value})} />
+                  </div>
+                  <button onClick={handleAddFuel} className="mt-4 w-full py-3 bg-nordic-charcoal dark:bg-teal-600 text-white font-bold rounded-xl hover:bg-slate-800 dark:hover:bg-teal-700">Spara Tankning</button>
+              </div>
+
+              <div className="space-y-4">
+                  {fuelLog.length === 0 && <p className="text-center text-slate-400 py-8">Inga tankningar loggade.</p>}
+                  {fuelLog.map((item, idx) => (
+                      <div key={idx} className="bg-white dark:bg-nordic-dark-surface p-4 rounded-2xl border border-slate-100 dark:border-nordic-dark-bg flex justify-between items-center">
+                          <div>
+                              <h4 className="font-bold text-nordic-charcoal dark:text-nordic-ice">{item.liters} liter</h4>
+                              <p className="text-xs text-slate-500">{item.date} • {item.mileage} mil</p>
+                          </div>
+                          <div className="text-right">
+                              <p className="font-mono font-bold text-teal-600">{Math.round(item.totalCost)} kr</p>
+                              <p className="text-xs text-slate-400">{item.pricePerLiter} kr/l</p>
+                          </div>
+                      </div>
+                  ))}
+              </div>
           </div>
       )}
     </div>

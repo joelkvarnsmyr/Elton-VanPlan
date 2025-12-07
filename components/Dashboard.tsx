@@ -4,6 +4,8 @@ import { Project, TaskStatus } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Coins, CheckCircle2, Wallet, Calendar, MapPin, Flag, ArrowRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { Resources } from './Resources';
+import { format } from 'date-fns';
+import { sv } from 'date-fns/locale';
 
 interface DashboardProps {
   project: Project;
@@ -17,6 +19,10 @@ const COLORS = {
   charcoal: '#463F3A',
   slate: '#8A817C',
   ice: '#FAF7F5'
+};
+
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('sv-SE', { style: 'currency', currency: 'SEK', maximumFractionDigits: 0 }).format(amount);
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick }) => {
@@ -84,7 +90,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick }) =
             icon: MapPin
         },
         {
-            date: project.created.split('T')[0],
+            date: project.created ? format(new Date(project.created), 'd MMM yyyy', { locale: sv }) : '-',
             title: 'Projektstart',
             description: project.name,
             type: 'milestone',
@@ -94,8 +100,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick }) =
 
     const completedTasks = tasks
         .filter(t => t.status === TaskStatus.DONE)
+        // Here we would ideally use a completedAt timestamp, but created is what we have for now or nothing
+        // Let's just group them as "Klara" or use today if just finished. 
+        // Since we lack completedAt in the Task interface, I will keep 'Klart' but make it cleaner.
+        .slice(0, 5) // Limit to 5 recent to not clutter
         .map(t => ({
-            date: 'Klart',
+            date: 'Klar', 
             title: t.title,
             description: t.phase.split(':')[0],
             type: 'task',
@@ -135,15 +145,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick }) =
                 <div key="stats" className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <StatCard 
                     title="Total Budget" 
-                    value={`${stats.totalMin.toLocaleString()} - ${stats.totalMax.toLocaleString()} kr`}
+                    value={`${formatCurrency(stats.totalMin)} - ${formatCurrency(stats.totalMax)}`}
                     subtext="Uppskattat spann"
                     icon={Wallet}
                     color="bg-nordic-blue"
                     />
                     <StatCard 
                     title="Spenderat" 
-                    value={`${stats.spent.toLocaleString()} kr`}
-                    subtext={`Kvar av snittbudget: ${stats.remainingBudget.toLocaleString()} kr`}
+                    value={formatCurrency(stats.spent)}
+                    subtext={`Kvar av snittbudget: ${formatCurrency(stats.remainingBudget)}`}
                     icon={Coins}
                     color="bg-nordic-pink"
                     />
@@ -192,7 +202,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick }) =
                             <BarChart data={chartData} barGap={-20}>
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#8A817C', fontSize: 12}} dy={10} />
                             <YAxis hide />
-                            <Tooltip cursor={{fill: 'rgba(200,200,200,0.1)'}} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)' }} />
+                            <Tooltip 
+                                cursor={{fill: 'rgba(200,200,200,0.1)'}} 
+                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)' }} 
+                                formatter={(value: number) => formatCurrency(value)}
+                            />
                             <Bar dataKey="est" name="Estimat" fill={COLORS.ice} radius={[8, 8, 8, 8]} barSize={48} className="dark:fill-nordic-charcoal" />
                             <Bar dataKey="spent" name="Utfall" fill={COLORS.charcoal} radius={[8, 8, 8, 8]} barSize={24} className="dark:fill-teal-600" />
                             </BarChart>
@@ -219,7 +233,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick }) =
                                         {data.name} 
                                         <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-teal-500" />
                                     </h4>
-                                    <p className="text-xs text-slate-500 dark:text-nordic-dark-muted">{data.spent.toLocaleString()} kr spenderat</p>
+                                    <p className="text-xs text-slate-500 dark:text-nordic-dark-muted">{formatCurrency(data.spent)} spenderat</p>
                                 </div>
                             </div>
                             <div className="w-32 h-2 bg-nordic-ice dark:bg-nordic-charcoal rounded-full overflow-hidden">

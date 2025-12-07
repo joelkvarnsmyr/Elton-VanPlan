@@ -1,7 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { streamGeminiResponse } from '../services/geminiService';
-import { Send, User, Trash2, Car, Video, ArrowLeft } from 'lucide-react';
+import { Send, User, Trash2, Car, Video, ArrowLeft, Wrench, ShoppingBag, CheckSquare } from 'lucide-react';
 import { Task, ShoppingItem, VehicleData } from '../types';
 import { LiveElton } from './LiveElton';
 
@@ -77,8 +78,37 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   useEffect(scrollToBottom, [messages]);
 
   const handleToolCalls = async (toolCalls: any[]) => {
-      // (Tool handling logic remains same as before, omitted for brevity as it relies on props)
-      return []; 
+      if (!toolCalls || toolCalls.length === 0) return [];
+      
+      const results = [];
+      for (const call of toolCalls) {
+          console.log("Executing tool:", call.name, call.args);
+          try {
+              if (call.name === 'addTask' && onAddTask) {
+                  const newTasks = Array.isArray(call.args.tasks) ? call.args.tasks : [call.args];
+                  onAddTask(newTasks);
+                  results.push({ id: call.id, result: `Added ${newTasks.length} tasks successfully.` });
+              } else if (call.name === 'addShoppingItem' && onAddShoppingItem) {
+                  const items = Array.isArray(call.args.items) ? call.args.items : [call.args];
+                  items.forEach((i: any) => onAddShoppingItem(i));
+                  results.push({ id: call.id, result: `Added ${items.length} shopping items.` });
+              } else if (call.name === 'updateTaskStatus' && onUpdateTask) {
+                  const task = tasks.find(t => t.id === call.args.taskId || t.title.toLowerCase().includes(call.args.taskId.toLowerCase()));
+                  if (task) {
+                      onUpdateTask({ ...task, status: call.args.status });
+                      results.push({ id: call.id, result: `Updated task "${task.title}" to ${call.args.status}.` });
+                  } else {
+                      results.push({ id: call.id, result: "Task not found." });
+                  }
+              } else {
+                  results.push({ id: call.id, result: "Tool not implemented or supported in this context." });
+              }
+          } catch (e) {
+              console.error("Tool execution failed:", e);
+              results.push({ id: call.id, result: "Error executing tool." });
+          }
+      }
+      return results;
   };
 
   const handleSend = async () => {
@@ -165,9 +195,26 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                   ? 'bg-nordic-charcoal dark:bg-teal-600 text-white rounded-br-none' 
                   : 'bg-white dark:bg-nordic-dark-surface text-slate-700 dark:text-nordic-dark-text border border-slate-100 dark:border-nordic-charcoal rounded-bl-none'
               }`}>
-                 <div className="markdown-body" dangerouslySetInnerHTML={{ 
-                      __html: msg.content.replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') 
-                    }} />
+                 {msg.role === 'user' ? (
+                     <p>{msg.content}</p>
+                 ) : (
+                     <ReactMarkdown 
+                        className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0"
+                        components={{
+                            h1: ({node, ...props}) => <h1 className="text-base font-bold text-nordic-charcoal dark:text-nordic-ice mt-2" {...props} />,
+                            h2: ({node, ...props}) => <h2 className="text-sm font-bold text-teal-600 dark:text-teal-400 mt-2 uppercase tracking-wide" {...props} />,
+                            h3: ({node, ...props}) => <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 mt-2" {...props} />,
+                            ul: ({node, ...props}) => <ul className="list-disc list-outside ml-4 space-y-1 my-2" {...props} />,
+                            ol: ({node, ...props}) => <ol className="list-decimal list-outside ml-4 space-y-1 my-2" {...props} />,
+                            li: ({node, ...props}) => <li className="pl-1 marker:text-teal-500" {...props} />,
+                            strong: ({node, ...props}) => <strong className="font-bold text-nordic-charcoal dark:text-white" {...props} />,
+                            a: ({node, ...props}) => <a className="text-teal-600 hover:underline cursor-pointer font-medium" target="_blank" {...props} />,
+                            blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-teal-200 pl-3 italic text-slate-500 my-2" {...props} />,
+                        }}
+                     >
+                        {msg.content}
+                     </ReactMarkdown>
+                 )}
               </div>
             </div>
           </div>

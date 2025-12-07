@@ -1,0 +1,292 @@
+
+import { db } from './firebase';
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query,
+  writeBatch,
+  where,
+  arrayUnion
+} from 'firebase/firestore';
+import { 
+  Task, 
+  VehicleData, 
+  Project, 
+  ShoppingItem,
+  UserProfile,
+  ServiceItem,
+  FuelLogItem,
+  KnowledgeArticle
+} from '../types';
+import { 
+  DEMO_PROJECT 
+} from '../constants';
+
+// --- HELPERS ---
+
+function getProjectRef(projectId: string): any {
+  return doc(db, 'projects', projectId);
+}
+
+const getTasksRef = (projectId: string) => collection(db, 'projects', projectId, 'tasks');
+const getShoppingRef = (projectId: string) => collection(db, 'projects', projectId, 'shoppingList');
+
+
+// --- SEEDING ---
+
+export const forceSeedProject = async (userEmail: string, userId: string) => {
+  const projectId = DEMO_PROJECT.id;
+  console.log(`Seeding database for project ${projectId} and owner: ${userEmail} (${userId})...`);
+  
+  const batch = writeBatch(db);
+
+  const projectRef = doc(db, 'projects', projectId);
+  const projectData: Project = {
+    ...DEMO_PROJECT,
+    ownerId: userId,
+    ownerEmail: userEmail,
+    created: new Date().toISOString(),
+    lastModified: new Date().toISOString(),
+    isDemo: true,
+    tasks: [],
+    shoppingItems: [],
+    serviceLog: [],
+    fuelLog: [],
+    knowledgeArticles: []
+  };
+  batch.set(projectRef, projectData);
+
+  const tasksRef = getTasksRef(projectId);
+  for (const task of DEMO_PROJECT.tasks) {
+    const taskRef = doc(tasksRef, task.id);
+    batch.set(taskRef, task);
+  }
+
+  const shoppingRef = getShoppingRef(projectId);
+  for (const item of DEMO_PROJECT.shoppingItems) {
+    const itemRef = doc(shoppingRef, item.id);
+    batch.set(itemRef, item);
+  }
+  
+  await batch.commit();
+  console.log('Database seeded successfully.');
+};
+
+// --- USER PROFILE ---
+
+export const getUserProfile = async (uid: string, email: string): Promise<UserProfile> => {
+    const userRef = doc(db, 'users', uid);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+        return userSnap.data() as UserProfile;
+    } else {
+        const nameFromEmail = email.split('@')[0];
+        const formattedName = nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1);
+        
+        const newProfile: UserProfile = {
+            uid,
+            email,
+            name: formattedName
+        };
+        await setDoc(userRef, newProfile);
+        return newProfile;
+    }
+};
+
+export const updateUserProfile = async (uid: string, data: Partial<UserProfile>) => {
+    const userRef = doc(db, 'users', uid);
+    await updateDoc(userRef, data);
+};
+
+// --- DATA ACCESS ---
+
+export const getProjectsForUser = async (userId: string): Promise<Project[]> => {
+    const q = query(collection(db, 'projects'), where("ownerId", "==", userId));
+    const querySnapshot = await getDocs(q);
+    const projects: Project[] = [];
+    querySnapshot.forEach((doc) => {
+        projects.push({ id: doc.id, ...doc.data() } as Project);
+    });
+    return projects;
+}
+
+export const getProject = async (projectId: string): Promise<Project | null> => {
+  const docSnap = await getDoc(getProjectRef(projectId));
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as Project;
+  }
+  return null;
+};
+
+export const createProject = async (
+    name: string, 
+    model: string, 
+    userId: string, 
+    userEmail: string,
+    template?: Partial<Project> 
+): Promise<Project> => {
+    const newProjectRef = doc(collection(db, 'projects'));
+    const currentYear = new Date().getFullYear();
+    
+    let vehicleData: VehicleData = {
+        make: model.split(' ')[0] || 'Okänd',
+        model: model.split(' ').slice(1).join(' ') || 'Modell',
+        year: currentYear, 
+        prodYear: currentYear,
+        regNo: '',
+        regDate: new Date().toISOString().split('T')[0],
+        status: 'I trafik',
+        bodyType: 'Skåp',
+        passengers: 3,
+        inspection: { last: '', next: '', mileage: '' },
+        engine: { fuel: 'Diesel', power: '', volume: '' },
+        gearbox: 'Manuell',
+        wheels: { drive: '2WD', tiresFront: '', tiresRear: '', boltPattern: '' },
+        dimensions: { length: 0, width: 0, height: '', wheelbase: 0 },
+        weights: { curb: 0, total: 0, load: 0, trailer: 0, trailerB: 0 },
+        vin: '',
+        color: '',
+        history: { owners: 1, events: 0, lastOwnerChange: '' }
+    };
+
+    if (template?.vehicleData) {
+        vehicleData = { ...vehicleData, ...template.vehicleData };
+    }
+
+    const newProject: Project = {
+        id: newProjectRef.id,
+        name: name,
+        ownerId: userId,
+        ownerEmail: userEmail,
+        created: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+        isDemo: false,
+        vehicleData: vehicleData,
+        tasks: [],
+        shoppingItems: [],
+        serviceLog: [],
+        fuelLog: [],
+        knowledgeArticles: [],
+        customIcon: template?.customIcon || null 
+    };
+
+    await setDoc(newProjectRef, newProject);
+
+    if (template?.tasks && template.tasks.length > 0) {
+        const tasksRef = collection(db, 'projects', newProjectRef.id, 'tasks');
+        const batch = writeBatch(db);
+        
+        for (const task of template.tasks) {
+            const taskRef = doc(tasksRef);
+            const taskWithId = { 
+                ...task, 
+                id: taskRef.id,
+                priority: task.priority || 'Medel',
+                phase: task.phase || 'Fas 0: Inköp & Analys'
+            };
+            batch.set(taskRef, taskWithId);
+        }
+        await batch.commit();
+    }
+
+    return newProject;
+};
+
+export const deleteProjectFull = async (projectId: string) => {
+    const tasksSnap = await getDocs(getTasksRef(projectId));
+    const itemsSnap = await getDocs(getShoppingRef(projectId));
+    
+    const batch = writeBatch(db);
+    
+    tasksSnap.forEach((doc) => batch.delete(doc.ref));
+    itemsSnap.forEach((doc) => batch.delete(doc.ref));
+    
+    batch.delete(getProjectRef(projectId));
+    
+    await batch.commit();
+};
+
+// --- SUB-DATA HANDLERS (Service, Fuel, Knowledge) ---
+
+export const addServiceEntry = async (projectId: string, entry: ServiceItem) => {
+    const projectRef = getProjectRef(projectId);
+    await updateDoc(projectRef, {
+        serviceLog: arrayUnion(entry)
+    });
+};
+
+export const addFuelEntry = async (projectId: string, entry: FuelLogItem) => {
+    const projectRef = getProjectRef(projectId);
+    await updateDoc(projectRef, {
+        fuelLog: arrayUnion(entry)
+    });
+};
+
+export const addKnowledgeArticle = async (projectId: string, article: KnowledgeArticle) => {
+    const projectRef = getProjectRef(projectId);
+    await updateDoc(projectRef, {
+        knowledgeArticles: arrayUnion(article)
+    });
+};
+
+export const updateVehicleData = async (projectId: string, data: Partial<VehicleData>) => {
+  // Merge updates deeply if needed, but Firestore updateDoc merges top-level fields.
+  // For nested fields like vehicleData.weights, we need dot notation or read-modify-write.
+  // A simpler way for this app: Read, Merge in JS, Write back.
+  const projectData = await getProject(projectId);
+  if (projectData) {
+      const updatedVehicleData = { ...projectData.vehicleData, ...data };
+      await updateDoc(getProjectRef(projectId), { vehicleData: updatedVehicleData });
+  }
+};
+
+// --- TASKS & SHOPPING ---
+
+export const getTasks = async (projectId: string): Promise<Task[]> => {
+  const querySnapshot = await getDocs(getTasksRef(projectId));
+  return querySnapshot.docs.map(doc => doc.data() as Task);
+};
+
+export const addTask = async (projectId: string, task: Omit<Task, 'id'>) => {
+  const docRef = await addDoc(getTasksRef(projectId), task);
+  await updateDoc(docRef, { id: docRef.id });
+  return { ...task, id: docRef.id } as Task;
+};
+
+export const updateTask = async (projectId: string, taskId: string, updates: Partial<Task>) => {
+  const taskRef = doc(getTasksRef(projectId), taskId);
+  await updateDoc(taskRef, updates);
+};
+
+export const deleteTask = async (projectId: string, taskId: string) => {
+  const taskRef = doc(getTasksRef(projectId), taskId);
+  await deleteDoc(taskRef);
+};
+
+export const getShoppingItems = async (projectId: string): Promise<ShoppingItem[]> => {
+  const querySnapshot = await getDocs(getShoppingRef(projectId));
+  return querySnapshot.docs.map(doc => doc.data() as ShoppingItem);
+};
+
+export const addShoppingItem = async (projectId: string, item: Omit<ShoppingItem, 'id'>) => {
+  const docRef = await addDoc(getShoppingRef(projectId), item);
+  await updateDoc(docRef, { id: docRef.id });
+  return { ...item, id: docRef.id } as ShoppingItem;
+};
+
+export const updateShoppingItem = async (projectId: string, itemId: string, updates: Partial<ShoppingItem>) => {
+  const itemRef = doc(getShoppingRef(projectId), itemId);
+  await updateDoc(itemRef, updates);
+};
+
+export const deleteShoppingItem = async (projectId: string, itemId: string) => {
+  const itemRef = doc(getShoppingRef(projectId), itemId);
+  await deleteDoc(itemRef);
+};

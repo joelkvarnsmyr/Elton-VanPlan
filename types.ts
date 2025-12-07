@@ -86,14 +86,14 @@ export interface ShoppingItem {
   name: string;
   category: 'Reservdelar' | 'Kemi & Färg' | 'Verktyg' | 'Inredning' | 'Övrigt';
   estimatedCost: number;
-  actualCost?: number; // New: What we actually paid
-  quantity: string; // e.g. "4 liter", "1 st"
+  actualCost?: number;
+  quantity: string;
   checked: boolean;
-  url?: string; // New: Link to product
-  store?: string; // New: Where to buy
-  purchaseDate?: string; // New: When it was bought
-  receiptImage?: string; // New: Base64 image of receipt
-  linkedTaskId?: string; // New: Link cost to a specific task
+  url?: string;
+  store?: string;
+  purchaseDate?: string;
+  receiptUrl?: string; // Changed from receiptImage
+  linkedTaskId?: string;
 }
 
 export interface ServiceItem {
@@ -190,7 +190,7 @@ export interface VehicleData {
 }
 
 export interface UserProfile {
-    id: string;
+    uid: string;
     name: string;
     email: string;
     avatar?: string;
@@ -199,15 +199,20 @@ export interface UserProfile {
 export interface Project {
     id: string;
     name: string;
+    ownerId: string;
+    ownerEmail: string;
     vehicleData: VehicleData;
     tasks: Task[];
     shoppingItems: ShoppingItem[];
     serviceLog: ServiceItem[];
-    fuelLog: FuelLogItem[];
+    fuelLog: FuelLogItem[]; 
+    knowledgeArticles?: KnowledgeArticle[]; // NEW: Knowledge Base
+    customIcon?: string;
     created: string;
     lastModified: string;
     isDemo?: boolean;
 }
+
 
 // Tool Definitions for AI
 export interface ToolCall {

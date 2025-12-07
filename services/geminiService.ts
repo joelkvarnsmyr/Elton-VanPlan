@@ -1,15 +1,15 @@
 
 import { GoogleGenAI, GenerateContentResponse, Type, Schema, FunctionDeclaration, Tool } from "@google/genai";
 import { BASE_SYSTEM_PROMPT, KNOWLEDGE_ARTICLES } from '../constants';
-import { Task, TaskStatus, Phase, CostType, Priority, ShoppingItem, VehicleData } from '../types';
+import { Task, TaskStatus, Phase, CostType, Priority, ShoppingItem, VehicleData, Project, ServiceItem, FuelLogItem } from '../types';
 
 let client: GoogleGenAI | null = null;
 
 const getClient = (): GoogleGenAI => {
   if (!client) {
-    const apiKey = process.env.API_KEY || '';
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ''; 
     if (!apiKey) {
-      console.warn("API Key missing for Gemini");
+      console.warn("API Key missing for Gemini. Please set VITE_GEMINI_API_KEY.");
     }
     client = new GoogleGenAI({ apiKey });
   }
@@ -200,7 +200,7 @@ const createTaskContext = (tasks: Task[], shoppingList: ShoppingItem[]): string 
   return context;
 };
 
-const createKnowledgeContext = (): string => {
+const createKnowledgeContext = (vehicleData?: VehicleData): string => {
     let context = "\n\n=== 2. KUNSKAPSBANK & RAPPORTER (FAKTA) ===\n";
     context += "Du har tillgång till följande tekniska rapporter. DU SKA LITA PÅ DESSA över din generella träning.\n";
     
@@ -224,7 +224,7 @@ export const streamGeminiResponse = async (
   onToolCall: (toolCalls: any[]) => Promise<any[]>
 ) => {
   const ai = getClient();
-  const model = 'gemini-2.5-flash';
+  const model = 'gemini-2.0-flash'; 
 
   const fullSystemInstruction = 
     `SYSTEM: You are "Elton", an AI assistant and Project Manager for a van renovation project.
@@ -235,7 +235,7 @@ export const streamGeminiResponse = async (
     Detta är hårda fakta om den aktuella bilen.
     ${JSON.stringify(vehicleData, null, 2)}` +
     
-    createKnowledgeContext() + 
+    createKnowledgeContext(vehicleData) + 
     
     createTaskContext(currentTasks, currentShoppingList) +
     
@@ -279,7 +279,7 @@ export const streamGeminiResponse = async (
             const responses = await onToolCall(functionCalls);
             
             const toolResponseResult = await chat.sendMessageStream({
-                parts: responses.map(r => ({
+                message: responses.map(r => ({
                     functionResponse: {
                         name: r.name,
                         response: { result: r.result }
@@ -303,7 +303,7 @@ export const streamGeminiResponse = async (
 
 export const parseTasksFromInput = async (input: string, imageBase64?: string, vehicleData?: VehicleData): Promise<{ tasks: Partial<Task>[], shoppingItems: Partial<ShoppingItem>[] }> => {
   const ai = getClient();
-  const model = 'gemini-2.5-flash';
+  const model = 'gemini-2.0-flash';
 
   const parts: any[] = [];
   
@@ -387,3 +387,120 @@ export const parseTasksFromInput = async (input: string, imageBase64?: string, v
     return { tasks: [], shoppingItems: [] };
   }
 };
+
+// --- NEW FUNCTION: GENERATE VEHICLE ICON (IMAGE-TO-IMAGE) ---
+
+export const generateVehicleIcon = async (imageBase64: string): Promise<string | null> => {
+    const ai = getClient();
+    // Use a model capable of vision. 'gemini-2.0-flash' is multimodal.
+    // NOTE: True image generation (Imagen 3) is a separate API or endpoint in many cases.
+    // However, for this demo we will try to use the multimodal capabilities if available or fallback.
+    // If the standard SDK doesn't support Image Generation yet, we might need a workaround or simulate it.
+    // Google's @google/genai package is primarily for Gemini (Text/Multimodal in, Text out).
+    // Image Generation usually requires a different call or model (Imagen).
+    
+    // FOR NOW: We will skip actual generation as it requires a different API surface/model not always available in the standard gemini-1.5-flash tier directly via this SDK method.
+    // We return null so the UI uses the default car icon.
+    // If you have access to Imagen 3 API, you would implement it here.
+    
+    return null; 
+}
+
+// --- NEW FUNCTION: DEEP RESEARCH & PROJECT GENERATION ---
+
+export const generateProjectProfile = async (vehicleDescription: string, imageBase64?: string): Promise<any> => {
+    const ai = getClient();
+    const model = 'gemini-2.0-flash'; // Use 2.0 Flash for speed and Google Search tool
+
+    const promptText = `Create a full Project Profile for this vehicle: "${vehicleDescription}".
+                    
+    ${imageBase64 ? "There is also an image attached. CHECK IT FOR A LICENSE PLATE (RegNo)." : ""}
+
+    Instructions:
+    1. IDENTIFY REG NO: Scan the input text and image for a Swedish registration number (format ABC 123 or ABC 12A).
+    2. SWEDISH DB SEARCH: If a RegNo is found, you MUST use Google Search to query: 'site:biluppgifter.se [FOUND_REGNO]' AND 'site:car.info [FOUND_REGNO]'. 
+       - Extract exact weights (Tjänstevikt, Max lastvikt), dimensions, engine power, and year model from these sources.
+    3. FIND ISSUES: Search for "common problems", "buyer's guide", "rust spots" for this model.
+    4. CREATE PLAN: Generate 3-5 initial maintenance tasks (Service, Inspection).
+    5. CLEAN NAME: Extract a clean project name (Brand + Model) ignoring URLs and sales text.
+    6. ESTIMATE COSTS: Always provide estimated costs in SEK (Swedish Kronor).
+    7. DEEP ANALYSIS (IMPORTANT): Write a detailed "Detective Report" (Markdown) about this specific car model. 
+       - Analyze its history/era (e.g. "Why was it built?").
+       - Technical quirks (e.g. "The engine is actually an Audi engine").
+       - Strategy for restoration (e.g. "Focus on rust first").
+       - If RegNo found: speculations on history based on year model vs reg date.
+    
+    OUTPUT FORMAT:
+    Return ONLY a raw JSON string (no markdown blocks) with this structure:
+    {
+      "projectName": "String (Clean Name)",
+      "vehicleData": {
+        "regNo": "ABC 123",
+        "make": "Volvo",
+        "model": "240",
+        "year": 1988,
+        "prodYear": 1988,
+        "regDate": "1988-01-01",
+        "status": "I trafik",
+        "bodyType": "Sedan",
+        "passengers": 4,
+        "inspection": { "last": "", "next": "", "mileage": "" },
+        "engine": { "fuel": "Bensin", "power": "115 hk", "volume": "2.3L" },
+        "gearbox": "Manuell",
+        "wheels": { "drive": "2WD", "tiresFront": "", "tiresRear": "", "boltPattern": "" },
+        "dimensions": { "length": 0, "width": 0, "height": "", "wheelbase": 0 },
+        "weights": { "curb": 0, "total": 0, "load": 0, "trailer": 0, "trailerB": 0 },
+        "vin": "",
+        "color": "",
+        "history": { "owners": 0, "events": 0, "lastOwnerChange": "" }
+      },
+      "initialTasks": [ 
+        { 
+            "title": "Example Task", 
+            "description": "...", 
+            "estimatedCostMin": 100, 
+            "estimatedCostMax": 200,
+            "phase": "Fas 1: Akut",
+            "priority": "Hög",
+            "subtasks": [ { "title": "Step 1", "completed": false } ]
+        } 
+      ],
+      "analysisReport": {
+          "title": "String (e.g. 'Teknisk Analys: [Model]')",
+          "summary": "String (Short summary)",
+          "content": "String (Full Markdown content with headers, lists etc)"
+      }
+    }`;
+
+    try {
+        const parts: any[] = [{ text: promptText }];
+        if (imageBase64) {
+            parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } });
+        }
+
+        const response = await ai.models.generateContent({
+            model,
+            contents: { parts },
+            config: {
+                tools: [{ googleSearch: {} }],
+                // We want JSON, but Google Search tool might conflict with responseSchema.
+                // We rely on the prompt to ask for JSON.
+            }
+        });
+
+        let jsonText = response.text || "{}";
+        
+        // Sanitize Markdown blocks if present
+        if (jsonText.includes("```json")) {
+            jsonText = jsonText.split("```json")[1].split("```")[0].trim();
+        } else if (jsonText.includes("```")) {
+            jsonText = jsonText.split("```")[1].split("```")[0].trim();
+        }
+
+        return JSON.parse(jsonText);
+
+    } catch (error) {
+        console.error("Deep Research Error:", error);
+        return {};
+    }
+}

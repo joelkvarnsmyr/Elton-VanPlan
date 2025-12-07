@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="sv">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VanPlan | Elton</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              serif: ['Playfair Display', 'serif'],
+            },
+            colors: {
+              nordic: {
+                ice: '#FAF7F5', // Warm Linen/Cream Background
+                pink: '#F4CFDF', // Powder Pink
+                blue: '#D9E4EC', // Soft Lavender/Blue
+                green: '#E0E8CB', // Soft Sage Green
+                charcoal: '#463F3A', // Warm Dark Brown/Grey
+                slate: '#8A817C', // Warm Taupe/Slate
+                white: '#FFFFFF',
+                beige: '#E1C699', // Elton Beige
+                // Dark Mode Colors
+                dark: {
+                    bg: '#2A2522', // Deep Warm Brown
+                    surface: '#38322E', // Lighter Warm Brown
+                    text: '#E8E6E3', // Off-white text
+                    muted: '#A8A29E' // Muted text
+                }
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        background-color: #FAF7F5;
+        color: #463F3A;
+      }
+      .dark body {
+        background-color: #2A2522;
+        color: #E8E6E3;
+      }
+      /* Custom scrollbar for a cleaner look */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #D9E4EC;
+        border-radius: 4px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #463F3A;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #BCCCDC;
+      }
+    </style>
+
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/assets/index-Tt-8Lztv.js"></script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

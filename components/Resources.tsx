@@ -1,141 +1,135 @@
 
 import React, { useState } from 'react';
-import { RESOURCE_LINKS, PARTS_HUNTING_TIPS, KNOWLEDGE_ARTICLES } from '../constants';
-import { ExternalLink, Search, BookOpen, ShoppingBag, Globe, AlertCircle, FileText, X, Phone, MapPin } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { KnowledgeArticle } from '../types';
+import { BookOpen, FileText, X, ArrowLeft, Search } from 'lucide-react';
+import { KNOWLEDGE_ARTICLES } from '../constants'; // Globala artiklar
 
-export const Resources: React.FC = () => {
-  const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticle | null>(null);
+interface ResourcesProps {
+    projectArticles?: KnowledgeArticle[];
+}
 
-  return (
-    <div className="space-y-8 pb-20 animate-fade-in">
-        
-      {/* Intro */}
-      <div className="bg-white dark:bg-nordic-dark-surface p-8 rounded-3xl border border-nordic-ice dark:border-nordic-dark-bg shadow-sm">
-        <h3 className="font-serif font-bold text-2xl text-nordic-charcoal dark:text-nordic-ice mb-2">Resurs-Hubb</h3>
-        <p className="text-slate-600 dark:text-nordic-dark-muted">
-            Att äga en gammal LT31 handlar 90% om att veta *var* man hittar delar och information.
-        </p>
-      </div>
+export const Resources: React.FC<ResourcesProps> = ({ projectArticles = [] }) => {
+    const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticle | null>(null);
+    const [filter, setFilter] = useState('');
 
-      {/* Knowledge Base Section */}
-      <div className="space-y-4">
-        <h3 className="font-serif font-bold text-xl text-nordic-charcoal dark:text-nordic-ice px-2">Kunskapsbank (Fördjupning)</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {KNOWLEDGE_ARTICLES.map((article) => (
-                <button 
-                    key={article.id}
-                    onClick={() => setSelectedArticle(article)}
-                    className="text-left bg-nordic-ice dark:bg-nordic-charcoal/50 p-6 rounded-3xl border border-transparent hover:border-teal-300 dark:hover:border-teal-700 transition-all group"
-                >
-                    <div className="flex items-center gap-2 mb-3">
-                        <FileText className="text-teal-600 dark:text-teal-400" size={24} />
-                        <span className="bg-white dark:bg-nordic-dark-surface px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">
-                            Rapport
-                        </span>
-                    </div>
-                    <h4 className="font-serif font-bold text-lg text-nordic-charcoal dark:text-nordic-ice mb-2 group-hover:text-teal-700 dark:group-hover:text-teal-400">
-                        {article.title}
-                    </h4>
-                    <p className="text-sm text-slate-600 dark:text-nordic-dark-muted line-clamp-3">
-                        {article.summary}
-                    </p>
-                    <div className="mt-4 flex gap-2">
-                        {article.tags.map(tag => (
-                            <span key={tag} className="text-xs text-slate-400 font-medium">#{tag}</span>
-                        ))}
-                    </div>
-                </button>
-            ))}
-        </div>
-      </div>
+    // Combine project-specific articles (AI-generated reports) with global knowledge base
+    const allArticles = [...(projectArticles || []), ...KNOWLEDGE_ARTICLES];
 
-      {/* Links Grid */}
-      <div className="space-y-4">
-        <h3 className="font-serif font-bold text-xl text-nordic-charcoal dark:text-nordic-ice px-2">Externa Länkar</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {RESOURCE_LINKS.map((link, idx) => (
-                <a 
-                    key={idx} 
-                    href={link.url} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="group bg-white dark:bg-nordic-dark-surface p-6 rounded-3xl border border-nordic-ice dark:border-nordic-dark-bg hover:border-teal-300 dark:hover:border-teal-700 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full"
-                >
-                    <div>
-                        <div className="flex justify-between items-start mb-4">
-                            <span className="bg-nordic-ice dark:bg-nordic-charcoal text-nordic-charcoal dark:text-nordic-ice px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                                {link.category}
-                            </span>
-                            <ExternalLink size={18} className="text-slate-300 group-hover:text-teal-500 transition-colors" />
-                        </div>
-                        <h4 className="font-serif font-bold text-xl text-nordic-charcoal dark:text-nordic-ice mb-2 group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors">
-                            {link.title}
-                        </h4>
-                        <p className="text-sm text-slate-500 dark:text-nordic-dark-muted leading-relaxed">
-                            {link.description}
-                        </p>
-                    </div>
-                </a>
-            ))}
-        </div>
-      </div>
+    const filteredArticles = allArticles.filter(a => 
+        a.title.toLowerCase().includes(filter.toLowerCase()) || 
+        a.tags.some(t => t.toLowerCase().includes(filter.toLowerCase()))
+    );
 
-      {/* Parts Hunting Tips */}
-      <div className="bg-nordic-charcoal text-white rounded-3xl p-8 shadow-lg relative overflow-hidden">
-         <div className="absolute top-0 right-0 p-32 bg-teal-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-         <h3 className="font-serif font-bold text-2xl mb-6 relative z-10 flex items-center gap-2">
-            <Search className="text-teal-400" /> Proffstips för Deljakt
-         </h3>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-            {PARTS_HUNTING_TIPS.map((tip, idx) => (
-                <div key={idx} className="flex gap-4 items-start bg-white/5 p-4 rounded-xl border border-white/10">
-                    <div className="bg-teal-500/20 text-teal-200 w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold">
-                        {idx + 1}
-                    </div>
-                    <p className="text-slate-300 text-sm leading-relaxed">{tip}</p>
-                </div>
-            ))}
-         </div>
-      </div>
-
-      {/* Article Modal */}
-      {selectedArticle && (
-        <div className="fixed inset-0 bg-nordic-charcoal/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-nordic-dark-surface w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="p-6 border-b border-slate-100 dark:border-nordic-dark-bg flex justify-between items-start bg-nordic-ice/30 dark:bg-nordic-charcoal/30">
-                    <div>
-                        <span className="text-teal-600 font-bold text-xs uppercase tracking-wider mb-2 block">
-                            {selectedArticle.tags.join(' • ')}
-                        </span>
-                        <h2 className="text-2xl font-serif font-bold text-nordic-charcoal dark:text-nordic-ice leading-tight">
-                            {selectedArticle.title}
-                        </h2>
-                    </div>
+    if (selectedArticle) {
+        return (
+            <div className="fixed inset-0 bg-white dark:bg-nordic-dark-surface z-50 overflow-y-auto animate-fade-in">
+                <div className="max-w-3xl mx-auto p-6 pb-20">
                     <button 
                         onClick={() => setSelectedArticle(null)}
-                        className="p-2 hover:bg-slate-200 dark:hover:bg-nordic-charcoal rounded-full transition-colors"
+                        className="mb-6 p-2 -ml-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-nordic-charcoal rounded-full flex items-center gap-2 transition-colors"
                     >
-                        <X size={24} className="text-slate-500 dark:text-slate-400" />
+                        <ArrowLeft size={20} /> <span className="font-bold text-sm">Tillbaka till biblioteket</span>
                     </button>
-                </div>
-                <div className="p-8 overflow-y-auto">
-                    <article className="prose prose-slate dark:prose-invert max-w-none">
-                        <div dangerouslySetInnerHTML={{ 
-                            __html: selectedArticle.content
-                                .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-serif font-bold mb-4 text-nordic-charcoal dark:text-nordic-ice">$1</h1>')
-                                .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold mt-6 mb-3 text-teal-700 dark:text-teal-400 border-b border-slate-100 dark:border-slate-800 pb-2">$1</h2>')
-                                .replace(/^### (.*$)/gim, '<h3 class="text-lg font-bold mt-4 mb-2 text-slate-700 dark:text-slate-200">$1</h3>')
-                                .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-nordic-charcoal dark:text-white">$1</strong>')
-                                .replace(/^\* (.*$)/gim, '<li class="ml-4 list-disc marker:text-teal-500">$1</li>')
-                                .replace(/\n/g, '<br/>')
-                        }} />
+
+                    <article className="prose prose-lg dark:prose-invert max-w-none">
+                        <div className="mb-8 border-b border-slate-100 dark:border-nordic-charcoal pb-8">
+                            <h1 className="font-serif font-bold text-4xl text-nordic-charcoal dark:text-nordic-ice mb-4">{selectedArticle.title}</h1>
+                            <div className="flex gap-2 mb-6">
+                                {selectedArticle.tags.map(tag => (
+                                    <span key={tag} className="px-3 py-1 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 text-xs font-bold uppercase tracking-wider rounded-full">
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                            <p className="text-xl text-slate-500 dark:text-nordic-dark-muted leading-relaxed font-serif italic">
+                                {selectedArticle.summary}
+                            </p>
+                        </div>
+                        
+                        <ReactMarkdown 
+                            components={{
+                                h1: ({node, ...props}) => <h2 className="text-2xl font-bold text-nordic-charcoal dark:text-nordic-ice mt-8 mb-4 border-l-4 border-teal-500 pl-4" {...props} />,
+                                h2: ({node, ...props}) => <h3 className="text-xl font-bold text-slate-700 dark:text-slate-200 mt-6 mb-3" {...props} />,
+                                ul: ({node, ...props}) => <ul className="list-disc list-outside ml-6 space-y-2 my-4 text-slate-600 dark:text-slate-300" {...props} />,
+                                ol: ({node, ...props}) => <ol className="list-decimal list-outside ml-6 space-y-2 my-4 text-slate-600 dark:text-slate-300" {...props} />,
+                                li: ({node, ...props}) => <li className="pl-1 marker:text-teal-500" {...props} />,
+                                p: ({node, ...props}) => <p className="mb-4 text-slate-600 dark:text-slate-300 leading-relaxed" {...props} />,
+                                strong: ({node, ...props}) => <strong className="font-bold text-nordic-charcoal dark:text-white" {...props} />,
+                                blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-teal-200 bg-teal-50/50 dark:bg-teal-900/10 p-4 my-6 italic text-slate-600 dark:text-slate-400 rounded-r-xl" {...props} />,
+                                table: ({node, ...props}) => <div className="overflow-x-auto my-6 rounded-xl border border-slate-200 dark:border-nordic-charcoal"><table className="w-full text-left text-sm" {...props} /></div>,
+                                th: ({node, ...props}) => <th className="bg-slate-50 dark:bg-nordic-charcoal p-3 font-bold text-slate-700 dark:text-slate-200 border-b border-slate-200 dark:border-nordic-dark-bg" {...props} />,
+                                td: ({node, ...props}) => <td className="p-3 border-b border-slate-100 dark:border-nordic-dark-bg text-slate-600 dark:text-slate-400" {...props} />,
+                            }}
+                        >
+                            {selectedArticle.content}
+                        </ReactMarkdown>
                     </article>
                 </div>
             </div>
-        </div>
-      )}
+        );
+    }
 
-    </div>
-  );
+    return (
+        <div className="space-y-6 pb-24 animate-fade-in">
+            <div className="bg-gradient-to-r from-nordic-ice to-white dark:from-nordic-charcoal dark:to-nordic-dark-surface p-8 rounded-3xl border border-nordic-ice dark:border-nordic-dark-bg shadow-sm">
+                <h3 className="font-serif font-bold text-2xl text-nordic-charcoal dark:text-nordic-ice mb-2 flex items-center gap-3">
+                    <BookOpen className="text-teal-600" /> Kunskapsbanken
+                </h3>
+                <p className="text-slate-600 dark:text-nordic-dark-muted mb-6">
+                    Här samlas tekniska rapporter, guider och analyser. Både globala fakta och unika rapporter som Elton skrivit om ditt projekt.
+                </p>
+
+                <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                    <input 
+                        type="text" 
+                        placeholder="Sök bland artiklar..." 
+                        className="w-full p-4 pl-12 bg-white dark:bg-nordic-dark-bg border border-slate-200 dark:border-nordic-charcoal rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 transition-all"
+                        value={filter}
+                        onChange={(e) => setFilter(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredArticles.length === 0 ? (
+                    <div className="col-span-full text-center py-12 opacity-50">
+                        <FileText size={48} className="mx-auto mb-4 text-slate-300" />
+                        <p>Inga artiklar hittades.</p>
+                    </div>
+                ) : (
+                    filteredArticles.map((article, idx) => (
+                        <div 
+                            key={article.id + idx} 
+                            onClick={() => setSelectedArticle(article)}
+                            className="bg-white dark:bg-nordic-dark-surface p-6 rounded-2xl border border-nordic-ice dark:border-nordic-dark-bg hover:shadow-lg hover:border-teal-200 transition-all cursor-pointer group flex flex-col justify-between h-full"
+                        >
+                            <div>
+                                <div className="flex gap-2 mb-3">
+                                    {article.tags.slice(0, 2).map(tag => (
+                                        <span key={tag} className="text-[10px] font-bold uppercase tracking-wider text-teal-600 bg-teal-50 dark:bg-teal-900/20 px-2 py-1 rounded-md">
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                                <h4 className="font-serif font-bold text-xl text-nordic-charcoal dark:text-nordic-ice mb-2 group-hover:text-teal-700 transition-colors">
+                                    {article.title}
+                                </h4>
+                                <p className="text-sm text-slate-500 dark:text-nordic-dark-muted line-clamp-3 leading-relaxed">
+                                    {article.summary}
+                                </p>
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-slate-50 dark:border-nordic-charcoal flex justify-between items-center">
+                                <span className="text-xs text-slate-400 font-medium">Läs rapport</span>
+                                <div className="w-8 h-8 rounded-full bg-slate-50 dark:bg-nordic-charcoal flex items-center justify-center text-slate-400 group-hover:bg-teal-500 group-hover:text-white transition-colors">
+                                    <ArrowLeft size={16} className="rotate-180" />
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
 };

@@ -1,74 +1,73 @@
-# The VanPlan Platform 🚐
+# Elton - VanPlan 🚐💨
 
-**The VanPlan** is a specialized project management and budget application designed for DIY van conversions (Vanlife). It features a Scandinavian "Nordic Pastel" design, AI-powered assistance ("Elton"), and specific tools for managing vehicle specs, maintenance, and construction phases.
+The ultimate digital companion for your vanlife build. Plan, track, and budget your conversion with AI assistance. Now with multi-project support and AI-powered onboarding!
 
-Current Version: **2.0 (Platform Edition)**
+## 🚀 Features
 
-## 🌟 Key Features
+*   **Platform Architecture (SaaS):** Manage multiple van builds (projects) under one user account.
+*   **AI Onboarding & "Research Wizard":** Create a project by simply entering a RegNo or description. Elton AI fetches technical specs, common issues, and creates a tailored service plan automatically.
+*   **Deep Research:** Integrated Google Search allows Elton to find real-time prices for parts and verify technical data.
+*   **Project Dashboard:** Real-time overview of budget, progress, and weight.
+*   **Task Board:** Kanban-style task management (Todo, In Progress, Done).
+*   **Smart Shopping List:** Track purchases, upload receipts (with image hosting), and manage budget vs actual cost.
+*   **Elton AI:** Integrated AI assistant (Google Gemini) for build advice, cost estimation, and technical help. Now with Markdown support for rich answers.
+*   **Vehicle Specs:** Maintain a detailed log of your vehicle's technical specifications.
+*   **Cloud Sync:** Full Firebase integration (Firestore, Auth, Storage) for real-time data sync across devices.
+*   **Secure:** Robust Firestore Security Rules ensure data privacy.
 
-*   **Multi-Project Support**: Manage multiple builds (e.g., "The LT31", "The Sprinter") from a single account.
-*   **Elton AI (Gemini)**: A context-aware AI project manager that knows your specific vehicle data, reads technical reports, and helps manage your tasks via Text, Voice, and Video.
-*   **Agile Planning**: Kanban-style task board with Sprints, Priorities, and subtasks.
-*   **Smart Economy**:
-    *   **Shopping List**: Track planned vs. actual costs.
-    *   **Budget Overview**: Visual graphs of estimated vs. spent budget per phase.
-*   **Vehicle Garage**:
-    *   **Specs**: Dynamic data based on the active vehicle.
-    *   **Service Log**: Digital maintenance history.
-    *   **Fuel Log**: Track consumption.
-    *   **Weight Watcher**: Live payload calculator.
-*   **Knowledge Base**: Integrated technical reports (Markdown) that the AI can read and reference.
+## 🛠 Tech Stack
 
-## 🏗 Architecture & Tech Stack
+*   **Frontend:** React 18, TypeScript, Vite
+*   **Styling:** Tailwind CSS, Lucide React (Icons), `clsx`, `tailwind-merge`
+*   **Backend (BaaS):** Google Firebase
+    *   **Auth:** Email/Link & Password Authentication
+    *   **Firestore:** NoSQL Database for projects, tasks, and items.
+    *   **Storage:** Image hosting for receipts.
+*   **AI:** Google Gemini (`@google/genai`) with Function Calling & Google Search Tool.
+*   **Utilities:**
+    *   `recharts`: Data visualization
+    *   `date-fns`: Date manipulation
+    *   `react-markdown`: Rendering AI responses
+    *   `uuid`: Unique identifiers
+*   **Testing:** Vitest, Happy-DOM
 
-The application is currently a **Client-Side SaaS Simulation**. It behaves exactly like a full-stack app but persists data entirely in the browser's `localStorage`.
+## 📂 Project Structure
 
-*   **Frontend**: React 18, TypeScript, Vite.
-*   **Styling**: Tailwind CSS (Nordic Theme).
-*   **AI**: Google Gemini Pro & Gemini Live API (Multimodal: Text, Audio, Video).
-*   **Icons**: Lucide React.
-*   **Charts**: Recharts.
-*   **Persistence**: LocalStorage (simulating a database with `projects` and `users` collections).
+*   `/src`
+    *   `/components` - UI Components (Dashboard, TaskBoard, ShoppingList, ProjectSelector etc.)
+    *   `/services`
+        *   `firebase.ts` - App initialization
+        *   `auth.ts` - Authentication logic
+        *   `db.ts` - Firestore CRUD operations (Deeply nested subcollections)
+        *   `storage.ts` - File upload logic
+        *   `geminiService.ts` - AI integration & Deep Research logic
+    *   `types.ts` - TypeScript interfaces
+    *   `constants.ts` - Static data & configuration
 
-### Folder Structure
+## 🔐 Security
 
-```
-/
-├── index.html              # Entry point & Tailwind Config
-├── src/
-│   ├── App.tsx             # Main Router & State Manager (Auth/Project Context)
-│   ├── types.ts            # TypeScript Interfaces (Project, Task, User, VehicleData)
-│   ├── constants.ts        # Initial Data, Demo Project (Elton), Reports
-│   ├── services/
-│   │   └── geminiService.ts # AI Logic, Tools Definition, Context Injection
-│   └── components/
-│       ├── AuthLanding.tsx     # Login / Landing Page
-│       ├── ProjectSelector.tsx # Dashboard to manage multiple vans
-│       ├── Dashboard.tsx       # Project Overview (Charts, Timeline)
-│       ├── TaskBoard.tsx       # Kanban Board
-│       ├── ShoppingList.tsx    # Economy & Inventory
-│       ├── VehicleSpecs.tsx    # Garage, Service Log, Fuel Log
-│       ├── AIAssistant.tsx     # Chat Interface
-│       └── LiveElton.tsx       # Real-time Voice/Video AI Interface
-```
+*   **Firestore Rules:** Strict security rules ensure users can only access their own projects.
+*   **Storage Rules:** File access is restricted to the file owner.
 
-## 🚀 Getting Started
+## 🏃‍♂️ Getting Started
 
-1.  **Clone the repo**.
-2.  **Install dependencies**: `npm install`
-3.  **Set API Key**:
-    *   Create a `.env` file.
-    *   Add `API_KEY=your_google_gemini_api_key`.
-4.  **Run locally**: `npm run dev`.
+1.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+2.  **Start development server:**
+    ```bash
+    npm run dev
+    ```
+3.  **Run tests:**
+    ```bash
+    npm test
+    ```
+4.  **Build for production:**
+    ```bash
+    npm run build
+    ```
 
-## 🔄 Data Management
+## 📝 License
 
-*   **Demo Mode**: Click "Visa Demo" on the landing page to load the read-only "Elton" project.
-*   **Backup**: Go to Profile -> Inställningar -> **Spara Backup** to download a JSON file of all your projects.
-*   **Restore**: Use **Återställ Backup** to load data on a new device.
-
-## 🔜 Future Roadmap
-
-*   **Cloud Migration**: Move from LocalStorage to Supabase (See `MIGRATION_GUIDE.md`).
-*   **Community**: Share technical reports between users.
-*   **Marketplace**: Direct integration with parts suppliers.
+Private / Proprietary
