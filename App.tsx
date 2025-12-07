@@ -142,6 +142,12 @@ export const App = () => {
       setCurrentUser(user);
   };
 
+  const handleDemo = () => {
+      const guestUser: UserProfile = { id: 'guest', name: 'Besökare', email: 'demo@vanplan.se' };
+      setCurrentUser(guestUser);
+      setActiveProject(DEMO_PROJECT);
+  };
+
   const handleLogout = () => {
       setCurrentUser(null);
       setActiveProject(null);
@@ -250,7 +256,7 @@ export const App = () => {
   // --- RENDER ---
 
   if (!currentUser) {
-      return <AuthLanding onLogin={handleLogin} onDemo={() => handleSelectProject('demo-elton')} />;
+      return <AuthLanding onLogin={handleLogin} onDemo={handleDemo} />;
   }
 
   if (!activeProject) {
