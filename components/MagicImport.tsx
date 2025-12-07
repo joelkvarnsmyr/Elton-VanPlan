@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { parseTasksFromInput } from '../services/geminiService';
 import { Task, TaskStatus } from '../types';
@@ -32,7 +33,7 @@ export const MagicImport: React.FC<MagicImportProps> = ({ onAddTasks, onClose })
     // Strip header from base64 if present
     const base64Data = selectedImage ? selectedImage.split(',')[1] : undefined;
     
-    const tasks = await parseTasksFromInput(textInput, base64Data);
+    const { tasks } = await parseTasksFromInput(textInput, base64Data);
     setGeneratedTasks(tasks as Task[]);
     setIsAnalyzing(false);
   };

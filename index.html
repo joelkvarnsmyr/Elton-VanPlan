@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
@@ -24,6 +25,13 @@
                 slate: '#8A817C', // Warm Taupe/Slate
                 white: '#FFFFFF',
                 beige: '#E1C699', // Elton Beige
+                // Dark Mode Colors
+                dark: {
+                    bg: '#2A2522', // Deep Warm Brown
+                    surface: '#38322E', // Lighter Warm Brown
+                    text: '#E8E6E3', // Off-white text
+                    muted: '#A8A29E' // Muted text
+                }
               }
             }
           }
@@ -34,6 +42,10 @@
       body {
         background-color: #FAF7F5;
         color: #463F3A;
+      }
+      .dark body {
+        background-color: #2A2522;
+        color: #E8E6E3;
       }
       /* Custom scrollbar for a cleaner look */
       ::-webkit-scrollbar {
@@ -46,6 +58,9 @@
       ::-webkit-scrollbar-thumb {
         background: #D9E4EC;
         border-radius: 4px;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #463F3A;
       }
       ::-webkit-scrollbar-thumb:hover {
         background: #BCCCDC;

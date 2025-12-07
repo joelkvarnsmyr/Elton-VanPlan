@@ -1,14 +1,15 @@
-import React, { useMemo } from 'react';
-import { Task, TaskStatus } from '../types';
+
+import React, { useMemo, useState, useEffect } from 'react';
+import { Project, TaskStatus } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Coins, CheckCircle2, TrendingUp, Wallet, Calendar, MapPin, Flag, ArrowRight } from 'lucide-react';
-import { VEHICLE_DATA } from '../constants';
+import { Coins, CheckCircle2, Wallet, Calendar, MapPin, Flag, ArrowRight, ArrowUp, ArrowDown } from 'lucide-react';
+import { Resources } from './Resources';
 
 interface DashboardProps {
-  tasks: Task[];
+  project: Project;
+  onPhaseClick?: (phase: string) => void;
 }
 
-// Updated warm pastel palette
 const COLORS = {
   pink: '#F4CFDF',
   blue: '#D9E4EC',
@@ -18,14 +19,37 @@ const COLORS = {
   ice: '#FAF7F5'
 };
 
-export const Dashboard: React.FC<DashboardProps> = ({ tasks }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick }) => {
+  const { tasks, vehicleData } = project;
   
+  // Section Ordering State
+  const [sectionOrder, setSectionOrder] = useState<string[]>(() => {
+      const saved = localStorage.getItem('elton-dashboard-order');
+      return saved ? JSON.parse(saved) : ['stats', 'timeline', 'budget', 'phases', 'resources'];
+  });
+
+  useEffect(() => {
+      localStorage.setItem('elton-dashboard-order', JSON.stringify(sectionOrder));
+  }, [sectionOrder]);
+
+  const moveSection = (section: string, direction: 'up' | 'down') => {
+      const idx = sectionOrder.indexOf(section);
+      if (idx === -1) return;
+      if (direction === 'up' && idx === 0) return;
+      if (direction === 'down' && idx === sectionOrder.length - 1) return;
+
+      const newOrder = [...sectionOrder];
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      [newOrder[idx], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[idx]];
+      setSectionOrder(newOrder);
+  };
+
   const stats = useMemo(() => {
     const totalMin = tasks.reduce((sum, t) => sum + t.estimatedCostMin, 0);
     const totalMax = tasks.reduce((sum, t) => sum + t.estimatedCostMax, 0);
     const spent = tasks.reduce((sum, t) => sum + t.actualCost, 0);
     const completed = tasks.filter(t => t.status === TaskStatus.DONE).length;
-    const progress = Math.round((completed / tasks.length) * 100);
+    const progress = tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0;
     const remainingBudget = (totalMax + totalMin) / 2 - spent;
 
     return { totalMin, totalMax, spent, progress, completed, total: tasks.length, remainingBudget };
@@ -46,30 +70,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks }) => {
   const timelineData = useMemo(() => {
     const historyEvents = [
         {
-            date: '1976',
+            date: vehicleData.prodYear.toString(),
             title: 'Tillverkad',
-            description: 'Elton byggs i Tyskland',
+            description: `${vehicleData.make} ${vehicleData.model}`,
             type: 'history',
             icon: Calendar
         },
         {
-            date: VEHICLE_DATA.regDate,
+            date: vehicleData.regDate,
             title: 'I Trafik',
             description: 'Första gången på väg',
             type: 'history',
             icon: MapPin
         },
         {
-            date: '2023',
-            title: 'Ägarbyte',
-            description: 'Historiskt ägarbyte',
-            type: 'history',
-            icon: UsersIcon
-        },
-        {
-            date: '2025',
+            date: project.created.split('T')[0],
             title: 'Projektstart',
-            description: 'Hanna Erixon tar över',
+            description: project.name,
             type: 'milestone',
             icon: Flag
         }
@@ -86,169 +103,147 @@ export const Dashboard: React.FC<DashboardProps> = ({ tasks }) => {
         }));
 
     return [...historyEvents, ...completedTasks];
-  }, [tasks]);
+  }, [tasks, vehicleData, project]);
+
+  const SectionHeader = ({ title, id }: { title: string, id: string }) => (
+      <div className="flex justify-between items-center mb-4 group">
+          <h3 className="font-serif font-bold text-xl text-nordic-charcoal dark:text-nordic-ice">{title}</h3>
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={() => moveSection(id, 'up')} className="p-1 hover:bg-slate-100 dark:hover:bg-nordic-charcoal rounded"><ArrowUp size={14}/></button>
+              <button onClick={() => moveSection(id, 'down')} className="p-1 hover:bg-slate-100 dark:hover:bg-nordic-charcoal rounded"><ArrowDown size={14}/></button>
+          </div>
+      </div>
+  );
 
   const StatCard = ({ title, value, subtext, icon: Icon, color }: any) => (
-    <div className="bg-white p-6 rounded-3xl shadow-sm border border-nordic-ice flex items-center space-x-4 transition-all hover:shadow-md">
-      <div className={`p-4 rounded-2xl ${color}`}>
-        <Icon size={24} className="text-nordic-charcoal opacity-80" />
+    <div className="bg-white dark:bg-nordic-dark-surface p-6 rounded-3xl shadow-sm border border-nordic-ice dark:border-nordic-dark-bg flex items-center space-x-4 transition-all hover:shadow-md h-full">
+      <div className={`p-4 rounded-2xl ${color} dark:bg-opacity-20`}>
+        <Icon size={24} className="text-nordic-charcoal dark:text-nordic-ice opacity-80" />
       </div>
       <div>
         <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">{title}</p>
-        <h3 className="text-2xl font-serif font-bold text-nordic-charcoal">{value}</h3>
-        {subtext && <p className="text-xs text-slate-500 mt-1">{subtext}</p>}
+        <h3 className="text-2xl font-serif font-bold text-nordic-charcoal dark:text-nordic-ice">{value}</h3>
+        {subtext && <p className="text-xs text-slate-500 dark:text-nordic-dark-muted mt-1">{subtext}</p>}
       </div>
     </div>
   );
+
+  const renderSection = (id: string) => {
+      switch(id) {
+          case 'stats':
+              return (
+                <div key="stats" className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <StatCard 
+                    title="Total Budget" 
+                    value={`${stats.totalMin.toLocaleString()} - ${stats.totalMax.toLocaleString()} kr`}
+                    subtext="Uppskattat spann"
+                    icon={Wallet}
+                    color="bg-nordic-blue"
+                    />
+                    <StatCard 
+                    title="Spenderat" 
+                    value={`${stats.spent.toLocaleString()} kr`}
+                    subtext={`Kvar av snittbudget: ${stats.remainingBudget.toLocaleString()} kr`}
+                    icon={Coins}
+                    color="bg-nordic-pink"
+                    />
+                    <StatCard 
+                    title="Färdigt" 
+                    value={`${stats.progress}%`}
+                    subtext={`${stats.completed} av ${stats.total} uppgifter klara`}
+                    icon={CheckCircle2}
+                    color="bg-nordic-green"
+                    />
+                </div>
+              );
+          case 'timeline':
+              return (
+                <div key="timeline" className="bg-white dark:bg-nordic-dark-surface p-8 rounded-3xl shadow-sm border border-nordic-ice dark:border-nordic-dark-bg overflow-hidden">
+                    <SectionHeader title="Tidslinje & Resa" id="timeline" />
+                    <div className="relative">
+                        <div className="absolute top-[24px] left-0 w-full h-1 bg-gradient-to-r from-nordic-ice via-nordic-blue/30 to-nordic-ice dark:from-nordic-dark-bg dark:via-nordic-charcoal dark:to-nordic-dark-bg rounded-full"></div>
+                        <div className="flex overflow-x-auto pb-6 space-x-12 px-4 scrollbar-thin scrollbar-thumb-nordic-blue/50 scrollbar-track-transparent snap-x">
+                            {timelineData.map((event, idx) => (
+                                <div key={idx} className="relative flex flex-col items-center min-w-[160px] snap-center group">
+                                    <div className={`w-12 h-12 rounded-full border-4 border-white dark:border-nordic-dark-surface shadow-sm flex items-center justify-center mb-4 z-10 transition-transform duration-300 group-hover:scale-110 ${
+                                        event.type === 'history' ? 'bg-slate-100 dark:bg-nordic-charcoal text-slate-400' :
+                                        event.type === 'milestone' ? 'bg-nordic-pink dark:bg-pink-900/40 text-rose-800 dark:text-rose-200' :
+                                        'bg-nordic-green dark:bg-green-900/40 text-green-800 dark:text-green-200'
+                                    }`}>
+                                        <event.icon size={20} />
+                                    </div>
+                                    <div className="text-center transition-opacity duration-300 group-hover:opacity-100">
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 block">{event.date}</span>
+                                        <h4 className="font-bold text-nordic-charcoal dark:text-nordic-ice text-sm leading-tight mb-1">{event.title}</h4>
+                                        <p className="text-xs text-slate-500 dark:text-nordic-dark-muted max-w-[140px] mx-auto leading-relaxed">{event.description}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+              );
+          case 'budget':
+              return (
+                <div key="budget" className="bg-white dark:bg-nordic-dark-surface p-8 rounded-3xl shadow-sm border border-nordic-ice dark:border-nordic-dark-bg">
+                    <SectionHeader title="Ekonomi per Fas" id="budget" />
+                    <div style={{ width: '100%', height: 320, minHeight: 300 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData} barGap={-20}>
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#8A817C', fontSize: 12}} dy={10} />
+                            <YAxis hide />
+                            <Tooltip cursor={{fill: 'rgba(200,200,200,0.1)'}} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)' }} />
+                            <Bar dataKey="est" name="Estimat" fill={COLORS.ice} radius={[8, 8, 8, 8]} barSize={48} className="dark:fill-nordic-charcoal" />
+                            <Bar dataKey="spent" name="Utfall" fill={COLORS.charcoal} radius={[8, 8, 8, 8]} barSize={24} className="dark:fill-teal-600" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+              );
+          case 'phases':
+              return (
+                <div key="phases" className="grid grid-cols-1 gap-4">
+                    <SectionHeader title="Status per Fas" id="phases" />
+                    {chartData.map((data, idx) => (
+                        <button 
+                            key={idx} 
+                            onClick={() => onPhaseClick && onPhaseClick(data.name)}
+                            className="bg-white dark:bg-nordic-dark-surface p-5 rounded-2xl border border-nordic-ice dark:border-nordic-dark-bg flex items-center justify-between hover:bg-slate-50 dark:hover:bg-nordic-charcoal/50 transition-colors w-full group text-left cursor-pointer shadow-sm hover:shadow-md"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full bg-nordic-ice dark:bg-nordic-charcoal flex items-center justify-center font-serif font-bold text-slate-600 dark:text-nordic-ice group-hover:scale-110 transition-transform">
+                                    {idx + 0}
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-nordic-charcoal dark:text-nordic-ice flex items-center gap-2">
+                                        {data.name} 
+                                        <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-teal-500" />
+                                    </h4>
+                                    <p className="text-xs text-slate-500 dark:text-nordic-dark-muted">{data.spent.toLocaleString()} kr spenderat</p>
+                                </div>
+                            </div>
+                            <div className="w-32 h-2 bg-nordic-ice dark:bg-nordic-charcoal rounded-full overflow-hidden">
+                                <div className="h-full bg-teal-500 rounded-full" style={{ width: `${Math.min((data.spent / (data.est || 1)) * 100, 100)}%` }}></div>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+              );
+          case 'resources':
+              return (
+                  <div key="resources" className="pt-4">
+                      <SectionHeader title="Resurser" id="resources" />
+                      <Resources />
+                  </div>
+              );
+          default:
+              return null;
+      }
+  };
 
   return (
     <div className="space-y-8 pb-20 animate-fade-in">
-      {/* Key Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard 
-          title="Total Budget" 
-          value={`${stats.totalMin.toLocaleString()} - ${stats.totalMax.toLocaleString()} kr`}
-          subtext="Uppskattat spann"
-          icon={Wallet}
-          color="bg-nordic-blue"
-        />
-        <StatCard 
-          title="Spenderat" 
-          value={`${stats.spent.toLocaleString()} kr`}
-          subtext={`Kvar av snittbudget: ${stats.remainingBudget.toLocaleString()} kr`}
-          icon={Coins}
-          color="bg-nordic-pink"
-        />
-        <StatCard 
-          title="Färdigt" 
-          value={`${stats.progress}%`}
-          subtext={`${stats.completed} av ${stats.total} uppgifter klara`}
-          icon={CheckCircle2}
-          color="bg-nordic-green"
-        />
-      </div>
-
-      {/* Horizontal Timeline */}
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-nordic-ice overflow-hidden">
-        <h3 className="font-serif font-bold text-xl text-nordic-charcoal mb-8 flex items-center gap-2">
-            <span>Tidslinje & Resa</span>
-            <span className="text-xs font-sans font-normal text-slate-400 bg-slate-100 px-2 py-1 rounded-full">Scrolla i sidled →</span>
-        </h3>
-        <div className="relative">
-            {/* Horizontal Line Background */}
-            <div className="absolute top-[24px] left-0 w-full h-1 bg-gradient-to-r from-nordic-ice via-nordic-blue/30 to-nordic-ice rounded-full"></div>
-            
-            <div className="flex overflow-x-auto pb-6 space-x-12 px-4 scrollbar-thin scrollbar-thumb-nordic-blue/50 scrollbar-track-transparent snap-x">
-                {timelineData.map((event, idx) => (
-                    <div key={idx} className="relative flex flex-col items-center min-w-[160px] snap-center group">
-                        <div className={`w-12 h-12 rounded-full border-4 border-white shadow-sm flex items-center justify-center mb-4 z-10 transition-transform duration-300 group-hover:scale-110 ${
-                            event.type === 'history' ? 'bg-slate-100 text-slate-400' :
-                            event.type === 'milestone' ? 'bg-nordic-pink text-rose-800' :
-                            'bg-nordic-green text-green-800'
-                        }`}>
-                            <event.icon size={20} />
-                        </div>
-                        <div className="text-center transition-opacity duration-300 group-hover:opacity-100">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 block">{event.date}</span>
-                            <h4 className="font-bold text-nordic-charcoal text-sm leading-tight mb-1">{event.title}</h4>
-                            <p className="text-xs text-slate-500 max-w-[140px] mx-auto leading-relaxed">{event.description}</p>
-                        </div>
-                    </div>
-                ))}
-                
-                {/* Future Placeholder */}
-                <div className="relative flex flex-col items-center min-w-[160px] snap-center opacity-40">
-                        <div className="w-12 h-12 rounded-full border-4 border-white bg-slate-50 border-dashed border-slate-300 flex items-center justify-center mb-4 z-10">
-                        <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
-                        </div>
-                        <div className="text-center">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300 mb-1 block">Framtid</span>
-                        <h4 className="font-bold text-slate-400 text-sm leading-tight mb-1">Äventyret</h4>
-                        </div>
-                </div>
-            </div>
-        </div>
-      </div>
-
-      {/* Main Chart Section */}
-      <div className="bg-white p-8 rounded-3xl shadow-sm border border-nordic-ice">
-         <div className="flex items-center justify-between mb-8">
-           <div>
-             <h3 className="font-serif font-bold text-xl text-nordic-charcoal">Ekonomi per Fas</h3>
-             <p className="text-sm text-slate-500">Jämförelse mellan estimat och utfall</p>
-           </div>
-           <div className="flex gap-4 text-xs font-medium">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-nordic-ice"></div>
-                <span>Estimat</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-nordic-charcoal"></div>
-                <span>Utfall</span>
-              </div>
-           </div>
-         </div>
-         
-         <div className="h-80 w-full">
-           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} barGap={-20}>
-              <XAxis 
-                dataKey="name" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fill: COLORS.slate, fontSize: 12}} 
-                dy={10}
-              />
-              <YAxis 
-                hide 
-              />
-              <Tooltip 
-                cursor={{fill: '#F8FAFC'}}
-                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)' }}
-              />
-              {/* Ghost Shadow (Estimate) */}
-              <Bar dataKey="est" name="Estimat" fill={COLORS.ice} radius={[8, 8, 8, 8]} barSize={48} />
-              {/* Actual Spend */}
-              <Bar dataKey="spent" name="Utfall" fill={COLORS.charcoal} radius={[8, 8, 8, 8]} barSize={24} />
-            </BarChart>
-          </ResponsiveContainer>
-         </div>
-      </div>
-
-      {/* Phase Progress List */}
-      <div className="grid grid-cols-1 gap-4">
-          <h3 className="font-serif font-bold text-xl text-nordic-charcoal px-2">Status per Fas</h3>
-          {chartData.map((data, idx) => {
-             const isComplete = data.est > 0 && data.spent >= data.est; 
-             return (
-               <div key={idx} className="bg-white p-5 rounded-2xl border border-nordic-ice flex items-center justify-between hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 rounded-full bg-nordic-ice flex items-center justify-center font-serif font-bold text-slate-600">
-                        {idx + 0}
-                     </div>
-                     <div>
-                        <h4 className="font-bold text-nordic-charcoal">{data.name}</h4>
-                        <p className="text-xs text-slate-500">{data.spent.toLocaleString()} kr spenderat</p>
-                     </div>
-                  </div>
-                  
-                  <div className="w-32 h-2 bg-nordic-ice rounded-full overflow-hidden">
-                     <div 
-                       className="h-full bg-teal-500 rounded-full" 
-                       style={{ width: `${Math.min((data.spent / (data.est || 1)) * 100, 100)}%` }}
-                     ></div>
-                  </div>
-               </div>
-             )
-          })}
-      </div>
+      {sectionOrder.map(sectionId => renderSection(sectionId))}
     </div>
   );
 };
-
-// Helper icon
-const UsersIcon = ({ size, className }: { size: number, className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
-);
