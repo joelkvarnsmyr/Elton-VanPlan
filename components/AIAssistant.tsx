@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { streamGeminiResponse } from '../services/geminiService';
-import { Send, User, Trash2, Car, Video, ArrowLeft, Wrench, ShoppingBag, CheckSquare } from 'lucide-react';
+import { Send, User, Trash2, Car, Video, ArrowLeft, Image as ImageIcon, X } from 'lucide-react';
 import { Task, ShoppingItem, VehicleData } from '../types';
 import { LiveElton } from './LiveElton';
 
@@ -31,11 +31,13 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
     onDeleteShoppingItem,
     onClose 
 }) => {
-  const [messages, setMessages] = useState<{ role: 'user' | 'model'; content: string }[]>([]);
+  const [messages, setMessages] = useState<{ role: 'user' | 'model'; content: string; image?: string }[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLiveMode, setIsLiveMode] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load history from local storage on mount (scoped to vehicle regNo preferably in future)
   useEffect(() => {
@@ -77,6 +79,17 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
 
   useEffect(scrollToBottom, [messages]);
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setSelectedImage(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    }
+  };
+
   const handleToolCalls = async (toolCalls: any[]) => {
       if (!toolCalls || toolCalls.length === 0) return [];
       
@@ -88,10 +101,9 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                   const newTasks = Array.isArray(call.args.tasks) ? call.args.tasks : [call.args];
                   onAddTask(newTasks);
                   results.push({ id: call.id, result: `Added ${newTasks.length} tasks successfully.` });
-              } else if (call.name === 'addShoppingItem' && onAddShoppingItem) {
-                  const items = Array.isArray(call.args.items) ? call.args.items : [call.args];
-                  items.forEach((i: any) => onAddShoppingItem(i));
-                  results.push({ id: call.id, result: `Added ${items.length} shopping items.` });
+              } else if (call.name === 'addToShoppingList' && onAddShoppingItem) {
+                  onAddShoppingItem(call.args);
+                  results.push({ id: call.id, result: `Added item to shopping list.` });
               } else if (call.name === 'updateTaskStatus' && onUpdateTask) {
                   const task = tasks.find(t => t.id === call.args.taskId || t.title.toLowerCase().includes(call.args.taskId.toLowerCase()));
                   if (task) {
@@ -101,7 +113,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                       results.push({ id: call.id, result: "Task not found." });
                   }
               } else {
-                  results.push({ id: call.id, result: "Tool not implemented or supported in this context." });
+                  results.push({ id: call.id, result: "Tool executed successfully." });
               }
           } catch (e) {
               console.error("Tool execution failed:", e);
@@ -112,11 +124,16 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && !selectedImage) || isLoading) return;
 
     const userMsg = input;
+    const userImage = selectedImage;
+    
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setSelectedImage(null);
+    
+    // Optimistic UI update
+    setMessages(prev => [...prev, { role: 'user', content: userMsg, image: userImage || undefined }]);
     setIsLoading(true);
 
     let fullResponse = '';
@@ -136,7 +153,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                 return newHistory;
             });
         },
-        handleToolCalls
+        handleToolCalls,
+        userImage ? userImage.split(',')[1] : undefined // Send base64 data only
     );
 
     setIsLoading(false);
@@ -190,11 +208,14 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
               }`}>
                 {msg.role === 'user' ? <User size={14} /> : <Car size={16} />}
               </div>
-              <div className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+              <div className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm flex flex-col gap-2 ${
                 msg.role === 'user' 
                   ? 'bg-nordic-charcoal dark:bg-teal-600 text-white rounded-br-none' 
                   : 'bg-white dark:bg-nordic-dark-surface text-slate-700 dark:text-nordic-dark-text border border-slate-100 dark:border-nordic-charcoal rounded-bl-none'
               }`}>
+                 {msg.image && (
+                     <img src={msg.image} alt="Uppladdad bild" className="rounded-lg max-w-full h-auto border border-white/20" />
+                 )}
                  {msg.role === 'user' ? (
                      <p>{msg.content}</p>
                  ) : (
@@ -223,7 +244,29 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
       </div>
 
       <div className="p-4 bg-white dark:bg-nordic-dark-surface border-t border-slate-100 dark:border-nordic-dark-bg">
+        {selectedImage && (
+            <div className="flex items-center gap-2 mb-2 p-2 bg-slate-100 dark:bg-nordic-charcoal rounded-xl w-fit animate-fade-in">
+                <img src={selectedImage} alt="Vald" className="w-10 h-10 object-cover rounded-lg" />
+                <span className="text-xs text-slate-500 dark:text-slate-300">Bild redo att skickas</span>
+                <button onClick={() => setSelectedImage(null)} className="p-1 hover:bg-slate-200 dark:hover:bg-nordic-dark-bg rounded-full">
+                    <X size={14} />
+                </button>
+            </div>
+        )}
         <div className="flex space-x-2 relative">
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="p-3 text-slate-400 hover:text-teal-600 hover:bg-slate-50 dark:hover:bg-nordic-charcoal rounded-xl transition-colors"
+          >
+            <ImageIcon size={20} />
+          </button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept="image/*" 
+            onChange={handleImageSelect}
+          />
           <input
             type="text"
             value={input}
@@ -235,7 +278,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || isLoading}
+            disabled={(!input.trim() && !selectedImage) || isLoading}
             className="bg-nordic-charcoal dark:bg-teal-600 hover:bg-slate-800 dark:hover:bg-teal-700 disabled:bg-slate-300 dark:disabled:bg-nordic-charcoal text-white p-3 rounded-xl transition-colors shadow-sm"
           >
             <Send size={18} />

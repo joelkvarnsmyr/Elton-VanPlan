@@ -12,7 +12,8 @@ import {
   query,
   writeBatch,
   where,
-  arrayUnion
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { 
   Task, 
@@ -58,7 +59,9 @@ export const forceSeedProject = async (userEmail: string, userId: string) => {
     shoppingItems: [],
     serviceLog: [],
     fuelLog: [],
-    knowledgeArticles: []
+    knowledgeArticles: [],
+    members: [],
+    invitedEmails: []
   };
   batch.set(projectRef, projectData);
 
@@ -107,14 +110,27 @@ export const updateUserProfile = async (uid: string, data: Partial<UserProfile>)
 
 // --- DATA ACCESS ---
 
-export const getProjectsForUser = async (userId: string): Promise<Project[]> => {
-    const q = query(collection(db, 'projects'), where("ownerId", "==", userId));
-    const querySnapshot = await getDocs(q);
-    const projects: Project[] = [];
-    querySnapshot.forEach((doc) => {
-        projects.push({ id: doc.id, ...doc.data() } as Project);
-    });
-    return projects;
+export const getProjectsForUser = async (userId: string, userEmail?: string): Promise<Project[]> => {
+    const projectsMap = new Map<string, Project>();
+
+    // 1. Get owned projects
+    const qOwned = query(collection(db, 'projects'), where("ownerId", "==", userId));
+    const snapOwned = await getDocs(qOwned);
+    snapOwned.forEach(doc => projectsMap.set(doc.id, { id: doc.id, ...doc.data() } as Project));
+
+    // 2. Get member projects
+    const qMember = query(collection(db, 'projects'), where("members", "array-contains", userId));
+    const snapMember = await getDocs(qMember);
+    snapMember.forEach(doc => projectsMap.set(doc.id, { id: doc.id, ...doc.data() } as Project));
+
+    // 3. Get invited projects (if email is provided)
+    if (userEmail) {
+        const qInvited = query(collection(db, 'projects'), where("invitedEmails", "array-contains", userEmail));
+        const snapInvited = await getDocs(qInvited);
+        snapInvited.forEach(doc => projectsMap.set(doc.id, { id: doc.id, ...doc.data() } as Project));
+    }
+
+    return Array.from(projectsMap.values());
 }
 
 export const getProject = async (projectId: string): Promise<Project | null> => {
@@ -157,12 +173,19 @@ export const createProject = async (
     };
 
     if (template?.vehicleData) {
-        vehicleData = { ...vehicleData, ...template.vehicleData };
+        vehicleData = {
+            ...vehicleData,
+            ...template.vehicleData,
+            year: template.vehicleData.year || currentYear,
+            prodYear: template.vehicleData.prodYear || currentYear
+        };
     }
 
     const newProject: Project = {
         id: newProjectRef.id,
-        name: name,
+        name: name || 'Nytt Projekt',
+        type: (template?.type || 'renovation') as any, // Use template type or default
+        brand: 'vanplan',
         ownerId: userId,
         ownerEmail: userEmail,
         created: new Date().toISOString(),
@@ -173,8 +196,10 @@ export const createProject = async (
         shoppingItems: [],
         serviceLog: [],
         fuelLog: [],
-        knowledgeArticles: [],
-        customIcon: template?.customIcon || null 
+        knowledgeArticles: template?.knowledgeArticles || [],
+        customIcon: template?.customIcon || null,
+        members: [],
+        invitedEmails: []
     };
 
     await setDoc(newProjectRef, newProject);
@@ -189,7 +214,10 @@ export const createProject = async (
                 ...task, 
                 id: taskRef.id,
                 priority: task.priority || 'Medel',
-                phase: task.phase || 'Fas 0: Inköp & Analys'
+                phase: task.phase || 'Fas 0: Inköp & Analys',
+                estimatedCostMin: task.estimatedCostMin || 0,
+                estimatedCostMax: task.estimatedCostMax || 0,
+                actualCost: task.actualCost || 0
             };
             batch.set(taskRef, taskWithId);
         }
@@ -213,8 +241,6 @@ export const deleteProjectFull = async (projectId: string) => {
     await batch.commit();
 };
 
-// --- SUB-DATA HANDLERS (Service, Fuel, Knowledge) ---
-
 export const addServiceEntry = async (projectId: string, entry: ServiceItem) => {
     const projectRef = getProjectRef(projectId);
     await updateDoc(projectRef, {
@@ -237,15 +263,44 @@ export const addKnowledgeArticle = async (projectId: string, article: KnowledgeA
 };
 
 export const updateVehicleData = async (projectId: string, data: Partial<VehicleData>) => {
-  // Merge updates deeply if needed, but Firestore updateDoc merges top-level fields.
-  // For nested fields like vehicleData.weights, we need dot notation or read-modify-write.
-  // A simpler way for this app: Read, Merge in JS, Write back.
   const projectData = await getProject(projectId);
   if (projectData) {
       const updatedVehicleData = { ...projectData.vehicleData, ...data };
       await updateDoc(getProjectRef(projectId), { vehicleData: updatedVehicleData });
   }
 };
+
+// --- CO-WORKING ---
+
+export const inviteUserToProject = async (projectId: string, email: string) => {
+    const projectRef = getProjectRef(projectId);
+    await updateDoc(projectRef, {
+        invitedEmails: arrayUnion(email)
+    });
+};
+
+export const acceptProjectInvite = async (projectId: string, userId: string, email: string) => {
+    const projectRef = getProjectRef(projectId);
+    await updateDoc(projectRef, {
+        members: arrayUnion(userId),
+        invitedEmails: arrayRemove(email)
+    });
+};
+
+export const removeMemberFromProject = async (projectId: string, userId: string) => {
+    const projectRef = getProjectRef(projectId);
+    await updateDoc(projectRef, {
+        members: arrayRemove(userId)
+    });
+};
+
+export const cancelInvite = async (projectId: string, email: string) => {
+     const projectRef = getProjectRef(projectId);
+    await updateDoc(projectRef, {
+        invitedEmails: arrayRemove(email)
+    });
+}
+
 
 // --- TASKS & SHOPPING ---
 

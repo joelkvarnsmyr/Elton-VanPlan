@@ -22,9 +22,9 @@ export const ROADMAP_FEATURES: Feature[] = [
         title: 'Plattforms-arkitektur (SaaS)', 
         category: 'Infrastruktur',
         description: 'Vi har byggt om appen från en enkel "en-sidas-app" för en bil till en plattform som hanterar Användare och Flera Projekt.',
-        purpose: 'Att göra det möjligt för en användare att renovera flera bilar samtidigt (t.ex. en Sprinter och en gammal Volvo) eller att flera användare kan använda tjänsten. Det är grunden för en skalbar produkt.',
+        purpose: 'Grundläggande krav för skalbarhet. Möjliggör synk mellan enheter.',
         status: 'done', 
-        tech: 'Firebase Auth + Firestore (NoSQL)',
+        tech: 'Firebase Auth + Firestore',
         checklist: [
             { label: 'Specad', completed: true },
             { label: 'Utvecklad (DB & Auth)', completed: true },
@@ -33,11 +33,26 @@ export const ROADMAP_FEATURES: Feature[] = [
         ]
     },
     {
+        id: 24, 
+        title: 'Co-working & Teams',
+        category: 'Infrastruktur',
+        description: 'Bjud in medmekaniker eller familj till dina projekt. Hantera rättigheter och bygg tillsammans i realtid.',
+        purpose: 'Bilbyggande är ofta en social aktivitet. Appen måste stödja samarbete.',
+        status: 'done',
+        tech: 'Firestore Security Rules + Invite System',
+        checklist: [
+            { label: 'Specad', completed: true },
+            { label: 'Utvecklad (DB & UI)', completed: true },
+            { label: 'Säkerhetstestad', completed: true },
+            { label: 'Lanserad', completed: true }
+        ]
+    },
+    {
         id: 16, 
         title: 'Offline-stöd (PWA)',
         category: 'Infrastruktur',
         description: 'Gör appen till en Progressive Web App (PWA) som fungerar utan nätverk. Data synkas när nätet kommer tillbaka.',
-        purpose: 'Ett garage har ofta dålig täckning. Appen måste fungera ändå.',
+        purpose: 'Ett garage har ofta dålig täckning. Appen måste vara pålitlig även offline.',
         status: 'planned',
         tech: 'Vite PWA Plugin + Firestore Persistence',
         checklist: [
@@ -47,49 +62,64 @@ export const ROADMAP_FEATURES: Feature[] = [
             { label: 'Lanserad', completed: false }
         ]
     },
+    {
+        id: 23, 
+        title: 'Feature Flags & Versionshantering',
+        category: 'Infrastruktur',
+        description: 'System för att slå på/av funktioner utan att deploya om. Versionshantering av AI-prompter.',
+        purpose: 'Säker utrullning och A/B-testning av nya AI-modeller.',
+        status: 'in-progress',
+        tech: 'Config-baserad',
+        checklist: [
+            { label: 'Specad', completed: true },
+            { label: 'Utvecklad (Config)', completed: true },
+            { label: 'Testad', completed: false },
+            { label: 'Lanserad', completed: false }
+        ]
+    },
     // 2. PLATTFORM & ANVÄNDARE
     { 
         id: 2, 
-        title: 'AI Onboarding & "Research Wizard"', 
+        title: 'AI Onboarding "Deep Research"', 
         category: 'Plattform',
-        description: 'När man skapar ett nytt projekt behöver man bara ange Regnr eller en länk. En "Wizard" startar där AI:n (Gemini) söker upp teknisk data, skapar en serviceplan och letar efter vanliga fel för just den modellen.',
-        purpose: 'Att ta bort "tomt papper-ångesten". Användaren får ett projekt som är 80% klart direkt, istället för att behöva skriva in allt manuellt.',
+        description: 'Multi-Agent system (Detektiven & Verkmästaren) som söker upp fakta och skapar en plan baserat på RegNr.',
+        purpose: 'Hög precision och slut på gissningar. Hämtar data från svenska register.',
         status: 'done', 
-        tech: 'Gemini 2.0 Flash + Google Search Tool',
+        tech: 'Gemini 2.0 Flash + Google Search + Multi-Agent',
         checklist: [
             { label: 'Specad', completed: true },
-            { label: 'Utvecklad (Gemini Service)', completed: true },
-            { label: 'Testad (Sökning & Parsing)', completed: true },
+            { label: 'Utvecklad (Agents & Prompts)', completed: true },
+            { label: 'Testad (Live Search)', completed: true },
             { label: 'Lanserad', completed: true }
         ]
     },
     {
-        id: 17, // NEW
-        title: 'Auto-genererad Historik & Strategianalys',
+        id: 17,
+        title: 'Auto-genererad Historik & Expertanalys',
         category: 'Plattform',
-        description: 'Vid projektstart skriver AI:n en djuplodande "Detektiv-rapport" om bilmodellen, dess historia, kända fel och en strategi för renoveringen. Sparas som en artikel.',
-        purpose: 'Ger omedelbart expertkunskap och en "wow-känsla". AI:n förstår kontexten från start.',
+        description: 'AI:n identifierar "Kända fel" (The Killers), ger tips om modifieringar och analyserar mätarställning (5 vs 6 siffror).',
+        purpose: 'Ger omedelbart expertkunskap och varnar för dyra fällor.',
         status: 'done',
         tech: 'Gemini 2.0 (Prompt Engineering)',
         checklist: [
             { label: 'Specad', completed: true },
-            { label: 'Utvecklad (Deep Research Prompt)', completed: true },
-            { label: 'Testad (Generering & Spara)', completed: true },
+            { label: 'Utvecklad', completed: true },
+            { label: 'Testad', completed: true },
             { label: 'Lanserad', completed: true }
         ]
     },
-    // 3. AI
+    // 3. AI CORE
     { 
         id: 3, 
         title: 'Bildigenkänning av Regplåt', 
         category: 'AI Core',
-        description: 'I Research-guiden kan man ladda upp en bild på bilen. AI:n skannar bilden, hittar registreringsskylten, läser av den och använder numret för att söka fakta.',
-        purpose: 'Extremt smidigt för användaren. Man tar ett foto på sin nya bil, och appen vet direkt vad det är.',
+        description: 'Fota bilen för att starta projektet. AI:n hittar och läser av registreringsskylten.',
+        purpose: 'Smidig onboarding utan att behöva knappa in nummer.',
         status: 'done', 
         tech: 'Gemini Vision (Multimodal)',
         checklist: [
             { label: 'Specad', completed: true },
-            { label: 'Utvecklad (Image Upload + OCR)', completed: true },
+            { label: 'Utvecklad', completed: true },
             { label: 'Testad', completed: true },
             { label: 'Lanserad', completed: true }
         ]
@@ -98,29 +128,29 @@ export const ROADMAP_FEATURES: Feature[] = [
         id: 4, 
         title: 'AI-genererad Projektikon (Nano Banana)', 
         category: 'AI Core',
-        description: 'Baserat på bilden man laddar upp, ritar AI:n en stiliserad vektor-ikon av bilen. Vi använder just nu bildanalys för att matcha färger, men full bildgenerering väntar på API-stöd.',
-        purpose: 'Att ge varje projekt en unik, personlig och proffsig identitet. Det höjer känslan av kvalitet enormt.',
+        description: 'AI ritar en stiliserad vektor-ikon (SVG) av din bil baserat på ditt foto.',
+        purpose: 'Personligt och proffsigt utseende på projektet.',
         status: 'in-progress', 
-        tech: 'Gemini Vision + Imagen 3 (Pending)',
+        tech: 'Gemini Vision + SVG Gen',
         checklist: [
             { label: 'Specad', completed: true },
-            { label: 'Utvecklad (Stub/Vision-analys)', completed: true },
+            { label: 'Utvecklad (SVG Prompt)', completed: true },
             { label: 'Testad (Generering)', completed: false },
-            { label: 'Lanserad (Fullständig)', completed: false }
+            { label: 'Lanserad', completed: false }
         ]
     },
     { 
         id: 5, 
         title: 'Google Search-integration', 
         category: 'AI Core',
-        description: 'AI:n har nu tillgång till Google Sök. Den kan kolla aktuella priser på reservdelar, hitta manualer och verifiera teknisk data.',
-        purpose: 'Att gå från "gissningar" till "fakta". AI:n kan nu säga "Oljefilter till Sprinter kostar 149 kr på Autodoc" istället för att gissa.',
+        description: 'AI:n kan söka på webben efter priser, manualer och fakta i realtid.',
+        purpose: 'Går från gissningar till fakta.',
         status: 'done', 
-        tech: 'Gemini Tools (Google Search)',
+        tech: 'Gemini Tools',
         checklist: [
             { label: 'Specad', completed: true },
-            { label: 'Utvecklad (Tool Calling)', completed: true },
-            { label: 'Testad (Priskoll)', completed: true },
+            { label: 'Utvecklad', completed: true },
+            { label: 'Testad', completed: true },
             { label: 'Lanserad', completed: true }
         ]
     },
@@ -128,14 +158,14 @@ export const ROADMAP_FEATURES: Feature[] = [
         id: 6, 
         title: 'Live Elton (Röst & Video)', 
         category: 'AI Core',
-        description: 'En realtids-koppling till Gemini där man kan prata med "Elton" via mikrofon och visa saker via kameran.',
-        purpose: 'Att ha en "mekaniker-kompis" i fickan när man ligger under bilen och inte kan skriva på tangentbordet.',
-        status: 'planned', 
+        description: 'Prata med Elton i realtid via kameran ("Ring upp").',
+        purpose: 'En mekaniker-kompis i fickan när händerna är oljiga.',
+        status: 'in-progress', 
         tech: 'WebRTC + Gemini Live API',
         checklist: [
             { label: 'Specad', completed: true },
-            { label: 'Utvecklad', completed: false },
-            { label: 'Testad', completed: false },
+            { label: 'Utvecklad (Frontend & Audio)', completed: true },
+            { label: 'Testad (Live Connection)', completed: false },
             { label: 'Lanserad', completed: false }
         ]
     },
@@ -143,29 +173,29 @@ export const ROADMAP_FEATURES: Feature[] = [
         id: 7, 
         title: 'Dialekter & Personligheter', 
         category: 'AI Core',
-        description: 'Elton kan ställas in på att prata Dalmål, Gotländska eller Rikssvenska. Olika röstlägen (Fenrir, Charon).',
-        purpose: 'Att göra AI:n mänsklig och rolig. Det skapar en relation till bilen och gör appen mer än bara ett verktyg.',
-        status: 'planned', 
+        description: 'Elton kan prata dalmål, gotländska eller rikssvenska.',
+        purpose: 'Skapar en relation och gör appen roligare.',
+        status: 'done', 
         tech: 'System Prompts',
         checklist: [
             { label: 'Specad', completed: true },
-            { label: 'Utvecklad', completed: false },
-            { label: 'Testad', completed: false },
-            { label: 'Lanserad', completed: false }
+            { label: 'Utvecklad (Config & UI)', completed: true },
+            { label: 'Testad', completed: true },
+            { label: 'Lanserad', completed: true }
         ]
     },
     { 
         id: 8, 
         title: 'Ljud-Doktorn', 
         category: 'AI Core',
-        description: 'Ett specialläge i Live-vyn där AI:n lyssnar efter specifika motorljud (tickande ventiler, remgnissel) och ger en diagnos.',
-        purpose: 'Att utnyttja multimodal AI för att lösa ett klassiskt problem: "Vad är det som låter?".',
-        status: 'planned', 
+        description: 'AI lyssnar på motorljud och ställer diagnos.',
+        purpose: 'Löser problemet "Vad är det som låter?".',
+        status: 'in-progress', 
         tech: 'Audio Processing (Gemini)',
         checklist: [
             { label: 'Specad', completed: true },
-            { label: 'Utvecklad', completed: false },
-            { label: 'Testad', completed: false },
+            { label: 'Utvecklad (Prompt & UI)', completed: true },
+            { label: 'Testad (Ljudanalys)', completed: false },
             { label: 'Lanserad', completed: false }
         ]
     },
@@ -174,8 +204,8 @@ export const ROADMAP_FEATURES: Feature[] = [
         id: 10, 
         title: 'Magic Import (Text & Bild)', 
         category: 'Projektledning',
-        description: 'Man kan klistra in en rörig anteckning eller ladda upp ett foto på en handskriven lista. AI:n strukturerar om det till uppgifter och inköpsvaror.',
-        purpose: 'Att minska administrationen. Det ska vara lätt att få in data i systemet.',
+        description: 'Klistra in anteckningar eller fota en handskriven lista för att skapa uppgifter.',
+        purpose: 'Minskar administrationen avsevärt.',
         status: 'done', 
         tech: 'Gemini Vision',
         checklist: [
@@ -189,8 +219,8 @@ export const ROADMAP_FEATURES: Feature[] = [
         id: 11, 
         title: 'Smart Context & Beslutsstöd', 
         category: 'Projektledning',
-        description: 'Inne på en uppgift (t.ex. "Byt däck") visar appen automatiskt relevant data (däckdimensioner) och lagersaldo (har vi köpt däck?).',
-        purpose: '"Just-in-time information". Man ska slippa leta i papper när man väl ska jobba.',
+        description: 'Visar automatiskt relevant data (t.ex. däckdimensioner) inne på en uppgift.',
+        purpose: 'Just-in-time information. Slipp leta i papper.',
         status: 'planned', 
         tech: 'Context Awareness (Frontend)',
         checklist: [
@@ -200,13 +230,28 @@ export const ROADMAP_FEATURES: Feature[] = [
             { label: 'Lanserad', completed: false }
         ]
     },
+    {
+        id: 21,
+        title: 'Flexibla Faser & Idébank',
+        category: 'Projektledning',
+        description: 'Projekt kan nu ha olika typer (Renovering, Bygge, Underhåll) med anpassade faser. Idéer har fått en egen "Drömbank" separat från att-göra-listan.',
+        purpose: 'Stödja alla typer av bilägande, inte bara renovering.',
+        status: 'done',
+        tech: 'Dynamic Types & Filtering',
+        checklist: [
+            { label: 'Specad', completed: true },
+            { label: 'Utvecklad', completed: true },
+            { label: 'Testad', completed: true },
+            { label: 'Lanserad', completed: true }
+        ]
+    },
     // 5. EKONOMI
     { 
         id: 9, 
         title: 'Smart Inköpslista & Kvitton', 
         category: 'Ekonomi',
         description: 'En separat vy för inköp. Man kan fota kvitton, koppla kostnaden till en specifik uppgift (för budgetuppföljning) och se vad som är köpt vs planerat.',
-        purpose: 'Total kontroll på ekonomin. Att veta exakt vad renoveringen kostat hittills.',
+        purpose: 'Total kontroll på ekonomin.',
         status: 'done', 
         tech: 'Firebase Storage + Vision',
         checklist: [
@@ -216,13 +261,28 @@ export const ROADMAP_FEATURES: Feature[] = [
             { label: 'Lanserad', completed: true }
         ]
     },
+    {
+        id: 18, 
+        title: 'Partner-integration (Auto-korg)',
+        category: 'Ekonomi',
+        description: 'Lägg varor i varukorgen hos partners (t.ex. Autodoc) direkt från appen.',
+        purpose: 'Tjäna pengar på plattformen och underlätta köp.',
+        status: 'planned',
+        tech: 'Affiliate APIs',
+        checklist: [
+            { label: 'Specad', completed: true },
+            { label: 'Utvecklad', completed: false },
+            { label: 'Testad', completed: false },
+            { label: 'Lanserad', completed: false }
+        ]
+    },
     // 6. GARAGE & FORDON
     { 
         id: 12, 
         title: 'Kunskapsbanken & Markdown-läsare', 
         category: 'Kunskap',
-        description: 'Ett bibliotek med tunga tekniska rapporter (markdown) som AI:n kan läsa och citera. UI för att läsa artiklar snyggt.',
-        purpose: 'Att säkra kvalitén. AI:n får inte gissa om kamremsintervaller om vi har facit.',
+        description: 'Ett bibliotek med tunga tekniska rapporter (markdown) som AI:n kan läsa och citera.',
+        purpose: 'Att säkra kvalitén.',
         status: 'done', 
         tech: 'RAG + React Markdown',
         checklist: [
@@ -236,7 +296,7 @@ export const ROADMAP_FEATURES: Feature[] = [
         id: 13, 
         title: 'Tidslinje & Historik', 
         category: 'Garage',
-        description: 'En visuell tidslinje som visar bilens hela liv, från tillverkning, genom alla ägare, till dagens projekt.',
+        description: 'En visuell tidslinje som visar bilens hela liv.',
         purpose: 'Att ge perspektiv och hedra bilens historia.',
         status: 'done', 
         tech: 'Recharts + Timeline UI',
@@ -252,7 +312,7 @@ export const ROADMAP_FEATURES: Feature[] = [
         title: 'Bränslelogg & Servicebok', 
         category: 'Garage',
         description: 'Logga tankningar och service. Visualisera förbrukning och serviceintervall.',
-        purpose: 'Ett praktiskt verktyg för det dagliga ägandet, inte bara bygget.',
+        purpose: 'Ett praktiskt verktyg för det dagliga ägandet.',
         status: 'in-progress', 
         tech: 'Firestore + Recharts',
         checklist: [
@@ -268,7 +328,7 @@ export const ROADMAP_FEATURES: Feature[] = [
         title: 'Backup & Export', 
         category: 'Data',
         description: 'Möjlighet att spara ner hela projektet som en JSON-fil och återställa den.',
-        purpose: 'Datasäkerhet och portabilitet innan vi har en riktig molndatabas.',
+        purpose: 'Datasäkerhet och portabilitet.',
         status: 'done', 
         tech: 'JSON Blob',
         checklist: [
@@ -276,6 +336,22 @@ export const ROADMAP_FEATURES: Feature[] = [
             { label: 'Utvecklad', completed: true },
             { label: 'Testad', completed: true },
             { label: 'Lanserad', completed: true }
+        ]
+    },
+    // 9. THE GARAGE OS
+    {
+        id: 22,
+        title: 'The Garage OS (Multi-Brand Platform)',
+        category: 'Strategi',
+        description: 'Transformation till en "White Label"-motor för olika fordonsgrupper.',
+        purpose: 'Skalbarhet.',
+        status: 'planned',
+        tech: 'Config-driven Architecture',
+        checklist: [
+            { label: 'Specad', completed: true },
+            { label: 'Brand Config System', completed: true }, 
+            { label: 'Dynamiska Teman', completed: false },
+            { label: 'Lanserad', completed: false }
         ]
     }
 ];

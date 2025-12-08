@@ -1,27 +1,30 @@
 
-export enum Phase {
-  PLANNING = 'Fas 0: Inköp & Analys',
-  ACUTE = 'Fas 1: Akut',
-  MECHANICAL = 'Fas 2: Mekanisk Säkerhet',
-  BODY = 'Fas 3: Kaross & Rost',
-  BUILD = 'Fas 4: Vanlife-bygget',
-}
+export type ProjectType = 'renovation' | 'conversion' | 'maintenance';
+export type BrandId = 'vanplan' | 'racekoll' | 'mcgaraget' | 'klassikern';
+export type DifficultyLevel = 'Easy' | 'Medium' | 'Expert';
+
+export const PROJECT_PHASES = {
+    renovation: ['Fas 1: Akut', 'Fas 2: Mekanisk Säkerhet', 'Fas 3: Kaross & Rost', 'Fas 4: Inredning & Finish'],
+    conversion: ['Fas 1: Planering & Inköp', 'Fas 2: Isolering & Grund', 'Fas 3: El & Vatten', 'Fas 4: Snickerier & Inredning', 'Fas 5: Finish & Piff'],
+    maintenance: ['Vårkoll', 'Säsong', 'Höst/Vinterförvaring', 'Löpande']
+};
 
 export enum TaskStatus {
+  IDEA = 'Idé & Research', 
   TODO = 'Att göra',
   IN_PROGRESS = 'Pågående',
   DONE = 'Klart',
 }
 
 export enum Priority {
-  HIGH = 'Hög',     // Safety, Legal, breakdown risk
-  MEDIUM = 'Medel', // Function, Preventative
-  LOW = 'Låg'       // Cosmetic, Comfort
+  HIGH = 'Hög',     
+  MEDIUM = 'Medel', 
+  LOW = 'Låg'       
 }
 
 export enum CostType {
-  INVESTMENT = 'Investering', // Increases value (e.g. Heater, Solar)
-  OPERATION = 'Drift', // Consumables (e.g. Oil, Gas, Tires)
+  INVESTMENT = 'Investering', 
+  OPERATION = 'Drift', 
 }
 
 export interface Link {
@@ -33,7 +36,7 @@ export interface Link {
 export interface Comment {
   id: string;
   text: string;
-  createdAt: string; // ISO date string
+  createdAt: string; 
   author: 'user' | 'ai';
 }
 
@@ -41,7 +44,7 @@ export interface Attachment {
   id: string;
   name: string;
   type: 'image' | 'file';
-  data: string; // Base64 string for this demo
+  data: string; 
 }
 
 export interface Subtask {
@@ -52,7 +55,7 @@ export interface Subtask {
 
 export interface DecisionOption {
   id: string;
-  title: string; // e.g. "Göra själv", "Leja ut"
+  title: string; 
   description: string;
   costRange: string;
   pros: string[];
@@ -65,13 +68,13 @@ export interface Task {
   title: string;
   description: string;
   status: TaskStatus;
-  phase: Phase;
-  priority?: Priority; // New field
-  sprint?: string;     // New field (e.g. "Sprint 1", "Weekend 42")
+  phase: string; 
+  priority?: Priority; 
+  sprint?: string;     
   estimatedCostMin: number;
   estimatedCostMax: number;
   actualCost: number;
-  weightKg: number; // For Payload Calculator
+  weightKg: number; 
   costType: CostType;
   tags: string[];
   links: Link[];
@@ -79,6 +82,9 @@ export interface Task {
   attachments: Attachment[];
   subtasks: Subtask[];
   decisionOptions?: DecisionOption[];
+  // New fields for Planner improvements
+  difficultyLevel?: DifficultyLevel;
+  requiredTools?: string[];
 }
 
 export interface ShoppingItem {
@@ -92,7 +98,7 @@ export interface ShoppingItem {
   url?: string;
   store?: string;
   purchaseDate?: string;
-  receiptUrl?: string; // Changed from receiptImage
+  receiptUrl?: string; 
   linkedTaskId?: string;
 }
 
@@ -108,7 +114,7 @@ export interface ServiceItem {
 export interface FuelLogItem {
     id: string;
     date: string;
-    mileage: number; // Mätarställning
+    mileage: number; 
     liters: number;
     pricePerLiter: number;
     totalCost: number;
@@ -127,7 +133,7 @@ export interface KnowledgeArticle {
     id: string;
     title: string;
     summary: string;
-    content: string; // Markdown supported
+    content: string; 
     tags: string[];
 }
 
@@ -140,12 +146,43 @@ export interface Contact {
     note?: string;
 }
 
+// New: Structured Expert Analysis
+export interface ExpertAnalysis {
+    commonFaults: { 
+        title: string; 
+        description: string; 
+        urgency: 'High' | 'Medium' | 'Low';
+    }[];
+    modificationTips: { 
+        title: string; 
+        description: string; 
+    }[];
+    maintenanceNotes: string; // e.g. "Smörj spindelbultar!"
+}
+
+export interface VehicleMaintenanceData {
+    fluids: {
+        oilType: string;
+        oilCapacity: string;
+        coolantType: string;
+        gearboxOil?: string;
+    };
+    battery: {
+        type: string;
+        capacity: string;
+    };
+    tires: {
+        pressureFront: string;
+        pressureRear: string;
+    };
+}
+
 export interface VehicleData {
   regNo: string;
   make: string;
   model: string;
-  year: number; // Model year
-  prodYear: number; // Manufactured
+  year: number; 
+  prodYear: number; 
   regDate: string;
   status: string;
   bodyType: string;
@@ -159,6 +196,7 @@ export interface VehicleData {
     fuel: string;
     power: string;
     volume: string;
+    code?: string; // Motorkod (t.ex. D24, B230)
   };
   gearbox: string;
   wheels: {
@@ -174,11 +212,11 @@ export interface VehicleData {
     wheelbase: number;
   };
   weights: {
-    curb: number; // Tjänstevikt
-    total: number; // Totalvikt
-    load: number; // Lastvikt
-    trailer: number; // Max släpvagnsvikt
-    trailerB: number; // Släp totalvikt (B)
+    curb: number; 
+    total: number; 
+    load: number; 
+    trailer: number; 
+    trailerB: number; 
   };
   vin: string;
   color: string;
@@ -187,6 +225,10 @@ export interface VehicleData {
     events: number;
     lastOwnerChange: string;
   };
+  // Added Expert Analysis
+  expertAnalysis?: ExpertAnalysis;
+  // Added Maintenance Data
+  maintenance?: VehicleMaintenanceData;
 }
 
 export interface UserProfile {
@@ -199,14 +241,21 @@ export interface UserProfile {
 export interface Project {
     id: string;
     name: string;
+    type: ProjectType;
+    brand: BrandId; 
     ownerId: string;
     ownerEmail: string;
+    
+    // Co-working fields
+    members?: string[]; 
+    invitedEmails?: string[]; 
+
     vehicleData: VehicleData;
     tasks: Task[];
     shoppingItems: ShoppingItem[];
     serviceLog: ServiceItem[];
     fuelLog: FuelLogItem[]; 
-    knowledgeArticles?: KnowledgeArticle[]; // NEW: Knowledge Base
+    knowledgeArticles?: KnowledgeArticle[]; 
     customIcon?: string;
     created: string;
     lastModified: string;

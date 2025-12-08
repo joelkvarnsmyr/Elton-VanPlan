@@ -2,8 +2,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Activity, Loader2, Settings, Check, X, Stethoscope } from 'lucide-react';
-import { BASE_SYSTEM_PROMPT } from '../constants';
 import { tools } from '../services/geminiService';
+import { ACTIVE_PROMPTS } from '../config/prompts'; 
 
 interface LiveEltonProps {
   onClose: () => void;
@@ -11,25 +11,22 @@ interface LiveEltonProps {
 
 const PERSONAS = [
   { 
-    id: 'dalmas', 
+    id: 'dalmal', 
     label: 'Dala-Elton (Original)', 
     desc: 'Trygg, gubbig & bred Dalmål', 
-    voiceName: 'Fenrir',
-    instruction: "Du MÅSTE prata SVENSKA med tydlig DALDIALEKT (DALAMÅL). Du bor i Falun. Använd dialektala ord och uttryck: Säg 'int' istället för 'inte', 'hänna' och 'dänna'. Börja gärna meningar med 'Jo men visst...' eller 'Hörru...'. Du är lite 'gubbig' och sävlig."
+    voiceName: 'Fenrir'
   },
   { 
-    id: 'gotlanning', 
+    id: 'gotlandska', 
     label: 'Gotlands-Elton', 
     desc: 'Släpig, melodiös & "Raukar-lugn"', 
-    voiceName: 'Charon',
-    instruction: "Du MÅSTE prata SVENSKA med tydlig GOTLÄNDSKA. Det ska låta släpigt, sjungande och melodiöst. Använd typiska gotländska uttryck. Säg 'di' istället för 'de', 'u' istället för 'o' ibland. Var avslappnad, som en solvarm rauk." 
+    voiceName: 'Charon'
   },
   { 
     id: 'rikssvenska', 
     label: 'Riks-Elton', 
     desc: 'Tydlig, modern & neutral', 
-    voiceName: 'Puck',
-    instruction: "Du pratar tydlig, vårdad RIKSSVENSKA. Ingen dialekt. Du är saklig, korrekt och lätt att förstå. Lite modernare ton." 
+    voiceName: 'Puck'
   },
 ];
 
@@ -58,10 +55,10 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(false);
-  const [volumeLevel, setVolumeLevel] = useState(0); // For visualization
+  const [volumeLevel, setVolumeLevel] = useState(0); 
   const [statusMessage, setStatusMessage] = useState("Värmer upp motorn...");
   const [showSettings, setShowSettings] = useState(false);
-  const [currentPersonaId, setCurrentPersonaId] = useState('dalmas');
+  const [currentPersonaId, setCurrentPersonaId] = useState<'dalmal'|'gotlandska'|'rikssvenska'>('dalmal');
   const [isDiagnosticMode, setIsDiagnosticMode] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -89,6 +86,7 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
 
   const handlePersonaChange = (personaId: string) => {
       if (personaId === currentPersonaId) return;
+      // @ts-ignore
       setCurrentPersonaId(personaId);
       setShowSettings(false);
       restartSession();
@@ -103,8 +101,11 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
 
   const startSession = async (persona: typeof PERSONAS[0], diagnostic: boolean) => {
     try {
-      const apiKey = process.env.API_KEY || '';
-      if (!apiKey) throw new Error("No API Key");
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+      if (!apiKey) {
+          setStatusMessage("Ingen API-nyckel hittades.");
+          return;
+      }
 
       const ai = new GoogleGenAI({ apiKey });
       
@@ -119,21 +120,30 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
-        // Mute local video to prevent feedback loop
         videoRef.current.muted = true;
       }
 
-      // Special prompt for Ljud-Doktorn
-      const diagnosticPrompt = diagnostic 
-        ? "\n\nLJUD-DOKTOR LÄGE PÅ: Din primära uppgift nu är att LYSSNA på ljud från motorn som användaren streamar. Analysera ljudet. Låter det som ventilspel (tickande)? Remgnissel? Lagerljud? Ge en diagnos baserat på ljudet."
-        : "\n\nAllmänna regler:\n1. Du är bilen Elton (VW LT31, 1976).\n2. Svara kortfattat (max 2-3 meningar), det är ett samtal.\n3. Du ser vad användaren ser om kameran är på.";
+      // GET INSTRUCTIONS FROM CONFIG
+      const personaInstruction = ACTIVE_PROMPTS.getPersona(persona.id as any);
+      const diagnosticInstruction = diagnostic ? ACTIVE_PROMPTS.getDiagnosticPrompt() : "";
+      
+      const fullSystemInstruction = `${ACTIVE_PROMPTS.baseSystemPrompt}
+      
+      === LIVE MODE INSTRUCTIONS ===
+      ${personaInstruction}
+      ${diagnosticInstruction}
+      
+      Allmänna regler:
+      1. Svara kortfattat (max 2-3 meningar), det är ett samtal.
+      2. Du ser vad användaren ser om kameran är på.
+      `;
 
       // Connect to Gemini Live
       const sessionPromise = ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+        model: 'gemini-2.0-flash-exp', 
         config: {
           responseModalities: [Modality.AUDIO],
-          systemInstruction: BASE_SYSTEM_PROMPT + `\n\nINSTRUKTION FÖR RÖSTSAMTAL (LIVE MODE):\n${persona.instruction}` + diagnosticPrompt,
+          systemInstruction: fullSystemInstruction,
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: persona.voiceName } } 
           },
@@ -143,9 +153,7 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
           onopen: () => {
             console.log("Connected to Elton Live");
             setIsConnected(true);
-            setStatusMessage(diagnostic ? "Lyssnar på motorn..." : `Ansluten! Pratar ${persona.id === 'gotlanning' ? 'gotländska' : persona.id === 'dalmas' ? 'dalmål' : 'svenska'}.`);
-            
-            // Start streaming audio
+            setStatusMessage(diagnostic ? "Lyssnar på motorn..." : `Ansluten! Pratar ${persona.label}.`);
             setupAudioInput(stream, sessionPromise);
           },
           onmessage: async (msg: LiveServerMessage) => {
@@ -173,24 +181,21 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
   const setupAudioInput = (stream: MediaStream, sessionPromise: Promise<any>) => {
     if (!audioContextRef.current) return;
 
-    // Use a separate context for input to match 16kHz requirement usually preferred
     const inputContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
     const source = inputContext.createMediaStreamSource(stream);
     const processor = inputContext.createScriptProcessor(4096, 1, 1);
 
     processor.onaudioprocess = (e) => {
-      if (!isMicOn) return; // Mute logic
+      if (!isMicOn) return; 
 
       const inputData = e.inputBuffer.getChannelData(0);
       
-      // Calculate volume for visualizer
       let sum = 0;
       for (let i = 0; i < inputData.length; i++) {
         sum += inputData[i] * inputData[i];
       }
       setVolumeLevel(Math.sqrt(sum / inputData.length));
 
-      // Convert Float32 to Int16 PCM
       const pcmData = new Int16Array(inputData.length);
       for (let i = 0; i < inputData.length; i++) {
         const s = Math.max(-1, Math.min(1, inputData[i]));
@@ -226,7 +231,7 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
       const dataView = new DataView(audioBytes.buffer);
       
       for (let i = 0; i < float32Data.length; i++) {
-        const int16 = dataView.getInt16(i * 2, true); // Little endian
+        const int16 = dataView.getInt16(i * 2, true); 
         float32Data[i] = int16 / 32768.0;
       }
 
@@ -237,7 +242,6 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
       source.buffer = audioBuffer;
       source.connect(ctx.destination);
 
-      // Simple scheduling
       const now = ctx.currentTime;
       const start = Math.max(now, nextStartTimeRef.current);
       source.start(start);
@@ -248,7 +252,6 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
     }
   };
 
-  // Video Frame Loop
   useEffect(() => {
     if (isVideoOn && isConnected) {
       videoIntervalRef.current = window.setInterval(() => {
@@ -256,7 +259,7 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
         
         const ctx = canvasRef.current.getContext('2d');
         if (ctx && videoRef.current.videoWidth) {
-          canvasRef.current.width = videoRef.current.videoWidth / 4; // Downscale for bandwidth
+          canvasRef.current.width = videoRef.current.videoWidth / 4; 
           canvasRef.current.height = videoRef.current.videoHeight / 4;
           ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
           
@@ -270,7 +273,7 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
             });
           }
         }
-      }, 1000); // 1 FPS is enough for context
+      }, 1000); 
     } else {
       if (videoIntervalRef.current) clearInterval(videoIntervalRef.current);
     }
@@ -301,13 +304,10 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 bg-nordic-charcoal flex flex-col animate-fade-in font-sans">
-      {/* Hidden Canvas for processing */}
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Main Visual Area */}
       <div className="flex-1 relative overflow-hidden flex items-center justify-center">
         
-        {/* Background / Video Feed */}
         {isVideoOn ? (
            <video 
              ref={videoRef} 
@@ -317,7 +317,6 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
            />
         ) : (
            <div className="absolute inset-0 bg-gradient-to-b from-nordic-charcoal to-black flex items-center justify-center">
-              {/* Elton Avatar / Visualizer */}
               <div className="relative">
                  <div className={`w-40 h-40 bg-teal-600 rounded-full blur-[50px] transition-all duration-100 ease-out absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2`} 
                       style={{ transform: `translate(-50%, -50%) scale(${1 + volumeLevel * 3})` }}></div>
@@ -328,7 +327,6 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
            </div>
         )}
 
-        {/* Status Overlay */}
         <div className="absolute top-10 left-0 right-0 flex justify-center z-10">
             <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 border border-white/10 shadow-lg">
                 {isConnected ? (
@@ -340,7 +338,6 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
             </div>
         </div>
 
-        {/* Dialect/Persona Selection Overlay */}
         {showSettings && (
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-20 flex items-center justify-center p-6">
                 <div className="bg-nordic-dark-surface w-full max-w-sm rounded-3xl border border-nordic-charcoal p-6 shadow-2xl">
@@ -374,7 +371,6 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
         )}
       </div>
 
-      {/* Controls Bar */}
       <div className="bg-nordic-dark-surface p-8 pb-12 border-t border-nordic-charcoal relative z-10">
          <div className="flex items-center justify-center gap-6 max-w-md mx-auto">
             
@@ -409,7 +405,6 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ onClose }) => {
 
          </div>
          
-         {/* Settings Trigger */}
          <button 
             onClick={() => setShowSettings(true)}
             className="absolute right-8 top-1/2 -translate-y-1/2 p-3 text-slate-500 hover:text-white transition-colors"

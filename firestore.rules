@@ -9,15 +9,43 @@ service cloud.firestore {
 
     // Projects
     match /projects/{projectId} {
-      // Allow read/update/delete if the EXISTING document is owned by the user
-      allow read, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      
+      // Helper function to check project access
+      function hasAccess() {
+        return request.auth != null && (
+          resource.data.ownerId == request.auth.uid || 
+          (resource.data.members != null && request.auth.uid in resource.data.members)
+        );
+      }
+      
+      // Helper to check if user is invited (for accepting invites)
+      function isInvited() {
+        return request.auth != null && 
+               resource.data.invitedEmails != null && 
+               request.auth.token.email in resource.data.invitedEmails;
+      }
+
+      // Allow read if owner, member, or invited
+      allow read: if hasAccess() || isInvited();
+      
+      // Allow update if owner or member. 
+      // Also allow update if invited user is removing themselves from invitedEmails and adding to members (accepting invite)
+      // Ideally we would be stricter about the "accept invite" transition, but for MVP:
+      allow update: if hasAccess() || isInvited();
+      
+      // Only owner can delete
+      allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
       
       // Allow create if the NEW document claims to be owned by the user
       allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
 
       match /{allPaths=**} {
-        // Subcollections inherit access based on the parent project
-        allow read, write: if request.auth != null && get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid;
+        // Subcollections inherit access based on the parent project (owner or member)
+        // Note: Invited users cannot see subcollections until they accept (become members)
+        allow read, write: if request.auth != null && (
+          get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid ||
+          request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.members
+        );
       }
     }
   }

@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
-import { Task, Phase, TaskStatus, Priority, ShoppingItem, VehicleData } from '../types';
-import { ChevronDown, ChevronRight, Check, AlertCircle, MessageSquare, Paperclip, Link as LinkIcon, ListChecks, CalendarClock } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Task, TaskStatus, Priority, ShoppingItem, VehicleData } from '../types';
+import { ChevronDown, ChevronRight, Check, AlertCircle, MessageSquare, Paperclip, Link as LinkIcon, ListChecks, CalendarClock, Lightbulb, Plus } from 'lucide-react';
 import { TaskDetailModal } from './TaskDetailModal';
 
 interface TaskBoardProps {
@@ -9,34 +9,49 @@ interface TaskBoardProps {
   shoppingItems: ShoppingItem[];
   vehicleData: VehicleData;
   onUpdateTask: (task: Task) => void;
-  initialFilter?: Phase | 'ALL';
+  initialFilter?: string | 'ALL';
 }
 
 export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehicleData, onUpdateTask, initialFilter = 'ALL' }) => {
-  const [expandedPhase, setExpandedPhase] = useState<string | null>(Phase.ACUTE);
-  const [activeFilter, setActiveFilter] = useState<Phase | 'ALL'>(initialFilter);
+  const [expandedPhase, setExpandedPhase] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string | 'ALL'>('ALL');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  // Sync with prop changes (e.g. from Dashboard click)
+  // Derive unique phases from tasks to support dynamic project types
+  const phases = useMemo(() => {
+      // Get all phases from tasks, filter out undefined, remove duplicates
+      const allPhases = Array.from(new Set(tasks.map(t => t.phase).filter(Boolean)));
+      // Sort them? Or keep order? Usually we want them in a specific logical order.
+      // For now, simple sort or just discovery order.
+      return allPhases.sort();
+  }, [tasks]);
+
   useEffect(() => {
     setActiveFilter(initialFilter);
-    if (initialFilter !== 'ALL') {
+    if (initialFilter !== 'ALL' && phases.includes(initialFilter)) {
         setExpandedPhase(initialFilter);
+    } else if (phases.length > 0 && initialFilter === 'ALL' && !expandedPhase) {
+        // Default to expanding the first phase if none selected
+        setExpandedPhase(phases[0]);
     }
-  }, [initialFilter]);
+  }, [initialFilter, phases]);
 
   const togglePhase = (phase: string) => {
     setExpandedPhase(expandedPhase === phase ? null : phase);
   };
 
-  const phases = Object.values(Phase);
   const filteredPhases = activeFilter === 'ALL' ? phases : [activeFilter];
+  
+  // Separate Ideas from "Real" Tasks
+  const ideaTasks = tasks.filter(t => t.status === TaskStatus.IDEA);
+  const realTasks = tasks.filter(t => t.status !== TaskStatus.IDEA);
 
   const getStatusColor = (status: TaskStatus) => {
     switch (status) {
-      case TaskStatus.DONE: return 'bg-nordic-green text-green-900 border-green-200 dark:bg-green-900/40 dark:text-green-200 dark:border-green-900'; // Sage Green
-      case TaskStatus.IN_PROGRESS: return 'bg-nordic-blue text-blue-900 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-900'; // Ice Blue
-      case TaskStatus.TODO: return 'bg-nordic-pink text-rose-900 border-rose-200 dark:bg-rose-900/40 dark:text-rose-200 dark:border-rose-900'; // Dusty Pink
+      case TaskStatus.DONE: return 'bg-nordic-green text-green-900 border-green-200 dark:bg-green-900/40 dark:text-green-200 dark:border-green-900'; 
+      case TaskStatus.IN_PROGRESS: return 'bg-nordic-blue text-blue-900 border-blue-200 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-900'; 
+      case TaskStatus.TODO: return 'bg-nordic-pink text-rose-900 border-rose-200 dark:bg-rose-900/40 dark:text-rose-200 dark:border-rose-900'; 
+      case TaskStatus.IDEA: return 'bg-amber-100 text-amber-900 border-amber-200 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-900';
       default: return 'bg-slate-100';
     }
   };
@@ -50,20 +65,55 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
   };
 
   const handleStatusChange = (task: Task) => {
-    const nextStatus = task.status === TaskStatus.TODO 
-      ? TaskStatus.IN_PROGRESS 
-      : task.status === TaskStatus.IN_PROGRESS 
-        ? TaskStatus.DONE 
-        : TaskStatus.TODO;
+    let nextStatus = TaskStatus.TODO;
+    if (task.status === TaskStatus.IDEA) nextStatus = TaskStatus.TODO; // Activate idea
+    else if (task.status === TaskStatus.TODO) nextStatus = TaskStatus.IN_PROGRESS;
+    else if (task.status === TaskStatus.IN_PROGRESS) nextStatus = TaskStatus.DONE;
+    else if (task.status === TaskStatus.DONE) nextStatus = TaskStatus.TODO;
     
     onUpdateTask({ ...task, status: nextStatus });
   };
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-8 pb-20">
       
+      {/* IDEAS SECTION */}
+      {ideaTasks.length > 0 && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 rounded-3xl border border-amber-100 dark:border-amber-900/50 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-white dark:bg-amber-900/50 rounded-xl text-amber-500 shadow-sm">
+                      <Lightbulb size={24} />
+                  </div>
+                  <div>
+                      <h3 className="font-serif font-bold text-xl text-amber-900 dark:text-amber-100">Idébanken</h3>
+                      <p className="text-xs text-amber-700 dark:text-amber-300">Drömmar och tankar som inte är spikade än.</p>
+                  </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                  {ideaTasks.map(task => (
+                      <div 
+                        key={task.id} 
+                        onClick={() => setSelectedTask(task)}
+                        className="bg-white/80 dark:bg-nordic-dark-bg/80 backdrop-blur border border-amber-100 dark:border-amber-900/50 p-4 rounded-xl cursor-pointer hover:shadow-md transition-all hover:-translate-y-1"
+                      >
+                          <h4 className="font-bold text-sm text-nordic-charcoal dark:text-nordic-ice mb-1">{task.title}</h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{task.description}</p>
+                          <div className="mt-3 flex justify-end">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleStatusChange(task); }}
+                                className="text-[10px] font-bold uppercase tracking-wider text-amber-600 hover:bg-amber-100 px-2 py-1 rounded-md transition-colors"
+                              >
+                                Aktivera
+                              </button>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+          </div>
+      )}
+
       {/* Phase Filter Tabs */}
-      <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide sticky top-0 bg-nordic-ice/95 dark:bg-nordic-dark-bg/95 z-20 py-2 backdrop-blur-sm">
         <button 
            onClick={() => setActiveFilter('ALL')}
            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeFilter === 'ALL' ? 'bg-nordic-charcoal text-white shadow-md dark:bg-teal-600' : 'bg-white text-slate-500 hover:bg-slate-50 dark:bg-nordic-dark-surface dark:text-nordic-dark-muted dark:hover:bg-nordic-charcoal'}`}
@@ -81,10 +131,13 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
         ))}
       </div>
 
+      {/* DYNAMIC PHASES */}
       {filteredPhases.map((phase) => {
-        const phaseTasks = tasks.filter(t => t.phase === phase);
+        const phaseTasks = realTasks.filter(t => t.phase === phase);
         const isExpanded = expandedPhase === phase || filteredPhases.length === 1;
         
+        if (phaseTasks.length === 0) return null;
+
         return (
           <div key={phase} className="bg-white dark:bg-nordic-dark-surface rounded-3xl border border-nordic-ice dark:border-nordic-dark-bg shadow-sm overflow-hidden transition-all duration-500 ease-in-out">
             <button 
@@ -110,7 +163,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
             
             {isExpanded && (
               <div className="p-6 pt-0 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 bg-nordic-ice/20 dark:bg-black/10 border-t border-nordic-ice dark:border-nordic-dark-bg">
-                <div className="h-2 col-span-full"></div> {/* Spacer */}
+                <div className="h-2 col-span-full"></div> 
                 {phaseTasks.map(task => {
                   const subtasks = task.subtasks || [];
                   const completedSubtasks = subtasks.filter(s => s.completed).length;

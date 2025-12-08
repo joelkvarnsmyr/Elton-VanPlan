@@ -204,6 +204,54 @@ export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({
                 <Row label="Första Trafik" value={vehicleData.regDate} />
             </Card>
         </div>
+
+        {vehicleData.expertAnalysis && (
+            <div className="col-span-1 md:col-span-2 xl:col-span-3">
+                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-3xl p-6">
+                    <h3 className="font-serif font-bold text-xl text-amber-800 dark:text-amber-500 mb-4 flex items-center gap-2">
+                        <AlertTriangle size={24} /> Expertens Analys
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 className="font-bold text-sm uppercase text-amber-900/50 mb-3">Vanliga fel & Varningar</h4>
+                            <ul className="space-y-3">
+                                {vehicleData.expertAnalysis.commonFaults.map((fault, i) => (
+                                    <li key={i} className="bg-white dark:bg-nordic-charcoal p-3 rounded-xl border border-amber-100 dark:border-amber-900/30 shadow-sm">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="font-bold text-nordic-charcoal dark:text-nordic-ice">{fault.title}</span>
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                                fault.urgency === 'High' ? 'bg-rose-100 text-rose-700' : 
+                                                fault.urgency === 'Medium' ? 'bg-amber-100 text-amber-700' : 
+                                                'bg-slate-100 text-slate-600'
+                                            }`}>{fault.urgency}</span>
+                                        </div>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-snug">{fault.description}</p>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                        
+                        <div>
+                            <h4 className="font-bold text-sm uppercase text-amber-900/50 mb-3">Modifieringar & Tips</h4>
+                            <ul className="space-y-3">
+                                {vehicleData.expertAnalysis.modificationTips.map((tip, i) => (
+                                    <li key={i} className="bg-white dark:bg-nordic-charcoal p-3 rounded-xl border border-amber-100 dark:border-amber-900/30 shadow-sm">
+                                        <span className="font-bold text-teal-700 dark:text-teal-400 block mb-1">{tip.title}</span>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-snug">{tip.description}</p>
+                                    </li>
+                                ))}
+                            </ul>
+                            {vehicleData.expertAnalysis.maintenanceNotes && (
+                                <div className="mt-4 p-3 bg-white dark:bg-nordic-charcoal rounded-xl border border-amber-100 text-sm italic text-slate-500">
+                                    " {vehicleData.expertAnalysis.maintenanceNotes} "
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
       </>
       )}
 

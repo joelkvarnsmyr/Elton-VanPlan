@@ -51,9 +51,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick }) =
   };
 
   const stats = useMemo(() => {
-    const totalMin = tasks.reduce((sum, t) => sum + t.estimatedCostMin, 0);
-    const totalMax = tasks.reduce((sum, t) => sum + t.estimatedCostMax, 0);
-    const spent = tasks.reduce((sum, t) => sum + t.actualCost, 0);
+    const totalMin = tasks.reduce((sum, t) => sum + (t.estimatedCostMin || 0), 0);
+    const totalMax = tasks.reduce((sum, t) => sum + (t.estimatedCostMax || 0), 0);
+    const spent = tasks.reduce((sum, t) => sum + (t.actualCost || 0), 0);
     const completed = tasks.filter(t => t.status === TaskStatus.DONE).length;
     const progress = tasks.length > 0 ? Math.round((completed / tasks.length) * 100) : 0;
     const remainingBudget = (totalMax + totalMin) / 2 - spent;
@@ -62,35 +62,41 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick }) =
   }, [tasks]);
 
   const chartData = useMemo(() => {
-    const phases = Array.from(new Set(tasks.map(t => t.phase)));
+    // Handle case where phase might be undefined or empty
+    const phases = Array.from(new Set(tasks.map(t => t.phase || 'Okänd Fas')));
     return phases.map(phase => {
-      const phaseTasks = tasks.filter(t => t.phase === phase);
+      const phaseTasks = tasks.filter(t => (t.phase || 'Okänd Fas') === phase);
       return {
         name: (phase as string).split(':')[0],
-        est: phaseTasks.reduce((sum, t) => sum + (t.estimatedCostMax + t.estimatedCostMin)/2, 0),
-        spent: phaseTasks.reduce((sum, t) => sum + t.actualCost, 0)
+        est: phaseTasks.reduce((sum, t) => sum + ((t.estimatedCostMax || 0) + (t.estimatedCostMin || 0))/2, 0),
+        spent: phaseTasks.reduce((sum, t) => sum + (t.actualCost || 0), 0)
       };
     });
   }, [tasks]);
 
   const timelineData = useMemo(() => {
+    // Safe access to vehicleData properties with fallbacks
+    const prodYear = vehicleData?.prodYear ? String(vehicleData.prodYear) : '-';
+    const regDate = vehicleData?.regDate || '-';
+    const createdDate = project.created ? format(new Date(project.created), 'd MMM yyyy', { locale: sv }) : '-';
+
     const historyEvents = [
         {
-            date: vehicleData.prodYear.toString(),
+            date: prodYear,
             title: 'Tillverkad',
-            description: `${vehicleData.make} ${vehicleData.model}`,
+            description: `${vehicleData?.make || 'Okänd'} ${vehicleData?.model || 'Fordon'}`,
             type: 'history',
             icon: Calendar
         },
         {
-            date: vehicleData.regDate,
+            date: regDate,
             title: 'I Trafik',
             description: 'Första gången på väg',
             type: 'history',
             icon: MapPin
         },
         {
-            date: project.created ? format(new Date(project.created), 'd MMM yyyy', { locale: sv }) : '-',
+            date: createdDate,
             title: 'Projektstart',
             description: project.name,
             type: 'milestone',
@@ -100,14 +106,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick }) =
 
     const completedTasks = tasks
         .filter(t => t.status === TaskStatus.DONE)
-        // Here we would ideally use a completedAt timestamp, but created is what we have for now or nothing
-        // Let's just group them as "Klara" or use today if just finished. 
-        // Since we lack completedAt in the Task interface, I will keep 'Klart' but make it cleaner.
-        .slice(0, 5) // Limit to 5 recent to not clutter
+        .slice(0, 5) 
         .map(t => ({
             date: 'Klar', 
             title: t.title,
-            description: t.phase.split(':')[0],
+            description: (t.phase || 'Okänd').split(':')[0],
             type: 'task',
             icon: CheckCircle2
         }));
