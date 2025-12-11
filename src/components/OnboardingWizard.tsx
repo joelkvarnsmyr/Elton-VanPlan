@@ -81,6 +81,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
         }, 2500);
 
         try {
+            console.log('🎬 [OnboardingWizard] Research starting:', {
+                vehicleDesc,
+                projectType,
+                userSkillLevel,
+                hasImage: !!selectedImage
+            });
+
             const base64Data = selectedImage ? selectedImage.split(',')[1] : undefined;
 
             // Get prompts for Deep Research
@@ -88,7 +95,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
             const detectivePrompt = ACTIVE_PROMPTS.agents.detective.text(vehicleDataStr);
             const plannerPrompt = ACTIVE_PROMPTS.agents.planner.text(vehicleDataStr, projectType, userSkillLevel);
 
+            console.log('📝 [OnboardingWizard] Prompts generated:', {
+                detectivePromptLength: detectivePrompt.length,
+                plannerPromptLength: plannerPrompt.length
+            });
+
             // Run AI analysis via Cloud Functions and icon generation in parallel
+            console.log('⚡ [OnboardingWizard] Starting parallel tasks: Deep Research + Icon Generation');
             const [aiDataResult, iconResult] = await Promise.allSettled([
                 performDeepResearch(
                     vehicleDesc,
@@ -106,6 +119,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
             const rawAiData = aiDataResult.status === 'fulfilled' ? aiDataResult.value : { error: 'AI-tjänster otillgängliga' };
             const iconData = iconResult.status === 'fulfilled' ? iconResult.value : null;
 
+            console.log('📊 [OnboardingWizard] Results received:', {
+                aiDataSuccess: aiDataResult.status === 'fulfilled',
+                iconSuccess: iconResult.status === 'fulfilled',
+                hasVehicleData: !!rawAiData.vehicleData,
+                hasIcon: !!iconData
+            });
+
             // Map Cloud Functions response to expected format
             const aiData = {
                 vehicleData: rawAiData.vehicleData,
@@ -115,6 +135,16 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                 initialTasks: rawAiData.initialTasks,
                 analysisReport: rawAiData.analysisReport
             };
+
+            console.log('✨ [OnboardingWizard] AI data mapped:', {
+                projectName: aiData.projectName,
+                make: aiData.vehicleData?.make,
+                model: aiData.vehicleData?.model,
+                year: aiData.vehicleData?.year,
+                tasksCount: aiData.initialTasks?.length || 0,
+                provider: aiData.aiProvider,
+                hasError: !!aiData.error
+            });
 
             // Track which AI provider was used
             if (aiData.aiProvider) {

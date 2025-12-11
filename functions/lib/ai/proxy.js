@@ -335,11 +335,19 @@ exports.aiDeepResearch = (0, https_1.onCall)({
         const ai = new genai_1.GoogleGenAI({ apiKey });
         // Use fast model for Deep Research (2 sequential calls, need speed)
         const modelName = FAST_MODEL;
+        console.log('🚀 Deep Research starting:', {
+            vehicle: vehicleDescription,
+            projectType,
+            model: modelName,
+            hasImage: !!imageBase64
+        });
         // --- AGENT 1: DETECTIVE ---
-        console.log('Agent 1: Detective started...');
+        console.log('🕵️ Agent 1: Detective started...');
+        const detectiveStartTime = Date.now();
         const detectiveParts = [{ text: detectivePrompt }];
         if (imageBase64) {
             detectiveParts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } });
+            console.log('📸 Image included in detective analysis');
         }
         let detectiveData = {};
         try {
@@ -350,15 +358,29 @@ exports.aiDeepResearch = (0, https_1.onCall)({
                     tools: [{ googleSearch: {} }]
                 }
             });
+            const detectiveTime = Date.now() - detectiveStartTime;
+            console.log(`⏱️ Detective completed in ${detectiveTime}ms`);
             let detectiveJson = detectiveResponse.text || '{}';
             if (detectiveJson.includes('```json')) {
                 detectiveJson = detectiveJson.split('```json')[1].split('```')[0].trim();
             }
             detectiveData = JSON.parse(detectiveJson);
-            console.log('Detective found:', detectiveData.projectName);
+            const dataPoints = Object.keys(detectiveData.vehicleData || {}).length;
+            console.log('✅ Detective found:', {
+                projectName: detectiveData.projectName,
+                make: detectiveData.vehicleData?.make,
+                model: detectiveData.vehicleData?.model,
+                year: detectiveData.vehicleData?.year,
+                dataPoints: dataPoints
+            });
         }
         catch (detectiveError) {
-            console.warn('Detective fallback:', detectiveError.message);
+            const detectiveTime = Date.now() - detectiveStartTime;
+            console.error(`❌ Detective failed after ${detectiveTime}ms:`, {
+                error: detectiveError.message,
+                status: detectiveError.status
+            });
+            console.warn('🔄 Using fallback data...');
             detectiveData = {
                 projectName: vehicleDescription.substring(0, 30),
                 vehicleData: {
@@ -369,7 +391,8 @@ exports.aiDeepResearch = (0, https_1.onCall)({
             };
         }
         // --- AGENT 2: PLANNER ---
-        console.log('Agent 2: Planner started...');
+        console.log('📝 Agent 2: Planner started...');
+        const plannerStartTime = Date.now();
         const plannerResponse = await ai.models.generateContent({
             model: modelName,
             contents: [{ role: 'user', parts: [{ text: plannerPrompt }] }],
@@ -377,14 +400,22 @@ exports.aiDeepResearch = (0, https_1.onCall)({
                 responseMimeType: 'application/json'
             }
         });
+        const plannerTime = Date.now() - plannerStartTime;
+        console.log(`⏱️ Planner completed in ${plannerTime}ms`);
         let plannerJson = plannerResponse.text || '{}';
         if (plannerJson.includes('```json')) {
             plannerJson = plannerJson.split('```json')[1].split('```')[0].trim();
         }
         const plannerData = JSON.parse(plannerJson);
-        console.log('Planner created tasks:', plannerData.initialTasks?.length || 0);
+        const taskCount = plannerData.initialTasks?.length || 0;
+        const shoppingCount = plannerData.shoppingItems?.length || 0;
+        console.log('✅ Planner created:', {
+            tasks: taskCount,
+            shoppingItems: shoppingCount,
+            hasAnalysisReport: !!plannerData.analysisReport
+        });
         // --- MERGE RESULTS ---
-        return {
+        const result = {
             projectName: detectiveData.projectName,
             projectType: plannerData.projectType || projectType || 'renovation',
             vehicleData: {
@@ -395,6 +426,14 @@ exports.aiDeepResearch = (0, https_1.onCall)({
             analysisReport: plannerData.analysisReport,
             provider: 'gemini'
         };
+        const totalTime = Date.now() - detectiveStartTime;
+        console.log('🎉 Deep Research completed:', {
+            totalTimeMs: totalTime,
+            totalTimeSec: (totalTime / 1000).toFixed(1) + 's',
+            vehicleDataFields: Object.keys(result.vehicleData).length,
+            tasksCreated: result.initialTasks.length
+        });
+        return result;
     }
     catch (error) {
         console.error('Deep Research Error:', error);

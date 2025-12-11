@@ -175,7 +175,18 @@ export const performDeepResearch = async (
   detectivePrompt?: string,
   plannerPrompt?: string
 ): Promise<DeepResearchResult> => {
+  const startTime = Date.now();
+  console.log('🚀 [Frontend] Starting Deep Research:', {
+    vehicle: vehicleDescription,
+    projectType,
+    userSkillLevel,
+    hasImage: !!imageBase64,
+    hasDetectivePrompt: !!detectivePrompt,
+    hasPlannerPrompt: !!plannerPrompt
+  });
+
   try {
+    console.log('📡 [Frontend] Calling Cloud Function: aiDeepResearch');
     const result = await aiDeepResearchFn({
       vehicleDescription,
       imageBase64,
@@ -184,9 +195,27 @@ export const performDeepResearch = async (
       detectivePrompt: detectivePrompt || '',
       plannerPrompt: plannerPrompt || ''
     });
+
+    const duration = Date.now() - startTime;
+    console.log('✅ [Frontend] Deep Research completed:', {
+      durationMs: duration,
+      durationSec: (duration / 1000).toFixed(1) + 's',
+      projectName: result.data.projectName,
+      vehicleDataFields: Object.keys(result.data.vehicleData || {}).length,
+      tasksCount: result.data.initialTasks?.length || 0,
+      provider: result.data.provider
+    });
+
     return result.data;
   } catch (error: any) {
-    console.error('Deep Research Error:', error);
+    const duration = Date.now() - startTime;
+    console.error(`❌ [Frontend] Deep Research failed after ${duration}ms:`, {
+      error: error.message,
+      code: error.code,
+      details: error.details
+    });
+    console.warn('🔄 [Frontend] Using fallback data...');
+
     // Return fallback result
     return {
       projectName: vehicleDescription.substring(0, 30) || 'Nytt Projekt',
