@@ -12,6 +12,7 @@ import { ProjectMembers } from './components/ProjectMembers';
 import { Roadmap } from './components/Roadmap';
 import { FuelLog } from './components/FuelLog';
 import { ServiceBook } from './components/ServiceBook';
+import { TestScraper } from './components/TestScraper';
 import { Task, ShoppingItem, Project, UserProfile, FuelLogItem, ServiceItem, Contact } from '@/types/types';
 import { LayoutDashboard, CheckSquare, MessageSquareMore, Sparkles, Sun, Moon, Wrench, ShoppingBag, Settings, Lock, Loader2, Database, LogOut, ArrowLeft, User, Save, Upload, Download, ChevronLeft, Map, Users, Fuel, BookOpen } from 'lucide-react';
 
@@ -51,7 +52,7 @@ export const App = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'tasks' | 'ai' | 'specs' | 'shopping' | 'roadmap'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'tasks' | 'ai' | 'specs' | 'shopping' | 'roadmap' | 'scraper'>('dashboard');
   const [isMagicImportOpen, setIsMagicImportOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [activePhaseFilter, setActivePhaseFilter] = useState<string>('ALL');
@@ -466,6 +467,9 @@ export const App = () => {
                           <button onClick={() => { setActiveProject(null); setShowSettings(false); }} className="w-full flex items-center gap-2 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-nordic-charcoal/50 text-sm font-medium text-nordic-charcoal dark:text-nordic-ice transition-colors mb-2 border-b border-slate-100 dark:border-nordic-charcoal">
                             <ChevronLeft size={16} /> Byt Projekt
                           </button>
+                          <button onClick={() => { setCurrentView('scraper'); setShowSettings(false); }} className="w-full flex items-center gap-2 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-nordic-charcoal/50 text-sm font-medium text-nordic-charcoal dark:text-nordic-ice transition-colors mb-2">
+                            <Database size={16} /> Testa Scraper
+                          </button>
                           <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-full flex items-center gap-2 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-nordic-charcoal/50 text-sm font-medium text-nordic-charcoal dark:text-nordic-ice transition-colors mb-2">
                             {isDarkMode ? <Sun size={16} /> : <Moon size={16} />} {isDarkMode ? 'Ljust Läge' : 'Mörkt Läge'}
                           </button>
@@ -494,6 +498,7 @@ export const App = () => {
                onUpdateLocation={handleUpdateLocation}
            />}
            {currentView === 'shopping' && <ShoppingList items={activeProject.shoppingItems} tasks={activeProject.tasks} onAdd={(i) => handleAddShoppingItem(i as any)} onDelete={handleDeleteShoppingItem} onToggle={(id) => { const i = activeProject.shoppingItems.find(x=>x.id===id); if(i) handleUpdateShoppingItem({...i, checked: !i.checked})}} onUpdate={handleUpdateShoppingItem} onUploadReceipt={handleUploadReceipt} />}
+           {currentView === 'scraper' && <TestScraper onClose={() => setCurrentView('dashboard')} />}
         </div>
         
         {/* FOOTER - ROADMAP LINK */}
