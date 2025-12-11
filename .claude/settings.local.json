@@ -9,7 +9,9 @@
       "Bash(node scripts/test-scraper-realistic.js:*)",
       "Bash(ls:*)",
       "Bash(node scripts/test-scraper.js:*)",
-      "Bash(node scripts/test-biluppgifter.js:*)"
+      "Bash(node scripts/test-biluppgifter.js:*)",
+      "Bash(node scripts/test-cloud-function.js:*)",
+      "Bash(firebase functions:shell:*)"
     ]
   }
 }

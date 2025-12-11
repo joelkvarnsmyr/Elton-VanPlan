@@ -1,15 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, Fuel, TrendingUp, TrendingDown, Plus, Calendar, DollarSign, Activity } from 'lucide-react';
 import { FuelLogItem, Project } from '@/types/types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { getFuelLog, addFuelEntry, deleteFuelEntry } from '@/services/db';
 
 interface FuelLogProps {
     project: Project;
     onClose: () => void;
-    onUpdate: (updatedFuelLog: FuelLogItem[]) => void;
+    onUpdate?: () => void;
 }
 
 export const FuelLog: React.FC<FuelLogProps> = ({ project, onClose, onUpdate }) => {
+    const [fuelLog, setFuelLog] = useState<FuelLogItem[]>([]);
+    const [loading, setLoading] = useState(true);
     const [showAddForm, setShowAddForm] = useState(false);
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
@@ -19,11 +22,27 @@ export const FuelLog: React.FC<FuelLogProps> = ({ project, onClose, onUpdate }) 
         fullTank: true
     });
 
+    // Load fuel log from sub-collection
+    useEffect(() => {
+        const loadFuelLog = async () => {
+            setLoading(true);
+            try {
+                const data = await getFuelLog(project.id);
+                setFuelLog(data);
+            } catch (error) {
+                console.error('Failed to load fuel log:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadFuelLog();
+    }, [project.id]);
+
     const sortedFuelLog = useMemo(() => {
-        return [...(project.fuelLog || [])].sort((a, b) =>
+        return [...fuelLog].sort((a, b) =>
             new Date(b.date).getTime() - new Date(a.date).getTime()
         );
-    }, [project.fuelLog]);
+    }, [fuelLog]);
 
     // Calculate consumption (L/100km) between full tanks
     const consumptionData = useMemo(() => {
@@ -67,35 +86,43 @@ export const FuelLog: React.FC<FuelLogProps> = ({ project, onClose, onUpdate }) 
         };
     }, [sortedFuelLog, consumptionData]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const newEntry: FuelLogItem = {
-            id: `fuel_${Date.now()}`,
-            date: formData.date,
-            mileage: parseInt(formData.mileage),
-            liters: parseFloat(formData.liters),
-            pricePerLiter: parseFloat(formData.pricePerLiter),
-            totalCost: parseFloat(formData.liters) * parseFloat(formData.pricePerLiter),
-            fullTank: formData.fullTank
-        };
+        try {
+            const newEntry = await addFuelEntry(project.id, {
+                date: formData.date,
+                mileage: parseInt(formData.mileage),
+                liters: parseFloat(formData.liters),
+                pricePerLiter: parseFloat(formData.pricePerLiter),
+                totalCost: parseFloat(formData.liters) * parseFloat(formData.pricePerLiter),
+                fullTank: formData.fullTank
+            });
 
-        const updatedFuelLog = [...(project.fuelLog || []), newEntry];
-        onUpdate(updatedFuelLog);
+            setFuelLog([...fuelLog, newEntry]);
+            onUpdate?.();
 
-        setFormData({
-            date: new Date().toISOString().split('T')[0],
-            mileage: '',
-            liters: '',
-            pricePerLiter: '',
-            fullTank: true
-        });
-        setShowAddForm(false);
+            setFormData({
+                date: new Date().toISOString().split('T')[0],
+                mileage: '',
+                liters: '',
+                pricePerLiter: '',
+                fullTank: true
+            });
+            setShowAddForm(false);
+        } catch (error) {
+            console.error('Failed to add fuel entry:', error);
+        }
     };
 
-    const handleDelete = (id: string) => {
-        const updatedFuelLog = (project.fuelLog || []).filter(entry => entry.id !== id);
-        onUpdate(updatedFuelLog);
+    const handleDelete = async (id: string) => {
+        try {
+            await deleteFuelEntry(project.id, id);
+            setFuelLog(fuelLog.filter(entry => entry.id !== id));
+            onUpdate?.();
+        } catch (error) {
+            console.error('Failed to delete fuel entry:', error);
+        }
     };
 
     return (

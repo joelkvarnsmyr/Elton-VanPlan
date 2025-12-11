@@ -1,14 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, Wrench, Plus, Calendar, User, AlertCircle, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
 import { ServiceItem, Project } from '@/types/types';
+import { getServiceLog, addServiceEntry, deleteServiceEntry } from '@/services/db';
 
 interface ServiceBookProps {
     project: Project;
     onClose: () => void;
-    onUpdate: (updatedServiceLog: ServiceItem[]) => void;
+    onUpdate?: () => void;
 }
 
 export const ServiceBook: React.FC<ServiceBookProps> = ({ project, onClose, onUpdate }) => {
+    const [serviceLog, setServiceLog] = useState<ServiceItem[]>([]);
+    const [loading, setLoading] = useState(true);
     const [showAddForm, setShowAddForm] = useState(false);
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
@@ -18,11 +21,27 @@ export const ServiceBook: React.FC<ServiceBookProps> = ({ project, onClose, onUp
         type: 'Service' as ServiceItem['type']
     });
 
+    // Load service log from sub-collection
+    useEffect(() => {
+        const loadServiceLog = async () => {
+            setLoading(true);
+            try {
+                const data = await getServiceLog(project.id);
+                setServiceLog(data);
+            } catch (error) {
+                console.error('Failed to load service log:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadServiceLog();
+    }, [project.id]);
+
     const sortedServiceLog = useMemo(() => {
-        return [...(project.serviceLog || [])].sort((a, b) =>
+        return [...serviceLog].sort((a, b) =>
             new Date(b.date).getTime() - new Date(a.date).getTime()
         );
-    }, [project.serviceLog]);
+    }, [serviceLog]);
 
     // Group by year for timeline view
     const servicesByYear = useMemo(() => {
@@ -81,34 +100,42 @@ export const ServiceBook: React.FC<ServiceBookProps> = ({ project, onClose, onUp
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const newEntry: ServiceItem = {
-            id: `service_${Date.now()}`,
-            date: formData.date,
-            description: formData.description,
-            mileage: formData.mileage,
-            performer: formData.performer,
-            type: formData.type
-        };
+        try {
+            const newEntry = await addServiceEntry(project.id, {
+                date: formData.date,
+                description: formData.description,
+                mileage: formData.mileage,
+                performer: formData.performer,
+                type: formData.type
+            });
 
-        const updatedServiceLog = [...(project.serviceLog || []), newEntry];
-        onUpdate(updatedServiceLog);
+            setServiceLog([...serviceLog, newEntry]);
+            onUpdate?.();
 
-        setFormData({
-            date: new Date().toISOString().split('T')[0],
+            setFormData({
+                date: new Date().toISOString().split('T')[0],
             description: '',
             mileage: '',
             performer: '',
             type: 'Service'
         });
         setShowAddForm(false);
+        } catch (error) {
+            console.error('Failed to add service entry:', error);
+        }
     };
 
-    const handleDelete = (id: string) => {
-        const updatedServiceLog = (project.serviceLog || []).filter(entry => entry.id !== id);
-        onUpdate(updatedServiceLog);
+    const handleDelete = async (id: string) => {
+        try {
+            await deleteServiceEntry(project.id, id);
+            setServiceLog(serviceLog.filter(entry => entry.id !== id));
+            onUpdate?.();
+        } catch (error) {
+            console.error('Failed to delete service entry:', error);
+        }
     };
 
     // Service reminder logic
