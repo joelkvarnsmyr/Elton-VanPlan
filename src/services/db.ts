@@ -328,8 +328,8 @@ export const createProject = async (
         isDemo: false,
 
         // User preferences
-        userSkillLevel: template?.userSkillLevel,
-        nickname: template?.nickname
+        ...(template?.userSkillLevel && { userSkillLevel: template.userSkillLevel }),
+        ...(template?.nickname && { nickname: template.nickname })
     };
 
     console.log('💾 Saving project to Firestore:', {

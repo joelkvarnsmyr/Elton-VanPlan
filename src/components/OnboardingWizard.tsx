@@ -154,16 +154,24 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
     const handleComplete = () => {
         if (!projectType || !userSkillLevel) return;
 
-        onComplete({
+        const completionData: any = {
             projectType,
             userSkillLevel,
             vehicleDescription: vehicleDesc,
             imageBase64: selectedImage?.split(',')[1],
-            nickname: nickname.trim() || undefined,
-            additionalNotes: additionalNotes.trim() || undefined,
             aiData: aiSuggestions?.fullAiData,
             generatedIcon: aiSuggestions?.icon
-        });
+        };
+
+        // Only include optional fields if they have values
+        if (nickname.trim()) {
+            completionData.nickname = nickname.trim();
+        }
+        if (additionalNotes.trim()) {
+            completionData.additionalNotes = additionalNotes.trim();
+        }
+
+        onComplete(completionData);
     };
 
     return (
