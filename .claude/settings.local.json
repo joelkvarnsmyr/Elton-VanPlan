@@ -21,7 +21,9 @@
       "Bash(grep:*)",
       "Bash(firebase functions:secrets:set:*)",
       "Bash(firebase deploy:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(node:*)",
+      "Bash(git reset:*)"
     ]
   }
 }

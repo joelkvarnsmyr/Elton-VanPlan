@@ -363,6 +363,37 @@ async function scrapeCarInfo(regNo: string): Promise<Partial<VehicleData> | null
             vehicleData.weights!.load = vehicleData.weights!.total - vehicleData.weights!.curb;
         }
 
+        // Extract mileage history from JavaScript data
+        try {
+            const scriptContent = html.match(/var\s+datasetMileageWithoutUnofficial\s*=\s*(\[[\s\S]*?\]);/);
+            if (scriptContent && scriptContent[1]) {
+                // Parse the JavaScript array
+                const cleanedJson = scriptContent[1]
+                    .replace(/new Date\("([^"]+)"\)/g, '"$1"')  // Replace new Date("...") with "..."
+                    .replace(/x:/g, '"x":')
+                    .replace(/y:/g, '"y":')
+                    .replace(/label:/g, '"label":')
+                    .replace(/mileage_formatted:/g, '"mileage_formatted":')
+                    .replace(/value_type:/g, '"value_type":');
+
+                const mileageData = JSON.parse(cleanedJson);
+
+                if (Array.isArray(mileageData) && mileageData.length > 0) {
+                    vehicleData.history!.mileageHistory = mileageData.map((entry: any) => ({
+                        date: entry.label || entry.x,
+                        mileage: entry.y || 0,
+                        mileageFormatted: entry.mileage_formatted || `${entry.y || 0}`,
+                        type: entry.value_type || 'Okänt'
+                    }));
+
+                    console.log(`[CarInfo] Extracted ${vehicleData.history!.mileageHistory.length} mileage history entries`);
+                }
+            }
+        } catch (error) {
+            console.warn(`[CarInfo] Failed to extract mileage history:`, error);
+            // Don't fail the whole scrape if mileage history extraction fails
+        }
+
         console.log(`[CarInfo] Successfully scraped: ${vehicleData.make} ${vehicleData.model} (${vehicleData.year})`);
         console.log(`[CarInfo] Found specs: VIN=${!!vehicleData.vin}, Weight=${vehicleData.weights!.curb}kg, Fuel=${vehicleData.engine!.fuel}`);
 

@@ -56,5 +56,11 @@ export interface VehicleData {
         owners: number;
         events: number;
         lastOwnerChange: string;
+        mileageHistory?: Array<{
+            date: string;
+            mileage: number;
+            mileageFormatted: string;
+            type: string;
+        }>;
     };
 }
