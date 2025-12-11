@@ -6,24 +6,18 @@ import { getAIModelVersion } from './featureFlagService';
 import { buildPersonalizedPrompt, buildSoundDoctorPrompt, type DialectId } from './promptBuilder';
 import { Task, TaskStatus, ProjectType, PROJECT_PHASES, CostType, Priority, ShoppingItem, VehicleData, Project, ServiceItem, FuelLogItem } from '@/types/types';
 import { generateJSON, type AIResponse } from './aiService';
-import { getLoadedApiKeys } from './secretService'; // Importerar den nya funktionen
 
 let client: GoogleGenAI | null = null;
 
-// Funktionen görs om till async för att kunna invänta API-nyckeln
-const getClient = async (): Promise<GoogleGenAI | null> => {
-  if (client) {
-    return client;
+const getClient = (): GoogleGenAI => {
+  if (!client) {
+    // @ts-ignore - Handle Vite env vs process env
+    const apiKey = import.meta.env?.VITE_GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
+    if (!apiKey) {
+      console.warn("API Key missing for Gemini. Please set VITE_GEMINI_API_KEY.");
+    }
+    client = new GoogleGenAI({ apiKey });
   }
-
-  const { geminiApiKey } = await getLoadedApiKeys();
-
-  if (!geminiApiKey) {
-    console.warn("API Key missing for Gemini. Please set VITE_GEMINI_API_KEY.");
-    return null;
-  }
-  
-  client = new GoogleGenAI(geminiApiKey);
   return client;
 };
 
