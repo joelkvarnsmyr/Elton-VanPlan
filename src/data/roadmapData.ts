@@ -1,6 +1,6 @@
 /**
  * ROADMAP DATA
- * Uppdaterad: 2025-12-12 (Spec-ändring)
+ * Uppdaterad: 2025-12-11 (Data Model Migration komplett)
  *
  * Strukturerad i faser:
  * - Fas 1: Akut (Kritiska buggar och säkerhetsproblem)
@@ -408,22 +408,23 @@ export const ROADMAP_FEATURES: Feature[] = [
     // ============================================
     {
         id: 27,
-        title: 'Databas-migrering: Sub-collections',
+        title: 'Databas-migrering: Sub-collections & Ownership',
         category: 'Infrastruktur',
         phase: 2,
-        description: 'Omstrukturering av databasen för att stödja stora projekt (löser 1MB-gränsen).',
-        detailedDescription: 'Migrering från monolitisk dokumentstruktur till hierarkisk struktur (projects/{id}/tasks). Se docs/architecture/DATA_MODEL_MIGRATION.md.',
-        purpose: 'Skalbarhet och prestanda för stora projekt.',
-        status: 'planned',
-        tech: ['Firestore Sub-collections', 'Data Migration', 'Scalability'],
+        description: 'Komplett datamodel-uppgradering: Sub-collections, multi-owner, blockers, och Cloud Function triggers.',
+        detailedDescription: 'Migrering från monolitisk dokumentstruktur till hierarkisk struktur. Inkluderar: (1) Multi-owner support med ownerIds[], primaryOwnerId, memberIds[], (2) Sub-collections för tasks, shoppingList, serviceLog, fuelLog, knowledgeBase, (3) TaskBlocker-system med dependencies, (4) Cloud Function triggers för automatisk unblocking. Se docs/architecture/DATA_MODEL_MIGRATION.md.',
+        purpose: 'Skalbarhet, prestanda, och stöd för samarbete.',
+        status: 'done',
+        tech: ['Firestore Sub-collections', 'Cloud Functions Triggers', 'Multi-owner Model'],
         priority: 'high',
         tags: ['Database', 'Architecture', 'Scalability', 'Performance'],
         checklist: [
-            { label: 'Specad (DATA_MODEL_MIGRATION.md)', completed: true },
-            { label: 'Utvecklad (DB Service Layer)', completed: false },
-            { label: 'Migrerings-script', completed: false },
-            { label: 'Testad', completed: false },
-            { label: 'Lanserad', completed: false }
+            { label: 'Specad (DATA_MODEL_MIGRATION.md)', completed: true, completedAt: '2025-12-11' },
+            { label: 'Fas 1: Ownership-modell (ownerIds, primaryOwnerId)', completed: true, completedAt: '2025-12-11' },
+            { label: 'Fas 2: Sub-collections (serviceLog, fuelLog, knowledgeBase)', completed: true, completedAt: '2025-12-11' },
+            { label: 'Fas 3: Cloud Function triggers (onTaskComplete, onTaskDelete, onProjectDelete)', completed: true, completedAt: '2025-12-11' },
+            { label: 'Firestore Security Rules uppdaterade', completed: true, completedAt: '2025-12-11' },
+            { label: 'Testad (TypeScript check)', completed: true, completedAt: '2025-12-11' }
         ]
     },
     {
@@ -432,17 +433,18 @@ export const ROADMAP_FEATURES: Feature[] = [
         category: 'UX/Teams',
         phase: 2,
         description: 'Allows a project owner to transfer ownership to another team member. Replaces the old Import/Export feature.',
-        detailedDescription: 'Instead of a file-based import/export, this feature allows a seamless transfer of a project to another user within the platform. This is crucial for when a vehicle is sold or project responsibility changes.',
+        detailedDescription: 'Instead of a file-based import/export, this feature allows a seamless transfer of a project to another user within the platform. This is crucial for when a vehicle is sold or project responsibility changes. Backend-logik (Cloud Function) är klar, UI återstår.',
         purpose: 'Provide a secure and integrated way to hand over project ownership.',
-        status: 'planned',
+        status: 'in-progress',
         tech: ['Firebase Cloud Functions', 'Firestore Transactions', 'React'],
         priority: 'medium',
         tags: ['UX', 'Teams', 'Ownership', 'Data'],
         checklist: [
-            { label: 'Specifikation skriven', completed: true },
-            { label: 'Skapa Cloud Function (transferProjectOwnership)', completed: false },
-            { label: 'Uppdatera Firestore Security Rules', completed: false },
-            { label: 'Implementera UI i Project Settings', completed: false },
+            { label: 'Specifikation skriven (PROJECT_TRANSFER_SPEC.md)', completed: true },
+            { label: 'Cloud Function (transferProjectOwnership)', completed: true, completedAt: '2025-12-10' },
+            { label: 'db.ts helpers (addCoOwner, removeCoOwner, transferPrimaryOwnership)', completed: true, completedAt: '2025-12-11' },
+            { label: 'Firestore Security Rules (multi-owner)', completed: true, completedAt: '2025-12-11' },
+            { label: 'Implementera UI i Project Settings', completed: false, inProgress: true },
             { label: 'Testa överföringsflödet', completed: false }
         ]
     },
@@ -531,6 +533,26 @@ export const ROADMAP_FEATURES: Feature[] = [
     // ============================================
     // FAS 3: MEDELSIKTIGT - 2-4 månader
     // ============================================
+    {
+        id: 108,
+        title: 'Revision History & Undo',
+        category: 'Data',
+        phase: 3,
+        description: 'Utreda och implementera versionshistorik för projekt med möjlighet att ångra ändringar.',
+        detailedDescription: 'Spara snapshots av projektdata vid viktiga förändringar. Möjliggör ångra-funktion och se historik över ändringar. Tekniska alternativ: (1) Firestore document versions, (2) Snapshot-collection, (3) Event Sourcing. Behöver utredas.',
+        purpose: 'Säkerhetsnät för oavsiktliga ändringar och transparent historik.',
+        status: 'planned',
+        tech: ['Firestore', 'Event Sourcing', 'Data Versioning'],
+        priority: 'medium',
+        tags: ['Data', 'UX', 'Safety', 'History'],
+        checklist: [
+            { label: 'Utreda tekniska alternativ', completed: false },
+            { label: 'Skriva specifikation', completed: false },
+            { label: 'Implementera snapshot-system', completed: false },
+            { label: 'Bygga UI för historik-visning', completed: false },
+            { label: 'Testa och lansera', completed: false }
+        ]
+    },
     {
         id: 16,
         title: 'Offline-stöd (PWA)',
