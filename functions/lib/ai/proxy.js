@@ -278,7 +278,8 @@ exports.aiParse = (0, https_1.onCall)({
     };
     try {
         const ai = new genai_1.GoogleGenAI({ apiKey });
-        const modelName = model || DEFAULT_MODEL;
+        // Use fast model for parsing (speed over deep reasoning)
+        const modelName = model || FAST_MODEL;
         const parts = [];
         if (imageBase64) {
             parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } });
@@ -332,7 +333,8 @@ exports.aiDeepResearch = (0, https_1.onCall)({
     }
     try {
         const ai = new genai_1.GoogleGenAI({ apiKey });
-        const modelName = DEFAULT_MODEL;
+        // Use fast model for Deep Research (2 sequential calls, need speed)
+        const modelName = FAST_MODEL;
         // --- AGENT 1: DETECTIVE ---
         console.log('Agent 1: Detective started...');
         const detectiveParts = [{ text: detectivePrompt }];

@@ -81,7 +81,9 @@ const aiDeepResearchFn = httpsCallable<{
   userSkillLevel?: string;
   detectivePrompt: string;
   plannerPrompt: string;
-}, DeepResearchResult>(functions, 'aiDeepResearch');
+}, DeepResearchResult>(functions, 'aiDeepResearch', {
+  timeout: 180000 // 3 minutes - Deep Research with Gemini 3 Pro can be slow
+});
 
 const aiToolResponseFn = httpsCallable<{
   history: ChatMessage[];

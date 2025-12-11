@@ -335,7 +335,8 @@ export const aiParse = onCall(
 
     try {
       const ai = new GoogleGenAI({ apiKey });
-      const modelName = model || DEFAULT_MODEL;
+      // Use fast model for parsing (speed over deep reasoning)
+      const modelName = model || FAST_MODEL;
 
       const parts: any[] = [];
       if (imageBase64) {
@@ -406,7 +407,8 @@ export const aiDeepResearch = onCall(
 
     try {
       const ai = new GoogleGenAI({ apiKey });
-      const modelName = DEFAULT_MODEL;
+      // Use fast model for Deep Research (2 sequential calls, need speed)
+      const modelName = FAST_MODEL;
 
       // --- AGENT 1: DETECTIVE ---
       console.log('Agent 1: Detective started...');

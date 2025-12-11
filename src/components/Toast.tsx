@@ -6,6 +6,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CheckCircle2, AlertTriangle, XCircle, Info, X } from 'lucide-react';
 
 export type ToastType = 'success' | 'warning' | 'error' | 'info';
@@ -116,8 +117,12 @@ export const ToastContainer: React.FC<{ toasts: ToastItem[]; onRemove: (id: stri
   toasts,
   onRemove
 }) => {
-  return (
-    <div className="fixed top-4 right-4 z-[1000] flex flex-col gap-3 pointer-events-none">
+  // Render toasts in a portal so they are not affected by parent stacking contexts/modals
+  return createPortal(
+    <div
+      className="fixed top-4 right-4 flex flex-col gap-3 pointer-events-none"
+      style={{ zIndex: 2147483647, isolation: 'isolate' }}
+    >
       {toasts.map((toast, index) => (
         <div key={toast.id} className="pointer-events-auto" style={{ animationDelay: `${index * 100}ms` }}>
           <Toast
@@ -128,7 +133,8 @@ export const ToastContainer: React.FC<{ toasts: ToastItem[]; onRemove: (id: stri
           />
         </div>
       ))}
-    </div>
+    </div>,
+    document.body
   );
 };
 
