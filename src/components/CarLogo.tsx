@@ -1,245 +1,104 @@
 /**
  * CarLogo Component
  *
- * Displays a vehicle brand logo using react-icons (Simple Icons) with smart fallback
- * to generic car icon if brand is not supported.
+ * Displays vehicle brand logos using car-logos-dataset (387 brands).
+ * Uses PNG images from CDN with smart fallback to generic car icon.
+ *
+ * Dataset: https://github.com/filippofilip95/car-logos-dataset
  *
  * Usage:
  * ```tsx
  * <CarLogo make="Volvo" size={48} />
- * <CarLogo make="Tesla" size={24} className="text-blue-500" />
+ * <CarLogo make="Tesla" size={24} className="rounded-full" />
  * ```
  */
 
-import React from 'react';
-import { IconType } from 'react-icons';
+import React, { useState } from 'react';
 import { Car } from 'lucide-react';
-
-// Import all supported car brand logos from Simple Icons
-import {
-  SiVolvo,
-  SiTesla,
-  SiBmw,
-  SiFord,
-  SiToyota,
-  SiMercedes,
-  SiAudi,
-  SiVolkswagen,
-  SiPorsche,
-  SiFerrari,
-  SiLamborghini,
-  SiMaserati,
-  SiMclaren,
-  SiBugatti,
-  SiRollsroyce,
-  SiBentley,
-  SiAstonmartin,
-  SiJaguar,
-  SiLandrover,
-  SiMini,
-  SiPeugeot,
-  SiRenault,
-  SiCitroen,
-  SiFiat,
-  SiAlfaromeo,
-  SiSkoda,
-  SiSeat,
-  SiOpel,
-  SiMazda,
-  SiHonda,
-  SiNissan,
-  SiMitsubishi,
-  SiSubaru,
-  SiSuzuki,
-  SiHyundai,
-  SiKia,
-  SiChevrolet,
-} from 'react-icons/si';
+import carLogosData from '@/assets/logos/data.json';
 
 /**
- * Brand logo mapping
- * Maps normalized brand names to their Simple Icons components
+ * Car logo data structure from car-logos-dataset
  */
-const BRAND_LOGOS: Record<string, IconType> = {
-  // European brands
-  'volvo': SiVolvo,
-  'bmw': SiBmw,
-  'mercedes': SiMercedes,
-  'mercedes-benz': SiMercedes,
-  'audi': SiAudi,
-  'volkswagen': SiVolkswagen,
-  'vw': SiVolkswagen,
-  'porsche': SiPorsche,
-  'ferrari': SiFerrari,
-  'lamborghini': SiLamborghini,
-  'maserati': SiMaserati,
-  'mclaren': SiMclaren,
-  'bugatti': SiBugatti,
-  'rolls-royce': SiRollsroyce,
-  'rollsroyce': SiRollsroyce,
-  'bentley': SiBentley,
-  'aston martin': SiAstonmartin,
-  'astonmartin': SiAstonmartin,
-  'jaguar': SiJaguar,
-  'land rover': SiLandrover,
-  'landrover': SiLandrover,
-  'mini': SiMini,
-  'peugeot': SiPeugeot,
-  'renault': SiRenault,
-  'citroen': SiCitroen,
-  'citroën': SiCitroen,
-  'fiat': SiFiat,
-  'alfa romeo': SiAlfaromeo,
-  'alfaromeo': SiAlfaromeo,
-  'skoda': SiSkoda,
-  'škoda': SiSkoda,
-  'seat': SiSeat,
-  'opel': SiOpel,
-
-  // Japanese brands
-  'toyota': SiToyota,
-  'mazda': SiMazda,
-  'honda': SiHonda,
-  'nissan': SiNissan,
-  'mitsubishi': SiMitsubishi,
-  'subaru': SiSubaru,
-  'suzuki': SiSuzuki,
-
-  // Korean brands
-  'hyundai': SiHyundai,
-  'kia': SiKia,
-
-  // American brands
-  'tesla': SiTesla,
-  'ford': SiFord,
-  'chevrolet': SiChevrolet,
-  'chevy': SiChevrolet,
-};
+interface CarLogoData {
+  name: string;
+  slug: string;
+  image: {
+    source: string;
+    thumb: string;
+    optimized: string;
+    original: string;
+    localThumb: string;
+    localOptimized: string;
+    localOriginal: string;
+  };
+}
 
 /**
- * Official brand colors for accurate representation
- * These colors are sourced from official brand guidelines
- */
-const BRAND_COLORS: Record<string, string> = {
-  'volvo': '#003057',
-  'tesla': '#E82127',
-  'bmw': '#0066B1',
-  'ford': '#003478',
-  'toyota': '#EB0A1E',
-  'mercedes': '#00ADEF',
-  'mercedes-benz': '#00ADEF',
-  'audi': '#BB0A30',
-  'volkswagen': '#001E50',
-  'vw': '#001E50',
-  'porsche': '#D5001C',
-  'ferrari': '#DC0000',
-  'lamborghini': '#FFD700',
-  'maserati': '#0C2340',
-  'mclaren': '#FF8700',
-  'bugatti': '#BE0F34',
-  'rolls-royce': '#680021',
-  'rollsroyce': '#680021',
-  'bentley': '#00A550',
-  'jaguar': '#006D5B',
-  'land rover': '#005A2B',
-  'landrover': '#005A2B',
-  'mini': '#000000',
-  'peugeot': '#002FA7',
-  'renault': '#FFCC33',
-  'citroen': '#C8102E',
-  'citroën': '#C8102E',
-  'fiat': '#A6192E',
-  'alfa romeo': '#9B0000',
-  'alfaromeo': '#9B0000',
-  'skoda': '#4BA82E',
-  'škoda': '#4BA82E',
-  'mazda': '#C8102E',
-  'honda': '#E40521',
-  'nissan': '#C3002F',
-  'mitsubishi': '#E60012',
-  'subaru': '#003D7C',
-  'suzuki': '#EB2226',
-  'lexus': '#000000',
-  'hyundai': '#002C5F',
-  'kia': '#BB162B',
-  'chevrolet': '#FFC72C',
-  'chevy': '#FFC72C',
-  'dodge': '#C8102E',
-  'jeep': '#154734',
-  'ram': '#E30613',
-  'cadillac': '#000000',
-  'gmc': '#C8102E',
-};
-
-/**
- * Normalize brand name for lookup
- * Handles case, spaces, and common variations
+ * Normalize brand name for matching
+ * Handles case, spaces, special characters
  */
 function normalizeBrandName(make: string): string {
   return make
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, ' ') // Normalize multiple spaces
-    .replace(/-/g, ' '); // Convert hyphens to spaces for matching
+    .replace(/[åä]/g, 'a')
+    .replace(/[ö]/g, 'o')
+    .replace(/[^a-z0-9]/g, ''); // Remove all non-alphanumeric
 }
 
 /**
- * Get the logo component for a brand
+ * Find logo data for a brand
  */
-function getBrandLogo(make: string): IconType | null {
+function findLogoData(make: string): CarLogoData | null {
+  if (!make) return null;
+
   const normalized = normalizeBrandName(make);
+  const logoData = carLogosData as CarLogoData[];
 
-  // Direct match
-  if (BRAND_LOGOS[normalized]) {
-    return BRAND_LOGOS[normalized];
-  }
+  // Try exact slug match first
+  const exactMatch = logoData.find(
+    (logo) => logo.slug === normalized
+  );
+  if (exactMatch) return exactMatch;
 
-  // Try without spaces (e.g., "Land Rover" → "landrover")
-  const noSpaces = normalized.replace(/\s+/g, '');
-  if (BRAND_LOGOS[noSpaces]) {
-    return BRAND_LOGOS[noSpaces];
-  }
+  // Try normalized name match
+  const nameMatch = logoData.find(
+    (logo) => normalizeBrandName(logo.name) === normalized
+  );
+  if (nameMatch) return nameMatch;
 
-  // Try with hyphens (e.g., "Aston Martin" → "aston-martin")
-  const withHyphens = normalized.replace(/\s+/g, '-');
-  if (BRAND_LOGOS[withHyphens]) {
-    return BRAND_LOGOS[withHyphens];
-  }
+  // Try partial match (e.g., "Mercedes" matches "Mercedes-Benz")
+  const partialMatch = logoData.find(
+    (logo) =>
+      normalizeBrandName(logo.name).includes(normalized) ||
+      normalized.includes(normalizeBrandName(logo.name))
+  );
+  if (partialMatch) return partialMatch;
 
   return null;
 }
 
 /**
- * Get the official brand color
+ * Get appropriate image URL based on size
  */
-function getBrandColor(make: string): string | undefined {
-  const normalized = normalizeBrandName(make);
+function getImageUrl(logoData: CarLogoData, size: number, useCdn: boolean = true): string {
+  const { image } = logoData;
 
-  // Direct match
-  if (BRAND_COLORS[normalized]) {
-    return BRAND_COLORS[normalized];
+  if (useCdn) {
+    // Use CDN images (faster, no bundling)
+    return size <= 40 ? image.thumb : image.optimized;
+  } else {
+    // Use local images (fallback)
+    return size <= 40 ? image.localThumb : image.localOptimized;
   }
-
-  // Try without spaces
-  const noSpaces = normalized.replace(/\s+/g, '');
-  if (BRAND_COLORS[noSpaces]) {
-    return BRAND_COLORS[noSpaces];
-  }
-
-  // Try with hyphens
-  const withHyphens = normalized.replace(/\s+/g, '-');
-  if (BRAND_COLORS[withHyphens]) {
-    return BRAND_COLORS[withHyphens];
-  }
-
-  return undefined;
 }
 
 /**
  * CarLogo Component Props
  */
 export interface CarLogoProps {
-  /** Vehicle brand/make (e.g., "Volvo", "Tesla") */
+  /** Vehicle brand/make (e.g., "Volvo", "Tesla", "Mercedes-Benz") */
   make: string;
 
   /** Size in pixels (default: 32) */
@@ -248,46 +107,43 @@ export interface CarLogoProps {
   /** Additional CSS classes */
   className?: string;
 
-  /** Override color (uses brand color by default) */
-  color?: string;
-
   /** Show fallback icon if brand not found (default: true) */
   showFallback?: boolean;
 
-  /** Fallback icon component (default: Car from lucide-react) */
+  /** Custom fallback icon */
   fallbackIcon?: React.ReactNode;
+
+  /** Alt text for image (default: "{make} logo") */
+  alt?: string;
+
+  /** Use local images instead of CDN (default: false) */
+  useLocal?: boolean;
 }
 
 /**
  * CarLogo Component
  *
- * Displays a vehicle brand logo with smart fallback.
+ * Renders a vehicle brand logo from car-logos-dataset.
+ * Displays 387+ brand logos with smart fallback.
  */
 export const CarLogo: React.FC<CarLogoProps> = ({
   make,
   size = 32,
   className = '',
-  color,
   showFallback = true,
   fallbackIcon,
+  alt,
+  useLocal = false,
 }) => {
-  const LogoComponent = getBrandLogo(make);
-  const brandColor = color || getBrandColor(make);
+  const [imageError, setImageError] = useState(false);
+  const [useCdn, setUseCdn] = useState(!useLocal);
 
-  // If we have a logo, render it
-  if (LogoComponent) {
-    return (
-      <LogoComponent
-        size={size}
-        color={brandColor}
-        className={className}
-        aria-label={`${make} logo`}
-      />
-    );
-  }
+  const logoData = findLogoData(make);
 
-  // Fallback: Show generic car icon
-  if (showFallback) {
+  // No logo found - show fallback
+  if (!logoData || imageError) {
+    if (!showFallback) return null;
+
     if (fallbackIcon) {
       return <>{fallbackIcon}</>;
     }
@@ -295,28 +151,57 @@ export const CarLogo: React.FC<CarLogoProps> = ({
     return (
       <Car
         size={size}
-        className={className}
+        className={`text-slate-400 ${className}`}
         aria-label={`${make} (generic car icon)`}
       />
     );
   }
 
-  // No logo and no fallback
-  return null;
+  const imageUrl = getImageUrl(logoData, size, useCdn);
+  const altText = alt || `${logoData.name} logo`;
+
+  return (
+    <img
+      src={imageUrl}
+      alt={altText}
+      width={size}
+      height={size}
+      className={`object-contain ${className}`}
+      style={{ width: size, height: size }}
+      onError={() => {
+        // If CDN fails, try local images
+        if (useCdn) {
+          setUseCdn(false);
+        } else {
+          // Both CDN and local failed - show fallback
+          setImageError(true);
+        }
+      }}
+      loading="lazy"
+    />
+  );
 };
 
 /**
  * Hook to check if a brand logo is available
  */
 export const useHasBrandLogo = (make: string): boolean => {
-  return getBrandLogo(make) !== null;
+  return findLogoData(make) !== null;
 };
 
 /**
  * Get all supported brand names
  */
 export const getSupportedBrands = (): string[] => {
-  return Object.keys(BRAND_LOGOS);
+  const logoData = carLogosData as CarLogoData[];
+  return logoData.map((logo) => logo.name);
+};
+
+/**
+ * Get brand count
+ */
+export const getBrandCount = (): number => {
+  return (carLogosData as CarLogoData[]).length;
 };
 
 export default CarLogo;

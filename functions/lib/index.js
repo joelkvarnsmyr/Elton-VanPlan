@@ -20,7 +20,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onProjectDelete = exports.onTaskDelete = exports.onTaskComplete = exports.transferProjectOwnership = exports.ocrExtractText = exports.ocrServiceDocument = exports.ocrVIN = exports.ocrReceipt = exports.ocrLicensePlate = exports.aiToolResponse = exports.aiDeepResearch = exports.aiParse = exports.aiChat = void 0;
+exports.transferProjectOwnership = exports.ocrExtractText = exports.ocrServiceDocument = exports.ocrVIN = exports.ocrReceipt = exports.ocrLicensePlate = exports.aiToolResponse = exports.aiDeepResearch = exports.aiParse = exports.aiChat = void 0;
 // AI Proxy Functions
 var proxy_1 = require("./ai/proxy");
 Object.defineProperty(exports, "aiChat", { enumerable: true, get: function () { return proxy_1.aiChat; } });
@@ -38,10 +38,8 @@ Object.defineProperty(exports, "ocrExtractText", { enumerable: true, get: functi
 var management_1 = require("./project/management");
 Object.defineProperty(exports, "transferProjectOwnership", { enumerable: true, get: function () { return management_1.transferProjectOwnership; } });
 // Firestore Triggers
-var triggers_1 = require("./project/triggers");
-Object.defineProperty(exports, "onTaskComplete", { enumerable: true, get: function () { return triggers_1.onTaskComplete; } });
-Object.defineProperty(exports, "onTaskDelete", { enumerable: true, get: function () { return triggers_1.onTaskDelete; } });
-Object.defineProperty(exports, "onProjectDelete", { enumerable: true, get: function () { return triggers_1.onProjectDelete; } });
+// TODO: Re-enable after fixing deployment issue
+// export { onTaskComplete, onTaskDelete, onProjectDelete } from './project/triggers';
 // Vehicle Scraper
 __exportStar(require("./scraper/vehicleScraper"), exports);
 // Future: Add more function exports here

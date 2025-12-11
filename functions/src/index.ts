@@ -15,7 +15,8 @@ export { ocrLicensePlate, ocrReceipt, ocrVIN, ocrServiceDocument, ocrExtractText
 export { transferProjectOwnership } from './project/management';
 
 // Firestore Triggers
-export { onTaskComplete, onTaskDelete, onProjectDelete } from './project/triggers';
+// TODO: Re-enable after fixing deployment issue
+// export { onTaskComplete, onTaskDelete, onProjectDelete } from './project/triggers';
 
 // Vehicle Scraper
 export * from './scraper/vehicleScraper';

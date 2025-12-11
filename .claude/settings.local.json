@@ -23,7 +23,8 @@
       "Bash(firebase deploy:*)",
       "WebSearch",
       "Bash(node:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(firebase functions:delete:*)"
     ]
   }
 }

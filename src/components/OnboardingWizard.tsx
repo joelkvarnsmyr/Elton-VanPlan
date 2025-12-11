@@ -24,14 +24,12 @@ export interface OnboardingData {
 }
 
 const Disclaimer = () => (
-    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-4 mb-6">
+    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-4 mt-6">
         <div className="flex items-start gap-3">
             <Info size={20} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <div>
                 <h4 className="font-bold text-blue-800 dark:text-blue-300">Ett litet meddelande från verkstan:</h4>
-                <p className="text-sm text-blue-700 dark:text-blue-400/80 mt-1">
-                    Elton gör sitt bästa för att hämta korrekt data, men ibland kan det smyga sig in ett fel. Dubbelkolla alltid kritisk information! Om du hittar något som inte stämmer, blir vi superglada om du <a href="mailto:feedback@elton.se" className="font-bold underline hover:text-blue-600">rapporterar det till oss</a>. Tillsammans gör vi Elton smartare!
-                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-400/80 mt-1">Elton gör sitt bästa för att hämta korrekt data, men ibland kan det smyga sig in ett fel. Dubbelkolla alltid kritisk information! Om du hittar något som inte stämmer, blir vi superglada om du rapporterar det till oss. Tillsammans gör vi Elton smartare!</p>
             </div>
         </div>
     </div>
@@ -380,7 +378,6 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                         </div>
 
                         <div className="space-y-6">
-                            <Disclaimer />
 
                             {/* Vehicle Preview Card */}
                             {aiSuggestions && (aiSuggestions.detectedMake || aiSuggestions.detectedModel) && (
@@ -506,6 +503,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                                     <Sparkles size={20} /> Skapa Projekt!
                                 </button>
                             </div>
+
+                            {/* Disclaimer at the very bottom */}
+                            <Disclaimer />
                         </div>
                     </>
                 )}
