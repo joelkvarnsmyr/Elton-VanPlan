@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { ProjectType, UserSkillLevel } from '@/types/types';
 import { Sparkles, Wrench, Hammer, Leaf, Award, User, Zap, CheckCircle2, Loader2, Search, ImageIcon, Trash2, Edit3, ChevronLeft, AlertTriangle } from 'lucide-react';
-import { generateProjectProfile, generateVehicleIcon } from '@/services/geminiService';
+import { performDeepResearch } from '@/services/aiProxyService';
+import { generateVehicleIcon } from '@/services/geminiService';
 import { useToasts, ToastContainer } from './Toast';
 import type { AIProvider } from '@/services/aiService';
+import { ACTIVE_PROMPTS } from '@/config/prompts';
 
 interface OnboardingWizardProps {
     onComplete: (data: OnboardingData) => void;
@@ -17,7 +19,7 @@ export interface OnboardingData {
     imageBase64?: string;
     nickname?: string;
     additionalNotes?: string;
-    aiData?: any; // Full AI response from generateProjectProfile
+    aiData?: any; // Full AI response from Cloud Functions Deep Research
     generatedIcon?: string | null; // Generated vehicle icon
 }
 
@@ -81,17 +83,38 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
         try {
             const base64Data = selectedImage ? selectedImage.split(',')[1] : undefined;
 
-            // Run AI analysis and icon generation in parallel
-            // Pass projectType and userSkillLevel to AI for personalized task generation
+            // Get prompts for Deep Research
+            const vehicleDataStr = JSON.stringify({ description: vehicleDesc });
+            const detectivePrompt = ACTIVE_PROMPTS.agents.detective.text(vehicleDataStr);
+            const plannerPrompt = ACTIVE_PROMPTS.agents.planner.text(vehicleDataStr, projectType, userSkillLevel);
+
+            // Run AI analysis via Cloud Functions and icon generation in parallel
             const [aiDataResult, iconResult] = await Promise.allSettled([
-                generateProjectProfile(vehicleDesc, base64Data, projectType, userSkillLevel),
+                performDeepResearch(
+                    vehicleDesc,
+                    base64Data,
+                    projectType || 'renovation',
+                    userSkillLevel || 'intermediate',
+                    detectivePrompt,
+                    plannerPrompt
+                ),
                 base64Data ? generateVehicleIcon(base64Data, 2) : Promise.resolve(null)
             ]);
 
             clearInterval(stepInterval);
 
-            const aiData = aiDataResult.status === 'fulfilled' ? aiDataResult.value : {};
+            const rawAiData = aiDataResult.status === 'fulfilled' ? aiDataResult.value : { error: 'AI-tjänster otillgängliga' };
             const iconData = iconResult.status === 'fulfilled' ? iconResult.value : null;
+
+            // Map Cloud Functions response to expected format
+            const aiData = {
+                vehicleData: rawAiData.vehicleData,
+                projectName: rawAiData.projectName,
+                aiProvider: rawAiData.provider as AIProvider, // Map 'provider' to 'aiProvider'
+                error: rawAiData.error,
+                initialTasks: rawAiData.initialTasks,
+                analysisReport: rawAiData.analysisReport
+            };
 
             // Track which AI provider was used
             if (aiData.aiProvider) {

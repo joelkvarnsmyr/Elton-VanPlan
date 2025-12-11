@@ -19,7 +19,8 @@
       "Bash(test:*)",
       "Bash(git cherry-pick:*)",
       "Bash(grep:*)",
-      "Bash(firebase functions:secrets:set:*)"
+      "Bash(firebase functions:secrets:set:*)",
+      "Bash(firebase deploy:*)"
     ]
   }
 }
