@@ -28,11 +28,13 @@ VanPlan is not just a todo-list. It's a specialized Operating System for your ga
     *   **Agents:** Multi-agent system (Detective + Planner)
     *   **Tools:** Google Search, Function Calling
     *   **Vision:** Image analysis for RegNo and parts
-*   **Testing:** Vitest, Happy-DOM
+*   **Testing:**
+    *   **Unit Tests:** Vitest, Happy-DOM
+    *   **E2E Tests:** Playwright (Chrome, Firefox, Safari, Mobile)
 
 ## 📂 Project Structure
 
-*   `src/components` - UI Components (Dashboard, TaskBoard, ProjectSelector, Members, etc.)
+*   `src/components` - UI Components (Dashboard, TaskBoard, ProjectSelector, ProjectMembers, etc.)
 *   `src/services` - Core logic
     *   `auth.ts` - Firebase Authentication
     *   `db.ts` - Firestore CRUD & Data Models (incl. Co-working logic)
@@ -42,6 +44,10 @@ VanPlan is not just a todo-list. It's a specialized Operating System for your ga
     *   `prompts.ts` - The "Brain". Centralized prompt engineering & personas.
     *   `brands.ts` - Multi-brand configuration (VanPlan, RaceKoll, etc.)
 *   `src/types.ts` - TypeScript interfaces
+*   `e2e/` - Playwright E2E tests
+    *   `coworking.spec.ts` - Co-working feature tests (65 tests)
+    *   `helpers/selectors.ts` - Reusable test selectors
+    *   `README.md` - Test documentation
 
 ## 🔐 Security & Privacy
 
@@ -54,11 +60,12 @@ See the live **Roadmap** inside the app (Dashboard footer) for real-time status.
 
 **Current Focus:**
 1.  ✅ **Platform Architecture:** Multi-project support, Auth, Cloud Sync.
-2.  ✅ **Co-Working:** Team support with invites and shared ownership.
-3.  ✅ **Deep Research 2.0:** Agent-based onboarding with real-time data fetching & expert analysis.
-4.  🚧 **Nano Banana:** AI-generated vehicle icons (SVG generation implemented, full image gen pending API).
-5.  🚧 **Live Elton:** Voice/Video interface (Skeleton ready, WebRTC pending).
-6.  📅 **Offline Support:** PWA implementation for garage usage without WiFi.
+2.  ✅ **Co-Working:** Team support with invites and shared ownership. Fully tested with Playwright (65 E2E tests).
+3.  ✅ **E2E Test Suite:** Automated testing across all major browsers and mobile devices.
+4.  ✅ **Deep Research 2.0:** Agent-based onboarding with real-time data fetching & expert analysis.
+5.  🚧 **Nano Banana:** AI-generated vehicle icons (SVG generation implemented, full image gen pending API).
+6.  🚧 **Live Elton:** Voice/Video interface (Skeleton ready, WebRTC pending).
+7.  📅 **Offline Support:** PWA implementation for garage usage without WiFi.
 
 ## 🏃‍♂️ Getting Started
 
@@ -79,8 +86,72 @@ See the live **Roadmap** inside the app (Dashboard footer) for real-time status.
     ```
 4.  **Run Tests:**
     ```bash
+    # Unit tests
     npm test
+
+    # E2E tests (all browsers)
+    npm run test:e2e
+
+    # E2E tests with UI (recommended for development)
+    npm run test:e2e:ui
+
+    # Debug specific test
+    npm run test:e2e:debug
     ```
+5.  **Firebase Setup:**
+    - Add `localhost` to Authorized domains in Firebase Console → Authentication → Settings
+    - This is required for E2E tests to authenticate properly
+
+## 🧪 Testing
+
+VanPlan has comprehensive test coverage to ensure quality and stability:
+
+### E2E Tests (Playwright)
+- **65 automated tests** covering Co-working functionality
+- **5 browser configurations:** Chrome, Firefox, Safari, Mobile Chrome, Mobile Safari
+- **Test coverage:**
+  - Users button visibility and interaction
+  - ProjectMembers modal opening/closing
+  - Team owner, members, and invitations display
+  - Email validation in invite forms
+  - Dark mode support
+  - Responsive design (mobile/desktop)
+  - Visual regression testing
+
+### Running Tests
+```bash
+# Run all E2E tests (headless)
+npm run test:e2e
+
+# Interactive UI mode (recommended for development)
+npm run test:e2e:ui
+
+# Debug mode with step-by-step execution
+npm run test:e2e:debug
+
+# View last test report
+npm run test:e2e:report
+
+# Run specific test
+npx playwright test -g "should display Users button"
+
+# Run only on Chrome
+npx playwright test --project=chromium
+```
+
+### Test Files
+- `e2e/coworking.spec.ts` - Co-working feature tests
+- `e2e/helpers/selectors.ts` - Reusable test selectors and helpers
+- `e2e/README.md` - Detailed test documentation
+- `playwright.config.ts` - Playwright configuration
+
+### CI/CD
+Tests are configured for continuous integration with:
+- Automatic retry on failure (2x)
+- Screenshot and video capture on failure
+- Visual regression testing with baseline comparison
+
+For more details, see `e2e/README.md`.
 
 ## 📝 License
 

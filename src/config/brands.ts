@@ -1,5 +1,5 @@
 
-import { Phase } from '../types'; // We might need to adjust types if Phase is removed/changed
+import { Phase } from '@/types/types'; // We might need to adjust types if Phase is removed/changed
 
 export type BrandId = 'vanplan' | 'racekoll' | 'mcgaraget' | 'klassikern';
 

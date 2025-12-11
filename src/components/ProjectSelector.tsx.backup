@@ -1,0 +1,385 @@
+
+import React, { useState } from 'react';
+import { Project, UserProfile, VehicleData, Task, TaskStatus, CostType, Phase, Priority, PROJECT_PHASES, ProjectType } from '../types';
+import { Plus, Car, ChevronRight, LogOut, Lock, Loader2, Sparkles, Search, CheckCircle2, Image as ImageIcon, Trash2, Mail, Check, X } from 'lucide-react';
+import { generateProjectProfile, generateVehicleIcon } from '../services/geminiService';
+import { EMPTY_PROJECT_TEMPLATE } from '../constants';
+import { acceptProjectInvite, cancelInvite } from '../services/db';
+import { OnboardingWizard, OnboardingData } from './OnboardingWizard';
+
+interface ProjectSelectorProps {
+    user: UserProfile;
+    projects: Project[];
+    onSelectProject: (projectId: string) => void;
+    onCreateProject: (project: Partial<Project>) => void; 
+    onLogout: () => void;
+    onDeleteProject?: (id: string) => void;
+    onSeed?: () => void;
+}
+
+export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ user, projects, onSelectProject, onCreateProject, onLogout, onDeleteProject, onSeed }) => {
+    const [isCreating, setIsCreating] = useState(false);
+    const [processingInvite, setProcessingInvite] = useState<string | null>(null);
+
+    // Filter projects
+    const invitedProjects = projects.filter(p => p.invitedEmails?.includes(user.email));
+    const myProjects = projects.filter(p => !p.invitedEmails?.includes(user.email));
+
+    const handleAcceptInvite = async (project: Project) => {
+        setProcessingInvite(project.id);
+        try {
+            await acceptProjectInvite(project.id, user.uid, user.email);
+            // We need to reload projects here ideally, but the parent App handles the state update via auth subscription or we could trigger a callback.
+            // Since App listens to DB changes (wait, it doesn't listen to collection changes, only auth).
+            // App needs to know to reload.
+            // WORKAROUND: Force a reload via window.location.reload() or calling onSelectProject with a special flag? 
+            // Better: The App component should pass a reload function.
+            // But since we are inside a "Smart" component now, let's just wait a bit and hope the user refreshes or clicks something.
+            // Actually, for MVP, reloading the page is a safe bet to sync everything.
+            window.location.reload(); 
+        } catch (error) {
+            console.error("Failed to accept invite", error);
+            alert("Kunde inte gå med i projektet.");
+        }
+        setProcessingInvite(null);
+    };
+
+    const handleDeclineInvite = async (project: Project) => {
+        if(!confirm("Vill du avböja inbjudan?")) return;
+        setProcessingInvite(project.id);
+        try {
+            await cancelInvite(project.id, user.email);
+            window.location.reload();
+        } catch (error) {
+            console.error(error);
+        }
+        setProcessingInvite(null);
+    };
+
+    const handleOnboardingComplete = async (data: OnboardingData) => {
+        try {
+            // Run AI analysis and icon generation in parallel
+            const [aiDataResult, iconResult] = await Promise.allSettled([
+                generateProjectProfile(data.vehicleDescription, data.imageBase64),
+                data.imageBase64 ? generateVehicleIcon(data.imageBase64, 2) : Promise.resolve(null)
+            ]);
+
+            const aiData = aiDataResult.status === 'fulfilled' ? aiDataResult.value : {};
+
+            // Handle icon generation result
+            let customIcon: string | null = null;
+            if (iconResult.status === 'fulfilled') {
+                customIcon = iconResult.value;
+            } else {
+                console.warn('Icon generation failed, using default icon:', iconResult.reason);
+            }
+
+            let cleanName = aiData.projectName || data.vehicleDescription;
+            if (cleanName && (cleanName.length > 30 || cleanName.includes('http'))) {
+                cleanName = cleanName.split(',')[0].replace(/https?:\/\/\S+/g, '').trim();
+            }
+            if (!cleanName) cleanName = "Nytt Projekt";
+
+            // Prepare Knowledge Articles
+            const knowledgeArticles = [];
+            if (aiData.analysisReport) {
+                knowledgeArticles.push({
+                    id: 'initial-analysis',
+                    title: aiData.analysisReport.title || 'Initial Fordonsanalys',
+                    summary: aiData.analysisReport.summary || 'AI-genererad rapport vid projektstart.',
+                    content: aiData.analysisReport.content || '',
+                    tags: ['Analys', 'Historik', 'AI']
+                });
+            }
+
+            const newProjectTemplate: Partial<Project> = {
+                name: cleanName,
+                type: data.projectType,
+                userSkillLevel: data.userSkillLevel,
+                nickname: data.nickname,
+                customIcon: customIcon || undefined,
+                vehicleData: {
+                    ...EMPTY_PROJECT_TEMPLATE.vehicleData,
+                    ...aiData.vehicleData,
+                    regNo: aiData.vehicleData?.regNo || '???'
+                } as VehicleData,
+                knowledgeArticles: knowledgeArticles,
+                tasks: (aiData.initialTasks as any[] || []).map(t => ({
+                    ...t,
+                    status: TaskStatus.TODO,
+                    actualCost: 0,
+                    weightKg: 0,
+                    costType: CostType.OPERATION,
+                    phase: t.phase || PROJECT_PHASES[data.projectType][0],
+                    priority: t.priority || Priority.MEDIUM,
+                    difficultyLevel: t.difficultyLevel,
+                    requiredTools: t.requiredTools,
+                    tags: ['AI-Genererad'],
+                    links: [],
+                    comments: [],
+                    attachments: [],
+                    subtasks: t.subtasks?.map((st: any) => ({ ...st, id: Math.random().toString(36).substr(2, 9), completed: false })) || []
+                }))
+            };
+
+            onCreateProject(newProjectTemplate);
+            setIsCreating(false);
+
+        } catch (error) {
+            console.error("Failed to create project", error);
+            alert("Kunde inte skapa projektet. Försök igen.");
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-nordic-ice p-6">
+            <div className="max-w-4xl mx-auto">
+                <div className="flex justify-between items-center mb-12">
+                    <div>
+                        <h1 className="font-serif font-bold text-3xl text-nordic-charcoal">Välkommen, {user.name}</h1>
+                        <p className="text-slate-500">Välj ett fordon att jobba med</p>
+                    </div>
+                    <div className="flex gap-2">
+                        {onSeed && (
+                            <button onClick={onSeed} className="p-3 bg-white rounded-xl shadow-sm text-slate-400 hover:text-teal-600 transition-colors" title="Återställ Demo">
+                                <Sparkles size={20} />
+                            </button>
+                        )}
+                        <button onClick={onLogout} className="p-3 bg-white rounded-xl shadow-sm text-slate-400 hover:text-rose-500 transition-colors">
+                            <LogOut size={20} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* INVITES SECTION */}
+                {invitedProjects.length > 0 && (
+                    <div className="mb-8">
+                        <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Inbjudningar</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {invitedProjects.map(project => (
+                                <div key={project.id} className="bg-white rounded-[32px] p-6 shadow-xl shadow-teal-500/10 border-2 border-teal-500/20 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 bg-teal-500 text-white px-4 py-1 rounded-bl-2xl text-xs font-bold">
+                                        INBJUDAN
+                                    </div>
+                                    <div className="flex items-center gap-4 mb-4">
+                                        <div className="w-12 h-12 bg-teal-50 rounded-full flex items-center justify-center text-teal-600">
+                                            <Mail size={24} />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-serif font-bold text-xl text-nordic-charcoal">{project.name}</h3>
+                                            <p className="text-sm text-slate-500">Från: {project.ownerEmail}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 mt-4">
+                                        <button 
+                                            onClick={() => handleAcceptInvite(project)}
+                                            disabled={!!processingInvite}
+                                            className="flex-1 bg-teal-500 text-white py-2 rounded-xl font-bold text-sm hover:bg-teal-600 transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            {processingInvite === project.id ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                                            Gå med
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeclineInvite(project)}
+                                            disabled={!!processingInvite}
+                                            className="px-4 bg-slate-100 text-slate-500 py-2 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Create New Card */}
+                    <div className="bg-white/50 border-2 border-dashed border-slate-300 rounded-[32px] p-8 flex flex-col items-center justify-center text-center hover:bg-white hover:border-teal-400 hover:shadow-lg transition-all cursor-pointer group min-h-[250px]" onClick={() => setIsCreating(true)}>
+                        <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center text-teal-600 mb-4 group-hover:scale-110 transition-transform">
+                            <Plus size={32} />
+                        </div>
+                        <h3 className="font-bold text-lg text-nordic-charcoal">Nytt Projekt</h3>
+                        <p className="text-sm text-slate-500">Lägg till en ny van</p>
+                    </div>
+
+                    {/* Project Cards */}
+                    {myProjects.map(project => (
+                        <div 
+                            key={project.id} 
+                            onClick={() => onSelectProject(project.id)}
+                            className="bg-white rounded-[32px] p-8 shadow-xl shadow-slate-200/50 border border-white hover:border-teal-200 hover:scale-[1.02] transition-all cursor-pointer relative overflow-hidden group min-h-[250px] flex flex-col justify-between"
+                        >
+                            {project.isDemo && (
+                                <div className="absolute top-4 right-4 bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                    <Lock size={10} /> Demo
+                                </div>
+                            )}
+
+                            {!project.isDemo && project.ownerId !== user.uid && (
+                                <div className="absolute top-4 right-4 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                    Team
+                                </div>
+                            )}
+                            
+                            {!project.isDemo && onDeleteProject && project.ownerId === user.uid && (
+                                <button 
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        onDeleteProject(project.id); 
+                                    }}
+                                    className="absolute top-4 right-4 p-2 bg-white rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 shadow-sm transition-all z-10 opacity-0 group-hover:opacity-100"
+                                    title="Radera projekt"
+                                >
+                                    <Trash2 size={16} /> 
+                                </button>
+                            )}
+                            
+                            <div>
+                                <div className="w-16 h-16 bg-nordic-charcoal text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg overflow-hidden border border-slate-100 p-2">
+                                    {project.customIcon ? (
+                                        project.customIcon.startsWith('<svg') ? (
+                                            <div dangerouslySetInnerHTML={{ __html: project.customIcon }} className="w-full h-full" />
+                                        ) : (
+                                            <img src={`data:image/png;base64,${project.customIcon}`} alt="Icon" className="w-full h-full object-contain" />
+                                        )
+                                    ) : (
+                                        <Car size={32} />
+                                    )}
+                                </div>
+                                <h3 className="font-serif font-bold text-2xl text-nordic-charcoal mb-1 line-clamp-2">{project.name}</h3>
+                                <p className="text-slate-500 text-sm">{project.vehicleData.model} ({project.vehicleData.year})</p>
+                            </div>
+
+                            <div className="flex justify-between items-end mt-8">
+                                <div className="flex gap-2">
+                                    <span className="bg-slate-50 px-3 py-1 rounded-lg text-xs font-bold text-slate-600 border border-slate-100">
+                                        {project.tasks?.filter(t => t.status !== 'Klart').length || 0} Att göra
+                                    </span>
+                                    <span className="bg-slate-50 px-3 py-1 rounded-lg text-xs font-bold text-slate-600 border border-slate-100">
+                                        {project.shoppingItems?.filter(i => !i.checked).length || 0} Att köpa
+                                    </span>
+                                </div>
+                                <div className="w-10 h-10 bg-nordic-ice rounded-full flex items-center justify-center text-nordic-charcoal group-hover:bg-teal-500 group-hover:text-white transition-colors">
+                                    <ChevronRight size={20} />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Create Modal with AI Research */}
+            {isCreating && (
+                <div className="fixed inset-0 bg-nordic-charcoal/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white w-full max-w-lg p-8 rounded-[40px] shadow-2xl animate-fade-in relative overflow-hidden">
+                        
+                        {!isResearching ? (
+                            <>
+                                <div className="text-center mb-8">
+                                    <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center text-teal-600 mx-auto mb-4">
+                                        <Sparkles size={32} />
+                                    </div>
+                                    <h2 className="font-serif font-bold text-3xl text-nordic-charcoal mb-2">Starta nytt projekt</h2>
+                                    <p className="text-slate-500">Ange registreringsnummer för bäst resultat!</p>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Fordonsbeskrivning, Länk eller Regnr</label>
+                                        <textarea
+                                            className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 focus:outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10 transition-all min-h-[100px] text-lg text-nordic-charcoal placeholder:text-slate-300"
+                                            placeholder="t.ex. 'ABC123', 'Volvo 240 1988 - Pärlan' eller blocket.se/annons/123456
+(Smeknamn valfritt - blir AI:ns namn)"
+                                            value={vehicleDesc}
+                                            onChange={e => setVehicleDesc(e.target.value)}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <label className="flex items-center space-x-3 cursor-pointer p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 hover:border-teal-400 hover:bg-teal-50 transition-all">
+                                            <div className="p-2 bg-white rounded-xl text-slate-400">
+                                                <ImageIcon size={20} />
+                                            </div>
+                                            <div className="flex-1">
+                                                <span className="block text-sm font-bold text-nordic-charcoal">Ladda upp bild</span>
+                                                <span className="text-xs text-slate-400">Elton skapar en flat design-ikon från din bild</span>
+                                            </div>
+                                            {selectedImage && <CheckCircle2 size={20} className="text-green-500" />}
+                                            <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                                        </label>
+
+                                        {selectedImage && (
+                                            <div className="relative p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                                <div className="flex items-center gap-3">
+                                                    <img
+                                                        src={selectedImage}
+                                                        alt="Preview"
+                                                        className="w-20 h-20 object-cover rounded-xl border border-slate-200"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <p className="text-sm font-bold text-nordic-charcoal">Bild uppladdad</p>
+                                                        <p className="text-xs text-slate-400">Imagen 3.0 kommer skapa en minimalistisk ikon</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setSelectedImage(null)}
+                                                        className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="bg-amber-50 p-4 rounded-2xl flex gap-3 text-amber-800 text-sm border border-amber-100">
+                                        <Search className="shrink-0" size={20} />
+                                        <p><strong>Elton AI</strong> söker upp teknisk data (Biluppgifter.se/Car.info) och skapar en serviceplan.</p>
+                                    </div>
+
+                                    <div className="flex gap-3 pt-2">
+                                        <button onClick={() => setIsCreating(false)} className="flex-1 py-4 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl transition-colors">Avbryt</button>
+                                        <button 
+                                            onClick={handleCreate} 
+                                            disabled={!vehicleDesc.trim() && !selectedImage}
+                                            className="flex-[2] py-4 bg-nordic-charcoal text-white font-bold rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+                                        >
+                                            <Sparkles size={20} /> Starta Research
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="text-center py-8">
+                                <div className="relative w-20 h-20 mx-auto mb-6">
+                                    <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
+                                    <div className="absolute inset-0 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center text-teal-600">
+                                        <Search size={24} />
+                                    </div>
+                                </div>
+                                <h3 className="font-serif font-bold text-2xl text-nordic-charcoal mb-2">Research pågår...</h3>
+                                <p className="text-slate-400 text-sm mb-8">Elton letar data hos Transportstyrelsen...</p>
+
+                                <div className="space-y-3 text-left max-w-xs mx-auto">
+                                    {steps.map((step, idx) => (
+                                        <div key={idx} className={`flex items-center gap-3 transition-all duration-500 ${idx <= researchStep ? 'opacity-100' : 'opacity-30 translate-y-2'}`}>
+                                            {idx < researchStep ? (
+                                                <CheckCircle2 size={20} className="text-green-500" />
+                                            ) : idx === researchStep ? (
+                                                <Loader2 size={20} className="text-teal-500 animate-spin" />
+                                            ) : (
+                                                <div className="w-5 h-5 rounded-full border-2 border-slate-200" />
+                                            )}
+                                            <span className={`font-medium ${idx === researchStep ? 'text-teal-700' : 'text-slate-600'}`}>{step}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
