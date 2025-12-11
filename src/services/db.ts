@@ -292,7 +292,7 @@ export const createProject = async (
         shoppingItems: [],
         serviceLog: [],
         fuelLog: [],
-        knowledgeArticles: template?.knowledgeArticles || [],
+        knowledgeArticles: [], // Legacy field, now using sub-collection
         customIcon: template?.customIcon || null,
 
         // Metadata
@@ -319,11 +319,11 @@ export const createProject = async (
     if (template?.tasks && template.tasks.length > 0) {
         const tasksRef = collection(db, 'projects', newProjectRef.id, 'tasks');
         const batch = writeBatch(db);
-        
+
         for (const task of template.tasks) {
             const taskRef = doc(tasksRef);
-            const taskWithId = { 
-                ...task, 
+            const taskWithId = {
+                ...task,
                 id: taskRef.id,
                 priority: task.priority || 'Medel',
                 phase: task.phase || 'Fas 0: Inköp & Analys',
@@ -332,6 +332,22 @@ export const createProject = async (
                 actualCost: task.actualCost || 0
             };
             batch.set(taskRef, taskWithId);
+        }
+        await batch.commit();
+    }
+
+    // Add knowledge articles to sub-collection
+    if (template?.knowledgeArticles && template.knowledgeArticles.length > 0) {
+        const knowledgeRef = getKnowledgeBaseRef(newProjectRef.id);
+        const batch = writeBatch(db);
+
+        for (const article of template.knowledgeArticles) {
+            const articleRef = doc(knowledgeRef, article.id || undefined);
+            const articleWithId = {
+                ...article,
+                id: article.id || articleRef.id
+            };
+            batch.set(articleRef, articleWithId);
         }
         await batch.commit();
     }

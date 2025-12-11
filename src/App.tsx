@@ -33,8 +33,6 @@ import {
   updateShoppingItem,
   deleteShoppingItem,
   updateVehicleData,
-  updateFuelLog,
-  updateServiceLog,
   updateContacts,
   updateProjectLocation,
   getUserProfile,
@@ -541,15 +539,8 @@ export const App = () => {
         <FuelLog
           project={activeProject}
           onClose={() => setShowFuelLog(false)}
-          onUpdate={async (updatedFuelLog: FuelLogItem[]) => {
-            try {
-              await updateFuelLog(activeProject.id, updatedFuelLog);
-              setActiveProject({ ...activeProject, fuelLog: updatedFuelLog });
-              showToast("Bränslelogg uppdaterad!");
-            } catch (error) {
-              console.error("Error updating fuel log:", error);
-              showToast("Kunde inte uppdatera bränsleloggen", "error");
-            }
+          onUpdate={async () => {
+            showToast("Bränslelogg uppdaterad!");
           }}
         />
       )}
@@ -557,15 +548,8 @@ export const App = () => {
         <ServiceBook
           project={activeProject}
           onClose={() => setShowServiceBook(false)}
-          onUpdate={async (updatedServiceLog: ServiceItem[]) => {
-            try {
-              await updateServiceLog(activeProject.id, updatedServiceLog);
-              setActiveProject({ ...activeProject, serviceLog: updatedServiceLog });
-              showToast("Servicebok uppdaterad!");
-            } catch (error) {
-              console.error("Error updating service log:", error);
-              showToast("Kunde inte uppdatera serviceboken", "error");
-            }
+          onUpdate={async () => {
+            showToast("Servicebok uppdaterad!");
           }}
         />
       )}

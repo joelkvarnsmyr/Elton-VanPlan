@@ -1,11 +1,12 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { Project, TaskStatus } from '@/types/types';
+import { Project, TaskStatus, KnowledgeArticle } from '@/types/types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Coins, CheckCircle2, Wallet, Calendar, MapPin, Flag, ArrowRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { Resources } from './Resources';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
+import { getKnowledgeBase } from '@/services/db';
 
 interface DashboardProps {
   project: Project;
@@ -27,7 +28,22 @@ const formatCurrency = (amount: number) => {
 
 export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick }) => {
   const { tasks, vehicleData } = project;
-  
+
+  // Load knowledge articles from sub-collection
+  const [knowledgeArticles, setKnowledgeArticles] = useState<KnowledgeArticle[]>([]);
+
+  useEffect(() => {
+    const loadKnowledgeBase = async () => {
+      try {
+        const data = await getKnowledgeBase(project.id);
+        setKnowledgeArticles(data);
+      } catch (error) {
+        console.error('Failed to load knowledge base:', error);
+      }
+    };
+    loadKnowledgeBase();
+  }, [project.id]);
+
   // Section Ordering State
   const [sectionOrder, setSectionOrder] = useState<string[]>(() => {
       const saved = localStorage.getItem('elton-dashboard-order');
@@ -250,7 +266,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick }) =
               return (
                   <div key="resources" className="pt-4">
                       <SectionHeader title="Resurser" id="resources" />
-                      <Resources projectArticles={project.knowledgeArticles} />
+                      <Resources projectArticles={knowledgeArticles} />
                   </div>
               );
           default:
