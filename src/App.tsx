@@ -38,7 +38,10 @@ import {
   updateContacts,
   updateProjectLocation,
   getUserProfile,
-  updateUserProfile
+  updateUserProfile,
+  subscribeToProjectFull,
+  subscribeToTasks,
+  subscribeToShoppingItems
 } from './services/db';
 
 const EltonLogo = ({ className }: { className?: string }) => (
@@ -120,6 +123,25 @@ export const App = () => {
     }
     setIsLoading(false);
   }
+
+  // Real-time subscription to active project
+  useEffect(() => {
+    if (!activeProject?.id) return;
+
+    console.log('🔴 Setting up real-time listeners for project:', activeProject.id);
+
+    const unsubscribe = subscribeToProjectFull(activeProject.id, (updatedProject) => {
+      if (updatedProject) {
+        console.log('📡 Real-time update received:', updatedProject.name);
+        setActiveProject(updatedProject);
+      }
+    });
+
+    return () => {
+      console.log('🔴 Cleaning up real-time listeners');
+      unsubscribe();
+    };
+  }, [activeProject?.id]); // Only re-subscribe when project ID changes
 
   useEffect(() => {
       document.documentElement.classList.toggle('dark', isDarkMode);

@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ShoppingItem, Task } from '@/types/types';
-import { ShoppingBag, Plus, Trash2, CheckCircle2, Circle, ExternalLink, Image as ImageIcon, X, Link as LinkIcon, DollarSign, Calendar, Save, Loader2 } from 'lucide-react';
+import { ShoppingBag, Plus, Trash2, CheckCircle2, Circle, ExternalLink, Image as ImageIcon, X, Link as LinkIcon, DollarSign, Calendar, Save, Loader2, Store, Grid3x3 } from 'lucide-react';
 
 interface ShoppingListProps {
   items: ShoppingItem[];
@@ -20,6 +20,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ items, tasks = [], o
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [selectedItem, setSelectedItem] = useState<ShoppingItem | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [viewMode, setViewMode] = useState<'category' | 'store'>('category'); // NEW: Store Mode toggle
 
   // Detail Modal State
   const [editActualCost, setEditActualCost] = useState('');
@@ -85,6 +86,77 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ items, tasks = [], o
 
   const filteredCategories = activeFilter === 'ALL' ? categories : [activeFilter];
 
+  // NEW: Store Mode - group items by store with smart sorting
+  const itemsByStore = useMemo(() => {
+    const storeMap = new Map<string, ShoppingItem[]>();
+
+    items.forEach(item => {
+      // Determine store from item.store or selected option
+      let itemStore = item.store || 'Ospecificerad';
+
+      if (item.options && item.selectedOptionId) {
+        const selectedOption = item.options.find(opt => opt.id === item.selectedOptionId);
+        if (selectedOption) {
+          itemStore = selectedOption.store;
+        }
+      }
+
+      if (!storeMap.has(itemStore)) {
+        storeMap.set(itemStore, []);
+      }
+      storeMap.get(itemStore)!.push(item);
+    });
+
+    // Convert to array and sort items within each store
+    return Array.from(storeMap.entries()).map(([store, storeItems]) => {
+      // Separate items with/without shelf location
+      const itemsWithLocation = storeItems.filter(item => {
+        if (item.options && item.selectedOptionId) {
+          const selectedOption = item.options.find(opt => opt.id === item.selectedOptionId);
+          return selectedOption?.shelfLocation;
+        }
+        return false;
+      });
+
+      const itemsWithoutLocation = storeItems.filter(item => {
+        if (item.options && item.selectedOptionId) {
+          const selectedOption = item.options.find(opt => opt.id === item.selectedOptionId);
+          return !selectedOption?.shelfLocation;
+        }
+        return true;
+      });
+
+      // Sort items with location by shelf
+      itemsWithLocation.sort((a, b) => {
+        const aOption = a.options?.find(opt => opt.id === a.selectedOptionId);
+        const bOption = b.options?.find(opt => opt.id === b.selectedOptionId);
+        const aLocation = aOption?.shelfLocation || '';
+        const bLocation = bOption?.shelfLocation || '';
+        return aLocation.localeCompare(bLocation, 'sv');
+      });
+
+      // Sort items without location by article number
+      itemsWithoutLocation.sort((a, b) => {
+        const aOption = a.options?.find(opt => opt.id === a.selectedOptionId);
+        const bOption = b.options?.find(opt => opt.id === b.selectedOptionId);
+        const aArticle = aOption?.articleNumber || '';
+        const bArticle = bOption?.articleNumber || '';
+        return aArticle.localeCompare(bArticle, 'sv');
+      });
+
+      const allItems = [...itemsWithLocation, ...itemsWithoutLocation];
+      const totalCost = storeItems.reduce((sum, item) => sum + (item.estimatedCost || 0), 0);
+
+      return {
+        store,
+        items: allItems,
+        totalCost,
+        itemsWithLocation,
+        itemsWithoutLocation
+      };
+    }).sort((a, b) => b.totalCost - a.totalCost); // Sort stores by total cost (highest first)
+  }, [items]);
+
   return (
     <div className="space-y-6 pb-20 animate-fade-in relative">
         
@@ -92,40 +164,179 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({ items, tasks = [], o
         {/* ... header content ... */}
       </div>
 
-      <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
-        {/* ... filter tabs ... */}
+      {/* View Mode Toggle */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-hide">
+          {viewMode === 'category' && categories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveFilter(activeFilter === cat ? 'ALL' : cat)}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                activeFilter === cat
+                  ? 'bg-nordic-charcoal text-white dark:bg-teal-600'
+                  : 'bg-white text-slate-500 hover:bg-slate-50 dark:bg-nordic-dark-surface dark:text-nordic-dark-muted'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+          {viewMode === 'store' && itemsByStore.map(({ store }) => (
+            <button
+              key={store}
+              onClick={() => setActiveFilter(activeFilter === store ? 'ALL' : store)}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                activeFilter === store
+                  ? 'bg-nordic-charcoal text-white dark:bg-teal-600'
+                  : 'bg-white text-slate-500 hover:bg-slate-50 dark:bg-nordic-dark-surface dark:text-nordic-dark-muted'
+              }`}
+            >
+              {store}
+            </button>
+          ))}
+        </div>
+
+        {/* Toggle Button */}
+        <div className="flex gap-2 bg-white dark:bg-nordic-dark-surface p-1 rounded-full border border-nordic-ice dark:border-nordic-dark-bg">
+          <button
+            onClick={() => setViewMode('category')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all ${
+              viewMode === 'category'
+                ? 'bg-nordic-charcoal text-white dark:bg-teal-600'
+                : 'text-slate-500 hover:text-nordic-charcoal dark:text-nordic-dark-muted'
+            }`}
+          >
+            <Grid3x3 size={14} />
+            Kategori
+          </button>
+          <button
+            onClick={() => setViewMode('store')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all ${
+              viewMode === 'store'
+                ? 'bg-nordic-charcoal text-white dark:bg-teal-600'
+                : 'text-slate-500 hover:text-nordic-charcoal dark:text-nordic-dark-muted'
+            }`}
+          >
+            <Store size={14} />
+            Butik
+          </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-nordic-dark-surface p-4 rounded-2xl border border-nordic-ice dark:border-nordic-dark-bg flex flex-col md:flex-row gap-3 shadow-sm">
         {/* ... add item form ... */}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredCategories.map(category => {
-            const categoryItems = items.filter(i => i.category === category);
-            if (categoryItems.length === 0) return null;
+      {/* Category Mode */}
+      {viewMode === 'category' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredCategories.map(category => {
+              const categoryItems = items.filter(i => i.category === category);
+              if (categoryItems.length === 0) return null;
 
-            return (
-                <div key={category} className="bg-white dark:bg-nordic-dark-surface rounded-2xl border border-nordic-ice dark:border-nordic-dark-bg overflow-hidden animate-fade-in">
-                    <div className="bg-nordic-ice/50 dark:bg-nordic-charcoal/50 p-4 border-b border-nordic-ice dark:border-nordic-dark-bg flex justify-between items-center">
-                        <h4 className="font-bold text-nordic-charcoal dark:text-nordic-ice text-sm uppercase tracking-wider">{category}</h4>
-                        <span className="text-xs text-slate-400 bg-white dark:bg-nordic-dark-bg px-2 py-1 rounded-md">{categoryItems.length} st</span>
-                    </div>
-                    <div className="divide-y divide-slate-50 dark:divide-nordic-charcoal">
-                        {categoryItems.map(item => (
-                            <div 
-                                key={item.id} 
-                                className={`p-4 flex items-center gap-3 transition-all hover:bg-slate-50 dark:hover:bg-nordic-charcoal/30 cursor-pointer group ${item.checked ? 'bg-slate-50/50 dark:bg-black/20' : ''}`}
-                                onClick={() => handleOpenDetail(item)}
-                            >
-                               {/* ... item content ... */}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        })}
-      </div>
+              return (
+                  <div key={category} className="bg-white dark:bg-nordic-dark-surface rounded-2xl border border-nordic-ice dark:border-nordic-dark-bg overflow-hidden animate-fade-in">
+                      <div className="bg-nordic-ice/50 dark:bg-nordic-charcoal/50 p-4 border-b border-nordic-ice dark:border-nordic-dark-bg flex justify-between items-center">
+                          <h4 className="font-bold text-nordic-charcoal dark:text-nordic-ice text-sm uppercase tracking-wider">{category}</h4>
+                          <span className="text-xs text-slate-400 bg-white dark:bg-nordic-dark-bg px-2 py-1 rounded-md">{categoryItems.length} st</span>
+                      </div>
+                      <div className="divide-y divide-slate-50 dark:divide-nordic-charcoal">
+                          {categoryItems.map(item => (
+                              <div
+                                  key={item.id}
+                                  className={`p-4 flex items-center gap-3 transition-all hover:bg-slate-50 dark:hover:bg-nordic-charcoal/30 cursor-pointer group ${item.checked ? 'bg-slate-50/50 dark:bg-black/20' : ''}`}
+                                  onClick={() => handleOpenDetail(item)}
+                              >
+                                 {/* Item rendering - kept as is */}
+                                 <button onClick={(e) => { e.stopPropagation(); onToggle(item.id); }} className="flex-shrink-0">
+                                    {item.checked ? <CheckCircle2 size={20} className="text-green-500" /> : <Circle size={20} className="text-slate-300" />}
+                                 </button>
+                                 <div className="flex-1">
+                                    <p className={`font-medium ${item.checked ? 'line-through text-slate-400' : 'text-nordic-charcoal dark:text-nordic-ice'}`}>{item.name}</p>
+                                    <p className="text-xs text-slate-400">{item.quantity} • {item.estimatedCost} kr</p>
+                                 </div>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              );
+          })}
+        </div>
+      )}
+
+      {/* Store Mode */}
+      {viewMode === 'store' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {itemsByStore.map(({ store, items: storeItems, totalCost, itemsWithLocation, itemsWithoutLocation }) => {
+              if (activeFilter !== 'ALL' && activeFilter !== store) return null;
+
+              return (
+                  <div key={store} className="bg-white dark:bg-nordic-dark-surface rounded-2xl border border-nordic-ice dark:border-nordic-dark-bg overflow-hidden animate-fade-in">
+                      <div className="bg-teal-50 dark:bg-teal-900/20 p-4 border-b border-teal-100 dark:border-teal-900/40 flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                              <Store size={18} className="text-teal-600 dark:text-teal-400" />
+                              <h4 className="font-bold text-nordic-charcoal dark:text-nordic-ice text-sm uppercase tracking-wider">{store}</h4>
+                          </div>
+                          <div className="text-right">
+                              <span className="text-xs text-slate-400 block">{storeItems.length} items</span>
+                              <span className="text-xs font-mono text-teal-600 dark:text-teal-400">{totalCost} kr</span>
+                          </div>
+                      </div>
+                      <div className="divide-y divide-slate-50 dark:divide-nordic-charcoal">
+                          {/* Items with shelf location first */}
+                          {itemsWithLocation.map(item => {
+                              const selectedOption = item.options?.find(opt => opt.id === item.selectedOptionId);
+                              return (
+                                  <div
+                                      key={item.id}
+                                      className={`p-4 flex items-center gap-3 transition-all hover:bg-slate-50 dark:hover:bg-nordic-charcoal/30 cursor-pointer group ${item.checked ? 'bg-slate-50/50 dark:bg-black/20' : ''}`}
+                                      onClick={() => handleOpenDetail(item)}
+                                  >
+                                     <button onClick={(e) => { e.stopPropagation(); onToggle(item.id); }} className="flex-shrink-0">
+                                        {item.checked ? <CheckCircle2 size={20} className="text-green-500" /> : <Circle size={20} className="text-slate-300" />}
+                                     </button>
+                                     <div className="flex-1">
+                                        <p className={`font-medium ${item.checked ? 'line-through text-slate-400' : 'text-nordic-charcoal dark:text-nordic-ice'}`}>{item.name}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-xs bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 px-2 py-0.5 rounded font-mono">
+                                                📍 {selectedOption?.shelfLocation}
+                                            </span>
+                                            {selectedOption?.articleNumber && (
+                                                <span className="text-xs text-slate-400">Art: {selectedOption.articleNumber}</span>
+                                            )}
+                                        </div>
+                                     </div>
+                                     <span className="text-sm font-mono text-slate-600 dark:text-slate-300">{item.estimatedCost} kr</span>
+                                  </div>
+                              );
+                          })}
+                          {/* Items without shelf location */}
+                          {itemsWithoutLocation.map(item => {
+                              const selectedOption = item.options?.find(opt => opt.id === item.selectedOptionId);
+                              return (
+                                  <div
+                                      key={item.id}
+                                      className={`p-4 flex items-center gap-3 transition-all hover:bg-slate-50 dark:hover:bg-nordic-charcoal/30 cursor-pointer group ${item.checked ? 'bg-slate-50/50 dark:bg-black/20' : ''}`}
+                                      onClick={() => handleOpenDetail(item)}
+                                  >
+                                     <button onClick={(e) => { e.stopPropagation(); onToggle(item.id); }} className="flex-shrink-0">
+                                        {item.checked ? <CheckCircle2 size={20} className="text-green-500" /> : <Circle size={20} className="text-slate-300" />}
+                                     </button>
+                                     <div className="flex-1">
+                                        <p className={`font-medium ${item.checked ? 'line-through text-slate-400' : 'text-nordic-charcoal dark:text-nordic-ice'}`}>{item.name}</p>
+                                        {selectedOption?.articleNumber && (
+                                            <p className="text-xs text-slate-400">Art: {selectedOption.articleNumber}</p>
+                                        )}
+                                     </div>
+                                     <span className="text-sm font-mono text-slate-600 dark:text-slate-300">{item.estimatedCost} kr</span>
+                                  </div>
+                              );
+                          })}
+                      </div>
+                  </div>
+              );
+          })}
+        </div>
+      )}
       
       {selectedItem && (
           <div className="fixed inset-0 bg-nordic-charcoal/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">

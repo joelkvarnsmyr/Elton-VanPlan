@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Task, TaskStatus, Priority, ShoppingItem, VehicleData } from '@/types/types';
-import { ChevronDown, ChevronRight, Check, AlertCircle, MessageSquare, Paperclip, Link as LinkIcon, ListChecks, CalendarClock, Lightbulb, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Check, AlertCircle, MessageSquare, Paperclip, Link as LinkIcon, ListChecks, CalendarClock, Lightbulb, Plus, Lock } from 'lucide-react';
 import { TaskDetailModal } from './TaskDetailModal';
 
 interface TaskBoardProps {
@@ -11,6 +11,22 @@ interface TaskBoardProps {
   onUpdateTask: (task: Task) => void;
   initialFilter?: string | 'ALL';
 }
+
+// Helper to check if task is blocked
+const isTaskBlocked = (task: Task, allTasks: Task[]): { blocked: boolean; blockedBy: Task[] } => {
+  if (!task.blockers || task.blockers.length === 0) {
+    return { blocked: false, blockedBy: [] };
+  }
+
+  const blockedBy = allTasks.filter(t =>
+    task.blockers!.includes(t.id) && t.status !== TaskStatus.DONE
+  );
+
+  return {
+    blocked: blockedBy.length > 0,
+    blockedBy
+  };
+};
 
 export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehicleData, onUpdateTask, initialFilter = 'ALL' }) => {
   const [expandedPhase, setExpandedPhase] = useState<string | null>(null);
@@ -167,11 +183,13 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
                 {phaseTasks.map(task => {
                   const subtasks = task.subtasks || [];
                   const completedSubtasks = subtasks.filter(s => s.completed).length;
+                  const { blocked, blockedBy } = isTaskBlocked(task, tasks);
                   return (
-                  <div 
-                    key={task.id} 
+                  <div
+                    key={task.id}
                     onClick={() => setSelectedTask(task)}
                     className={`group relative p-5 rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg flex flex-col justify-between cursor-pointer ${
+                        blocked ? 'bg-slate-100 dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 opacity-60 cursor-not-allowed' :
                         task.status === TaskStatus.DONE ? 'bg-white dark:bg-nordic-dark-bg border-slate-100 dark:border-nordic-charcoal opacity-70 hover:opacity-100' : 'bg-white dark:bg-nordic-dark-bg border-slate-200 dark:border-nordic-charcoal shadow-sm'
                     }`}
                   >
@@ -194,9 +212,30 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
                           </div>
                         </div>
                         
-                        <h4 className={`font-bold text-lg mb-2 ${task.status === TaskStatus.DONE ? 'text-slate-500 dark:text-nordic-dark-muted line-through decoration-2 decoration-slate-300' : 'text-nordic-charcoal dark:text-nordic-ice'}`}>
-                          {task.title}
-                        </h4>
+                        <div className="flex items-start gap-2 mb-2">
+                          {blocked && (
+                            <div
+                              className="mt-0.5 text-amber-500 dark:text-amber-400"
+                              title={`Blockeras av: ${blockedBy.map(t => t.title).join(', ')}`}
+                            >
+                              <Lock size={18} />
+                            </div>
+                          )}
+                          <h4 className={`font-bold text-lg flex-1 ${
+                            blocked ? 'text-slate-400 dark:text-slate-600' :
+                            task.status === TaskStatus.DONE ? 'text-slate-500 dark:text-nordic-dark-muted line-through decoration-2 decoration-slate-300' : 'text-nordic-charcoal dark:text-nordic-ice'
+                          }`}>
+                            {task.title}
+                          </h4>
+                        </div>
+
+                        {blocked && (
+                          <div className="mb-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/40 rounded-lg">
+                            <p className="text-xs text-amber-800 dark:text-amber-200 font-medium">
+                              🔒 Väntar på: {blockedBy.map(t => t.title).join(', ')}
+                            </p>
+                          </div>
+                        )}
                         
                         {task.sprint && (
                             <div className="mb-2 inline-flex items-center gap-1.5 px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-md text-xs font-medium border border-indigo-100 dark:border-indigo-900/30">
