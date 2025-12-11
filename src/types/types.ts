@@ -355,6 +355,24 @@ export interface UserSettings {
     language?: 'sv' | 'en';
 }
 
+// --- INSPECTION MODULE ---
+export interface InspectionFinding {
+  id: string;
+  projectId?: string; // Optional if embedded in project
+  imageUrl?: string;
+  audioUrl?: string;
+  date: string;
+  category: 'EXTERIOR' | 'ENGINE' | 'UNDERCARRIAGE' | 'INTERIOR';
+  
+  // AI Analysis
+  aiDiagnosis: string;
+  severity: 'COSMETIC' | 'WARNING' | 'CRITICAL'; 
+  confidence: number;
+  
+  // System Link
+  convertedToTaskId?: string; 
+}
+
 export interface Project {
     id: string;
     name: string;
@@ -372,6 +390,9 @@ export interface Project {
     shoppingItems: ShoppingItem[];
     serviceLog: ServiceItem[];
     fuelLog: FuelLogItem[];
+    // NEW: Inspection Findings
+    inspections?: InspectionFinding[];
+    
     contacts?: Contact[];
     knowledgeArticles?: KnowledgeArticle[];
     customIcon?: string;

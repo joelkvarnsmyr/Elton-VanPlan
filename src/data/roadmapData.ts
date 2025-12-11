@@ -178,6 +178,25 @@ export const ROADMAP_FEATURES: Feature[] = [
         ]
     },
     {
+        id: 28,
+        title: 'Elton Inspector (AI Besiktning)',
+        category: 'Plattform',
+        description: 'AI-assisterad fordonsbesiktning ("Snap & Triage") med bild- och ljudanalys för att diagnostisera rost, motorljud och andra fel.',
+        detailedDescription: 'En dedikerad modul där användaren kan genomföra en guidad besiktning av fordonet. Användaren fotar problemområden eller spelar in ljud, och AI:n ger en diagnos, bedömer allvarlighetsgrad och föreslår åtgärder. Se docs/features/INSPECTOR_SPEC.md för fullständig specifikation.',
+        purpose: 'Att ge användaren en professionell bedömning av fordonets skick utan att behöva vara expert.',
+        status: 'planned',
+        tech: ['Gemini Vision', 'Audio Analysis', 'Investigation Logic Tree'],
+        priority: 'high',
+        tags: ['AI', 'Vision', 'Audio', 'Diagnostics', 'Mobile'],
+        checklist: [
+            { label: 'Specad (INSPECTOR_SPEC.md)', completed: true },
+            { label: 'Datamodell (Findings)', completed: true },
+            { label: 'AI-Prompt (Inspector Agent)', completed: true },
+            { label: 'Utvecklad (UI & Logic)', completed: false },
+            { label: 'Lanserad', completed: false }
+        ]
+    },
+    {
         id: 17,
         title: 'Auto-genererad Historik & Expertanalys',
         category: 'Plattform',

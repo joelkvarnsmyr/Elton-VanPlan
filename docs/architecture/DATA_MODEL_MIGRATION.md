@@ -32,7 +32,7 @@ Hierarchical structure for `projects` collection:
       ├── 📂 tasks (Sub-collection)
       │    └── 📄 {taskId}
       │         > title: "Byta Kamrem"
-      │         > type: "MAINTENANCE"
+      │         > type: "MAINT"
       │         > status: "TODO"
       │         > mechanicalPhase: "P1_ENGINE"
       │         > blockers: ["taskId_X"]
@@ -41,8 +41,28 @@ Hierarchical structure for `projects` collection:
       │    └── 📄 {itemId}
       │         > name: "Kamremssats"
       │         > linkedTaskId: "{taskId}" (Foreign Key)
-      │         > store: "Autodoc"
-      │         > checked: boolean
+      │         > quantity: 1
+      │         > status: "RESEARCH" | "DECIDED" | "BOUGHT"
+      │         > selectedOptionId: "opt_1"
+      │         > options: [  // Array of VendorOptions
+      │             { 
+      │               id: "opt_1", 
+      │               store: "Autodoc", 
+      │               price: 800, 
+      │               shipping: 200,
+      │               deliveryTimeDays: 7,
+      │               articleNumber: "CT637K1",
+      │               url: "..."
+      │             },
+      │             {
+      │               id: "opt_2",
+      │               store: "Biltema",
+      │               price: 1200,
+      │               shipping: 0,
+      │               shelfLocation: "Gång 4, Hylla 12", // Store Mode key!
+      │               inStock: true
+      │             }
+      │           ]
       │
       ├── 📂 historyLog (Sub-collection)
       │    └── 📄 {eventId}
@@ -57,11 +77,11 @@ Hierarchical structure for `projects` collection:
 
 ## 3. Implementation Plan
 
-### Phase 1: Type Definitions (Partially Done)
+### Phase 1: Type Definitions (Done)
 Ensure `src/types/types.ts` reflects the atomic nature of the data.
 *   ✅ `TaskType`, `MechanicalPhase`, `BuildPhase` enums added.
 *   ✅ `Task` interface updated with `blockers` and `phases`.
-*   [ ] Verify `Project` interface doesn't strictly require arrays for sub-collections (make them optional or loaded separately).
+*   [ ] Verify `ShoppingItem` includes `options` array with `shelfLocation`.
 
 ### Phase 2: Database Service Layer (`src/services/db.ts`)
 We need to rewrite data access patterns. Instead of `getDoc(project)`, we need composite loaders.
@@ -82,52 +102,22 @@ Components expecting a full `Project` object with arrays need to be updated to h
 *   **`TaskBoard`**: Needs to fetch/subscribe to `tasks`.
 *   **`ShoppingList`**: Needs to fetch/subscribe to `shoppingItems`.
 
-## 4. Code Changes Required
+## 4. Smart Logic Specs
 
-### A. `src/types/types.ts`
-We need to separate the *Firestore Data Model* from the *Application State Model*.
+### A. Shopping Intelligence ("Store Mode")
+The `ShoppingList` component must support a "Store Mode" toggle when viewing on mobile.
+**Logic:**
+1.  Filter by specific store (e.g. "Biltema").
+2.  Group items by `shelfLocation` (alphabetically).
+3.  Sort items without location by `articleNumber`.
+4.  Display `articleNumber` prominently for easy lookup.
 
-```typescript
-// Firestore representation
-export interface FirestoreProject {
-    id: string;
-    vehicleData: VehicleData; // Flat map
-    ownerIds: string[];
-}
-
-// App State (what the UI expects)
-export interface ProjectState extends FirestoreProject {
-    tasks: Task[]; // Loaded from sub-collection
-    shoppingItems: ShoppingItem[]; // Loaded from sub-collection
-}
-```
-
-### B. `src/services/db.ts` (The heavy lifting)
-
-**New Helper Pattern:**
-```typescript
-const getTasksCollection = (projectId: string) => collection(db, 'projects', projectId, 'tasks');
-
-export const fetchFullProject = async (projectId: string): Promise<Project> => {
-    // 1. Fetch Root
-    const projectSnap = await getDoc(doc(db, 'projects', projectId));
-    const projectData = projectSnap.data();
-
-    // 2. Fetch Sub-collections (Parallel)
-    const [tasksSnap, itemsSnap] = await Promise.all([
-        getDocs(collection(db, 'projects', projectId, 'tasks')),
-        getDocs(collection(db, 'projects', projectId, 'shoppingItems'))
-    ]);
-
-    // 3. Assemble
-    return {
-        id: projectSnap.id,
-        ...projectData,
-        tasks: tasksSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-        shoppingItems: itemsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-    } as Project;
-}
-```
+### B. Dependency Engine ("Blockers")
+The `TaskBoard` must visualize blockers.
+**Logic:**
+1.  Check `task.blockers` array.
+2.  If any linked task is NOT `DONE` -> Render task as **Locked/Dimmed**.
+3.  Show tooltip: "Waiting for [Task Name]".
 
 ## 5. Migration Strategy (Old Projects)
 

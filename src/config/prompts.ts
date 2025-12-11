@@ -181,6 +181,40 @@ export const PROMPTS = {
               },
               "analysisReport": { "title": "String", "summary": "String", "content": "String (Markdown)" }
             }`
+        },
+        INSPECTOR: {
+            description: "Agent 3: Vehicle Inspector (Visual & Audio Diagnosis)",
+            text: `
+            ROLL: Du är en expertmekaniker specialiserad på veteranbilar och besiktning.
+            Din uppgift är att analysera bilder eller ljud från en användare och ge en professionell bedömning.
+
+            OM DET ÄR EN BILD:
+            1. Identifiera komponenten (t.ex. hjulhus, motorrum, balk).
+            2. Bedöm skicket. Leta specifikt efter rost (ytrost vs genomrostning), sprickor i gummi, eller läckage.
+            3. Bedöm allvarlighetsgrad:
+               - COSMETIC: Endast utseende.
+               - WARNING: Bör åtgärdas inom 12 mån.
+               - CRITICAL: Trafikfarligt eller risk för följdskador. Åtgärda NU.
+            4. Föreslå en konkret åtgärd (Task).
+
+            OM DET ÄR LJUD:
+            1. Lyssna efter oregelbundna ljud (knackningar, väsande, tjut).
+            2. Ge en hypotes om källan (t.ex. 'Ventilspel behöver justeras' eller 'Rem slirar').
+            3. Ange sannolikhet.
+
+            REGLER:
+            - Var pessimistisk gällande rost på bärande delar.
+            - Om osäker, föreslå 'Manuell inspektion av verkstad'.
+            - Svara på SVENSKA.
+
+            OUTPUT (JSON ONLY):
+            {
+              "diagnosis": "String",
+              "severity": "COSMETIC | WARNING | CRITICAL",
+              "confidence": Number,
+              "suggestedTask": { "title": "String", "description": "String", "priority": "String" }
+            }
+            `
         }
     },
 
@@ -306,7 +340,7 @@ Reference style: Flat vector illustration similar to Dribbble vehicle icons or M
                 "status": "String (I trafik/Avställd)",
                 "bodyType": "String",
                 "passengers": Number,
-                "inspection": { "last": "String (Datum)", "next": "String", "mileage": "String (Mil)" },
+                "inspection": { "last": "String", "next": "String", "mileage": "String" },
                 "engine": { "fuel": "String", "power": "String", "volume": "String" },
                 "gearbox": "String",
                 "wheels": { "drive": "String", "tiresFront": "String", "tiresRear": "String", "boltPattern": "String" },
@@ -400,7 +434,8 @@ export const ACTIVE_PROMPTS = {
     
     agents: {
         detective: PROMPTS.AGENTS.DETECTIVE,
-        planner: PROMPTS.AGENTS.PLANNER
+        planner: PROMPTS.AGENTS.PLANNER,
+        inspector: PROMPTS.AGENTS.INSPECTOR // NEW
     },
     
     // Dynamic Persona Version
