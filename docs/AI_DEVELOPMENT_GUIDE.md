@@ -2,22 +2,157 @@
 
 **För AI-assistenter som arbetar med Elton-VanPlan projektet**
 
-Detta dokument är en **systemprompt** och utvecklingsguide för AI-modeller (ChatGPT, Claude, Gemini, etc.) som hjälper till att utveckla, debugga och förbättra Elton-VanPlan.
+Detta dokument är en **systemprompt** och utvecklingsguide för AI-modeller (ChatGPT, Claude, Gemini, Cursor, etc.) som hjälper till att utveckla, debugga och förbättra Elton-VanPlan.
+
+---
+
+## 🚨 KRITISKA REGLER FÖR MULTI-AGENT SAMARBETE
+
+### ⚠️ LÄS DETTA FÖRST - Obligatoriskt för alla AI-agenter
+
+Detta projekt används med **flera AI-agenter parallellt**. För att undvika konflikter:
+
+#### 1. ALLTID börja med att synkronisera
+```bash
+# FÖRSTA KOMMANDOT i varje session
+git fetch origin && git status
+```
+
+#### 2. ALDRIG ändra dessa filer utan explicit tillstånd
+- `src/types/types.ts` - Delade typdefinitioner
+- `src/services/firebase.ts` - Firebase konfiguration
+- `firestore.rules` - Säkerhetsregler
+- `package.json` - Dependencies
+- `functions/src/index.ts` - Cloud Functions export
+
+#### 3. ALLTID dokumentera dina ändringar
+```bash
+# Innan commit - skriv tydliga meddelanden
+git commit -m "Feat: [OMRÅDE] Kort beskrivning
+
+- Detaljerad punkt 1
+- Detaljerad punkt 2
+
+AI-Agent: [Claude/ChatGPT/Cursor/etc]"
+```
+
+#### 4. ALDRIG force push
+```bash
+# ❌ FÖRBJUDET
+git push --force
+
+# ✅ KORREKT
+git push origin branch-name
+```
+
+#### 5. KOMMUNICERA via docs/
+Om du gör stora ändringar, skapa/uppdatera en fil i `docs/` för att informera andra agenter.
+
+---
+
+## 🔄 Multi-Agent Workflow
+
+### Rekommenderad Arbetsprocess
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  1. SYNC: git fetch && git pull                          │
+│  2. READ: Läs denna guide + relevanta docs/              │
+│  3. PLAN: Beskriv vad du ska göra för användaren         │
+│  4. CODE: Gör ändringar i isolerade filer                │
+│  5. TEST: Kör npm run build && npm test                  │
+│  6. COMMIT: Tydligt meddelande med AI-agent namn         │
+│  7. PUSH: git push origin branch-name                    │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Ansvarsområden - Förslag till uppdelning
+
+| Område | Primär fil/mapp | Komplexitet |
+|--------|-----------------|-------------|
+| **UI Components** | `src/components/` | Medium |
+| **AI Integration** | `src/services/geminiService.ts` | Hög |
+| **Cloud Functions** | `functions/src/` | Hög |
+| **Styling** | Tailwind i komponenter | Låg |
+| **Tests (Unit)** | `tests/`, `src/**/*.test.ts` | Medium |
+| **Tests (E2E)** | `e2e/` | Medium |
+| **Documentation** | `docs/` | Låg |
+| **Types** | `src/types/types.ts` | Hög (varning!) |
+
+### Konflikthantering
+
+Om du upptäcker att en annan agent har ändrat samma fil:
+
+1. **STOP** - Gör inte fler ändringar
+2. **FETCH** - `git fetch origin`
+3. **COMPARE** - `git diff origin/main -- path/to/file`
+4. **INFORM** - Meddela användaren om konflikten
+5. **MERGE** - Låt användaren bestämma hur konflikten ska lösas
+
+---
+
+## 🏗️ Aktuell Arkitektur (Uppdaterad 2025-12-11)
+
+### Säkerhetsmodell - Cloud Functions
+
+**API-nycklar hanteras nu på backend:**
+
+```
+┌─────────────┐      ┌──────────────────┐      ┌─────────────┐
+│   Frontend  │ ───▶ │ Cloud Functions  │ ───▶ │  Gemini API │
+│  (React)    │      │ (Node.js)        │      │  (Google)   │
+└─────────────┘      └──────────────────┘      └─────────────┘
+       │                     │
+       │                     ▼
+       │              ┌──────────────────┐
+       │              │ Secret Manager   │
+       │              │ (API Keys)       │
+       │              └──────────────────┘
+       │
+       ▼
+┌─────────────────┐
+│ Firebase Auth   │
+│ (Användar-ID)   │
+└─────────────────┘
+```
+
+### Cloud Functions (functions/src/)
+
+| Funktion | Syfte | Endpoint |
+|----------|-------|----------|
+| `aiChat` | Text-chat med AI | Callable |
+| `aiParse` | Strukturerad JSON-parsing | Callable |
+| `aiDeepResearch` | Multi-agent research | Callable |
+| `aiToolResponse` | Tool response handling | Callable |
+| `ocrLicensePlate` | Registreringsnummer OCR | Callable |
+| `ocrReceipt` | Kvitto-scanning | Callable |
+| `ocrVIN` | VIN-nummer OCR | Callable |
+| `ocrServiceDocument` | Servicedokument OCR | Callable |
+
+### Frontend Services (src/services/)
+
+| Service | Status | Anteckningar |
+|---------|--------|--------------|
+| `aiProxyService.ts` | **NY** | Anropar Cloud Functions |
+| `geminiService.ts` | Uppdaterad | Använder aiProxyService |
+| `ocrService.ts` | Uppdaterad | Använder Cloud Functions |
+| `aiService.ts` | Uppdaterad | Använder Cloud Functions |
+| `secretService.ts` | **DEPRECATED** | Använd inte |
 
 ---
 
 ## 🚀 Projektöversikt
 
-**Elton-VanPlan** är "The Garage OS" - ett digitalt verktyg för fordonsbyggare, restauratörer och entusiaster. Plattformen kombinerar projekthantering, AI-driven forskning, och personlig assistent-funktionalitet specifikt designad för garage-projekt.
+**Elton-VanPlan** är "The Garage OS" - ett digitalt verktyg för fordonsbyggare, restauratörer och entusiaster.
 
 ### Kärnfunktionalitet
-- **🕵️‍♂️ Deep Research Agents:** AI-agenter som automatiskt forskar fram fordonsdata, service-intervaller och kända problem
-- **🤝 Co-Working:** Team-samarbete med inbjudningar och delat ägarskap av projekt
-- **🤖 Elton AI:** Persona-driven assistent med svenska dialekter och fordons-personlighet
-- **📋 Kanban Task Board:** Uppgiftshantering med Smart Context (relevanta specs visas vid uppgifter)
-- **💰 Smart Budget:** Kostnadsuppföljning med kvittohantering
-- **⏳ Visual Timeline:** Fordonets historia från produktion till nu
-- **🎙️ Live Elton:** Voice/Video AI-interface (kommande feature)
+- **🕵️‍♂️ Deep Research Agents:** AI-agenter som forskar fordonsdata
+- **🤝 Co-Working:** Team-samarbete
+- **🤖 Elton AI:** Persona-driven assistent med svenska dialekter
+- **📋 Kanban Task Board:** Uppgiftshantering
+- **💰 Smart Budget:** Kostnadsuppföljning
+- **⏳ Visual Timeline:** Fordonets historia
+- **🎙️ Live Elton:** Voice/Video AI-interface (beta - säkerhetsvarning)
 
 ---
 
@@ -25,103 +160,51 @@ Detta dokument är en **systemprompt** och utvecklingsguide för AI-modeller (Ch
 
 ```
 Elton-VanPlan/
-├── src/                          # All source code
+├── functions/                    # 🆕 Firebase Cloud Functions
+│   ├── src/
+│   │   ├── index.ts              # Main exports
+│   │   └── ai/
+│   │       ├── proxy.ts          # AI proxy functions
+│   │       └── ocr.ts            # OCR functions
+│   ├── package.json
+│   └── tsconfig.json
+│
+├── src/                          # Frontend source code
 │   ├── components/               # React komponenter (23 st)
-│   │   ├── Dashboard.tsx         # Huvudvy med projekt-översikt
-│   │   ├── TaskBoard.tsx         # Kanban board (drag & drop)
-│   │   ├── AIAssistant.tsx       # Text chat med Elton
-│   │   ├── LiveElton.tsx         # Voice/Video AI (beta)
-│   │   ├── ProjectSelector.tsx   # Projekt-väljare med onboarding
-│   │   ├── OnboardingWizard.tsx  # 3-stegs onboarding för nya projekt
-│   │   ├── ProjectMembers.tsx    # Team management modal
-│   │   ├── MagicImport.tsx       # AI-driven import av data
-│   │   ├── VehicleSpecs.tsx      # Fordonsdata visning
-│   │   ├── ShoppingList.tsx      # Inköpslista med budget
-│   │   ├── FuelLog.tsx           # Bränslelogg
-│   │   ├── ServiceBook.tsx       # Servicehistorik
-│   │   ├── Roadmap.tsx           # Produktroadmap (kanban-baserad)
-│   │   └── ...                   # Fler komponenter
+│   │   ├── Dashboard.tsx
+│   │   ├── TaskBoard.tsx
+│   │   ├── AIAssistant.tsx
+│   │   ├── LiveElton.tsx         # ⚠️ Kräver säkerhetsuppdatering
+│   │   └── ...
 │   │
 │   ├── services/                 # Core logic & external services
-│   │   ├── auth.ts               # Firebase Authentication
-│   │   ├── db.ts                 # Firestore CRUD operations
-│   │   ├── storage.ts            # Firebase Storage (bilder, kvitton)
-│   │   ├── firebase.ts           # Firebase initialization
-│   │   ├── geminiService.ts      # Google Gemini AI integration (multi-agent system)
-│   │   ├── personalityService.ts # Fordonspersonlighet-generering
-│   │   ├── promptBuilder.ts      # AI prompt construction
-│   │   ├── expertAnalysisService.ts  # Deep Research 2.0 agent
-│   │   ├── onboardingService.ts  # Onboarding wizard logic
-│   │   ├── projectCreationService.ts # Projekt-skapande orchestration
-│   │   ├── projectImportService.ts   # Import från JSON
-│   │   ├── projectExportService.ts   # Export till JSON/PDF
-│   │   ├── ocrService.ts         # OCR för regnummer & kvitton
-│   │   ├── vehicleDataService.ts # Fordonsdata lookup
-│   │   ├── featureFlagService.ts # Feature flags & A/B testing
-│   │   └── analyticsService.ts   # Event tracking
+│   │   ├── aiProxyService.ts     # 🆕 Cloud Functions client
+│   │   ├── geminiService.ts      # Refactored - använder proxy
+│   │   ├── ocrService.ts         # Refactored - använder proxy
+│   │   ├── aiService.ts          # Refactored - använder proxy
+│   │   ├── secretService.ts      # ⚠️ DEPRECATED
+│   │   ├── db.ts                 # Firestore CRUD
+│   │   ├── auth.ts               # Firebase Auth
+│   │   └── ...
 │   │
-│   ├── config/                   # Configuration & prompts
-│   │   ├── prompts.ts            # AI prompt templates (THE BRAIN)
-│   │   ├── promptTemplates.ts    # Template strings för personligheter
-│   │   ├── dialects.ts           # Svenska dialekter (Dalmål, Gotländska, Rikssvenska)
-│   │   ├── features.ts           # Feature metadata
-│   │   └── brands.ts             # Multi-brand config (VanPlan, RaceKoll, etc)
+│   ├── config/
+│   │   ├── prompts.ts            # AI prompt templates
+│   │   └── dialects.ts           # Svenska dialekter
 │   │
-│   ├── hooks/                    # React custom hooks
-│   │   └── useVehiclePersonality.ts  # Hook för fordons-persona
+│   ├── types/
+│   │   └── types.ts              # ⚠️ Känslig fil - koordinera ändringar
 │   │
-│   ├── types/                    # TypeScript definitions
-│   │   └── types.ts              # Alla interfaces & types
-│   │
-│   ├── constants/                # App constants
-│   │   └── constants.ts          # EMPTY_PROJECT_TEMPLATE etc
-│   │
-│   ├── data/                     # Static data
-│   │   ├── roadmapData.ts        # Roadmap features
-│   │   └── metadata.json         # App metadata
-│   │
-│   ├── assets/                   # Static assets
-│   │   ├── eltonlogo.svg         # App logo
-│   │   └── democarimage.png      # Demo vehicle image
-│   │
-│   ├── App.tsx                   # Main app component
-│   └── index.tsx                 # App entry point
+│   └── ...
+│
+├── docs/                         # Dokumentation
+│   ├── AI_DEVELOPMENT_GUIDE.md   # DENNA FIL
+│   ├── PROJECT_ANALYSIS_REPORT.md
+│   └── ...
 │
 ├── e2e/                          # Playwright E2E tests
-│   ├── coworking.spec.ts         # Co-working tests (65 tests)
-│   ├── onboarding-flow.spec.ts   # Onboarding wizard tests
-│   ├── ai-personality.spec.ts    # AI personality tests
-│   ├── live-elton-*.spec.ts      # LiveElton feature tests
-│   └── helpers/                  # Test helpers & selectors
-│
-├── tests/                        # Unit tests (Vitest)
-│   └── onboarding-prompts.test.ts
-│
-├── docs/                         # Documentation (NYTT! Organiserat)
-│   ├── project-management/       # Projekt-ledning
-│   ├── features/                 # Feature specs
-│   ├── testing/                  # Test-rapporter
-│   ├── fixes/                    # Bug fix dokumentation
-│   └── architecture/             # Arkitektur-analys
-│
-├── scripts/                      # Utility scripts
-│   └── test-icon-generation.ts   # Icon generation testing
-│
-├── dist/                         # Build output (genereras av Vite)
-├── .firebase/                    # Firebase build cache
-├── test-results/                 # Playwright test results
-├── playwright-report/            # Playwright HTML report
-│
-├── index.html                    # HTML entry point
-├── vite.config.ts                # Vite configuration
-├── tsconfig.json                 # TypeScript configuration
-├── playwright.config.ts          # Playwright E2E config
-├── vitest.config.ts              # Vitest unit test config
-├── firebase.json                 # Firebase hosting config
-├── firestore.rules               # Firestore security rules
-├── storage.rules                 # Firebase Storage security rules
-├── package.json                  # Dependencies & scripts
-└── README.md                     # Project README
+├── tests/                        # Unit tests
+├── firebase.json                 # Firebase config (inkl. functions)
+└── package.json
 ```
 
 ---
@@ -131,521 +214,165 @@ Elton-VanPlan/
 ### Frontend
 - **React 19.2.1** - UI framework
 - **TypeScript 5.8.2** - Type safety
-- **Vite 6.2.0** - Build tool & dev server
-- **Tailwind CSS 4.x** - Styling (utility-first CSS)
-- **Lucide React** - Icon library
-- **Recharts** - Data visualization (budget graphs)
-- **@dnd-kit** - Drag & drop (Kanban board)
+- **Vite 6.2.0** - Build tool
+- **Tailwind CSS 4.x** - Styling
+- **Firebase SDK** - Auth, Firestore, Functions client
 
-### Backend (BaaS)
-- **Firebase 12.6.0**
-  - **Firestore** - NoSQL database
-  - **Authentication** - Email/password & passwordless
-  - **Storage** - Image & receipt uploads
-  - **Hosting** - Production deployment
+### Backend (Cloud Functions)
+- **Firebase Functions 6.0** - Serverless backend
+- **Node.js 18** - Runtime
+- **@google/genai** - Gemini AI SDK
+- **Secret Manager** - API key storage
 
 ### AI Integration
-- **Google Gemini 2.0 Flash** (`@google/genai 1.31.0`)
-  - Multi-agent system (Detective + Planner)
-  - Function calling (Google Search integration)
-  - Vision API (image analysis)
-  - Streaming responses
-  - Live API (voice/video - beta)
-
-### Testing
-- **Vitest 4.0.15** - Unit testing
-- **Happy-DOM 20.0.11** - DOM simulation for unit tests
-- **Playwright 1.57.0** - E2E testing (Chrome, Firefox, Safari, Mobile)
-- **@testing-library/react 16.3.0** - Component testing utilities
-
----
-
-## 🧠 Viktiga Koncept
-
-### 1. Multi-Project Architecture
-Användare kan ha flera projekt (olika fordon). Varje projekt har:
-- `Project` object med metadata, team members, vehicleData
-- `Tasks` - uppgifter kopplade till projektet
-- `ShoppingItems` - inköpslista med budget
-- `FuelLog` - bränsleförbrukning
-- `ServiceBook` - servicehistorik
-- `Contacts` - mekaniker, verkstäder
-- `KnowledgeArticles` - AI-genererade guider
-
-### 2. Co-Working System
-- **Owner** - Projektskapare (full access)
-- **Members** - Inbjudna användare (shared access)
-- **Invitations** - Email-baserade inbjudningar med accept/cancel
-- Firestore security rules säkerställer access control
-
-### 3. AI Personality System
-Elton har en **fordons-driven personlighet**:
-- **Åldersbaserad:** Veteran (30+ år), Erfaren (10-29 år), Modern (0-9 år)
-- **Motor-baserad:** Diesel, Bensin, El, etc
-- **Kylsystem:** Luftkyld vs Vattenkyld
-- **Dialekter:** Standard, Dalmål, Gotländska, Rikssvenska
-- **Användarkunskap:** Beginner, Intermediate, Expert
-
-Se `src/services/personalityService.ts` och `src/config/promptTemplates.ts`
-
-### 4. Deep Research 2.0 (Expert Analysis)
-Multi-agent system som:
-1. **Detective Agent** - Forskar fram fordonsdata (Google Search)
-2. **Planner Agent** - Skapar projektplan baserat på research
-3. **Expert Analysis** - Identifierar "The Killers" (kända problem)
-
-Se `src/services/expertAnalysisService.ts`
-
-### 5. Onboarding Wizard
-3-stegs wizard för nya projekt:
-1. **STEG 1:** Basic info (regnr, make, model, projectType, userSkillLevel)
-2. **STEG 2:** AI Research (automated deep research)
-3. **STEG 3:** Review & Confirm (edit AI-generated data)
-
-Se `src/components/OnboardingWizard.tsx`
+- **Google Gemini 2.5 Flash** - Via Cloud Functions
+- Multi-agent system (Detective + Planner)
+- Function calling
+- Vision API
 
 ---
 
 ## 📝 Kodstandarder
 
-### Import Paths
-**ANVÄND ALLTID `@/` ALIAS** för imports:
-
+### Import Paths - OBLIGATORISKT
 ```typescript
 // ✅ RÄTT - Använd @ alias
 import { Project } from '@/types/types';
-import { streamGeminiResponse } from '@/services/geminiService';
-import { DIALECTS } from '@/config/dialects';
-import { useVehiclePersonality } from '@/hooks/useVehiclePersonality';
+import { sendChatMessage } from '@/services/aiProxyService';
 
 // ❌ FEL - Använd INTE relativa paths
 import { Project } from '../types';
-import { streamGeminiResponse } from '../../services/geminiService';
 ```
 
-**Alias Configuration:**
-- `vite.config.ts`: `'@': path.resolve(__dirname, './src')`
-- `tsconfig.json`: `"@/*": ["./src/*"]`
+### AI Service Calls - NY ARKITEKTUR
+```typescript
+// ✅ RÄTT - Använd aiProxyService
+import { sendChatMessage, parseInput } from '@/services/aiProxyService';
+
+const response = await sendChatMessage(history, message, systemPrompt);
+
+// ❌ FEL - Direkt API-anrop i frontend
+const ai = new GoogleGenAI(apiKey); // FÖRBJUDET
+```
 
 ### TypeScript Types
-Alla typer finns i `src/types/types.ts`:
-
+Alla typer i `src/types/types.ts`:
 ```typescript
-// Core types
-Project, Task, ShoppingItem, Contact, FuelLogItem, ServiceItem
-VehicleData, UserProfile, ProjectInvitation
-
-// Enums
-TaskStatus, Priority, CostType, Phase, ProjectType, UserSkillLevel
-```
-
-### React Patterns
-- **Functional Components** med TypeScript
-- **Hooks** för state management (useState, useEffect)
-- **Props interfaces** för varje component
-- **Children props** för composition
-
-```typescript
-interface MyComponentProps {
-  project: Project;
-  onSave: (project: Project) => void;
-  children?: React.ReactNode;
-}
-
-export const MyComponent: React.FC<MyComponentProps> = ({ project, onSave, children }) => {
-  const [loading, setLoading] = useState(false);
-  // ...
-};
-```
-
-### Styling
-- **Tailwind CSS** utility classes
-- **Dark mode:** `dark:` prefix (dark mode hanteras via `<html class="dark">`)
-- **Nordic theme colors:** `nordic-ice`, `nordic-charcoal`, `nordic-beige`, etc
-- **Responsive:** `sm:`, `md:`, `lg:` breakpoints
-
-```tsx
-<div className="bg-nordic-ice dark:bg-nordic-dark-bg text-nordic-charcoal dark:text-nordic-dark-text p-4 rounded-lg shadow-md">
-  {/* Content */}
-</div>
+Project, Task, ShoppingItem, Contact, VehicleData, UserProfile
+TaskStatus, Priority, CostType, Phase, ProjectType
 ```
 
 ---
 
-## ☁️ Firebase Integration
+## 🔐 Säkerhet
 
-### Firestore Structure
-```
-users/
-  {userId}/
-    profile: UserProfile
+### ⚠️ VIKTIGT: API-nycklar
 
-projects/
-  {projectId}/
-    data: Project
-    owner: userId
-    members: string[]
-    createdAt: Timestamp
+**ALDRIG** exponera API-nycklar i frontend-kod:
 
-tasks/
-  {taskId}/
-    projectId: string
-    data: Task
-
-projectInvitations/
-  {inviteId}/
-    projectId: string
-    email: string
-    status: 'pending' | 'accepted' | 'cancelled'
-```
-
-### Security Rules
-- Users can only read/write their own profile
-- Projects: Owner + members have full access
-- Tasks: Access via project membership
-- Invitations: Recipient can accept/cancel
-
-**SE:** `firestore.rules` och `storage.rules`
-
-### Common DB Operations
 ```typescript
-import { getProject, updateProject, getTasks, addTask } from '@/services/db';
+// ❌ ABSOLUT FÖRBJUDET
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+const ai = new GoogleGenAI(apiKey);
 
-// Hämta projekt
-const project = await getProject(projectId);
-
-// Uppdatera projekt
-await updateProject(projectId, { name: 'New Name' });
-
-// Hämta tasks
-const tasks = await getTasks(projectId);
-
-// Lägg till task
-await addTask(projectId, newTask);
+// ✅ KORREKT - Använd Cloud Functions
+import { sendChatMessage } from '@/services/aiProxyService';
+await sendChatMessage(history, message, systemPrompt);
 ```
+
+### LiveElton - Säkerhetsvarning
+
+`LiveElton.tsx` använder fortfarande direkt API-nyckel för WebRTC.
+**DENNA FEATURE SKA INTE ANVÄNDAS I PRODUKTION** tills token-baserad auth implementeras.
 
 ---
 
 ## 🧪 Testing
 
-### Unit Tests (Vitest)
+### Innan du committar
 ```bash
-# Kör alla unit tests
+# 1. TypeScript check
+npm run build
+
+# 2. Unit tests
 npm test
 
-# Kör specifik test
-npm test -- personalityService
-
-# Watch mode
-npm test -- --watch
+# 3. E2E (snabbcheck)
+npm run test:e2e -- --project=chromium --grep "critical"
 ```
 
-**Test files:** `src/**/__tests__/*.test.ts`
-
-**Viktiga tester:**
-- `personalityService.test.ts` - 66 tests ✅
-- `promptBuilder.test.ts` - 62 tests ✅
-- `promptTemplates.test.ts` - 47 tests ✅
-- `onboarding-prompts.test.ts` - 30 tests ✅
-
-**Test coverage status:** Se `docs/testing/TEST_RAPPORT.md`
-
-### E2E Tests (Playwright)
-```bash
-# Kör alla E2E tests
-npm run test:e2e
-
-# Interactive UI mode (REKOMMENDERAS)
-npm run test:e2e:ui
-
-# Debug mode
-npm run test:e2e:debug
-
-# Endast Chrome
-npm run test:e2e -- --project=chromium
-
-# Specific test
-npm run test:e2e -- -g "should display Users button"
-```
-
-**Test files:** `e2e/*.spec.ts`
-
-**Viktiga tests:**
-- `coworking.spec.ts` - 65 tests (team management)
-- `onboarding-flow.spec.ts` - Onboarding wizard
-- `ai-personality.spec.ts` - AI personality adaptation
-- `live-elton-integration.spec.ts` - Voice/Video UI
+### Test Status
+- Unit tests: 186 passing / 13 failing
+- E2E tests: ~1175 tests
 
 ---
 
-## 🐛 Vanliga Problem & Lösningar
-
-### Problem 1: Import Errors
-**Symptom:** `Failed to resolve import "../types"`
-
-**Lösning:**
-```bash
-# Använd @ alias istället
-import { Project } from '@/types/types';
-```
-
-### Problem 2: Firebase Permission Denied
-**Symptom:** `FirebaseError: Missing or insufficient permissions`
-
-**Lösning:**
-1. Kontrollera Firestore Rules (`firestore.rules`)
-2. Verifiera att användaren är inloggad
-3. Kontrollera att användaren är owner eller member av projektet
-
-### Problem 3: Gemini API Rate Limit
-**Symptom:** `429 Too Many Requests`
-
-**Lösning:**
-```typescript
-// Implementera retry logic med exponential backoff
-const response = await streamGeminiResponse(prompt, {
-  retryAttempts: 3,
-  retryDelay: 1000
-});
-```
-
-### Problem 4: Dark Mode Styling Issues
-**Symptom:** Colors ser fel ut i dark mode
-
-**Lösning:**
-```tsx
-// Använd dark: prefix för alla färger
-className="bg-white dark:bg-nordic-dark-bg text-black dark:text-nordic-dark-text"
-```
-
-### Problem 5: Test Timeouts
-**Symptom:** E2E tests timeout after 30s
-
-**Lösning:**
-```typescript
-// Öka timeout i playwright.config.ts
-use: {
-  actionTimeout: 30000, // 30s per action
-},
-timeout: 60000, // 60s per test
-```
-
----
-
-## 💡 Best Practices
+## 💡 Best Practices för AI-Agenter
 
 ### 1. Innan du kodar
-- ✅ Läs relevant kod i `src/` först
-- ✅ Kolla befintliga patterns i liknande komponenter
-- ✅ Verifiera att types finns i `src/types/types.ts`
-- ✅ Kolla om det finns tests för liknande funktionalitet
+- [ ] Läs denna guide
+- [ ] `git fetch && git status`
+- [ ] Kolla `docs/` för senaste ändringar
+- [ ] Identifiera vilka filer du behöver ändra
 
-### 2. När du skriver kod
-- ✅ Använd `@/` alias för alla imports
-- ✅ Följ befintlig TypeScript-struktur
-- ✅ Lägg till JSDoc comments för komplexa funktioner
-- ✅ Använd Tailwind CSS (inga inline styles)
-- ✅ Hantera loading states (`useState<boolean>`)
-- ✅ Hantera error states (`try/catch` med user-friendly messages)
+### 2. När du kodar
+- [ ] Använd `@/` alias för imports
+- [ ] Använd Cloud Functions för AI-anrop
+- [ ] Följ TypeScript patterns
+- [ ] Hantera errors med try/catch
 
-### 3. När du testar
-- ✅ Kör `npm run build` för att verifiera TypeScript
-- ✅ Kör `npm test` för unit tests
-- ✅ Kör `npm run test:e2e -- --project=chromium` för snabb E2E check
-- ✅ Testa dark mode manuellt
+### 3. När du committar
+- [ ] Tydligt commit message
+- [ ] Inkludera AI-agent namn
+- [ ] Peka ut breaking changes
 
-### 4. När du committar
-- ✅ Beskrivande commit messages (svenska eller engelska OK)
-- ✅ Gruppera relaterade ändringar
-- ✅ Inkludera test updates om du ändrat functionality
+### 4. Kommunikation med användaren
+- Beskriv VARFÖR du gör ändringar, inte bara VAD
+- Varna för potentiella konflikter
+- Föreslå nästa steg
 
 ---
 
-## 🔑 Environment Variables
+## 🔍 Vanliga Problem
 
-**`.env` file:**
-```env
-# Gemini API Key (REQUIRED)
-VITE_GEMINI_API_KEY=your_key_here
-
-# Firebase Config (optional, kan hardcodas i firebase.ts)
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-```
-
-**VIKTIGT:** Lägg ALDRIG till `.env` i git! (redan i `.gitignore`)
-
----
-
-## 📚 Resurser & Dokumentation
-
-### Intern Dokumentation
-- **README.md** - Projektöversikt & getting started
-- **docs/testing/TEST_RAPPORT.md** - Omfattande test-rapport
-- **docs/features/** - Feature specifications
-- **docs/architecture/** - Arkitektur-analys
-- **e2e/README.md** - E2E test dokumentation
-
-### External Documentation
-- [React Docs](https://react.dev)
-- [TypeScript Docs](https://www.typescriptlang.org/docs/)
-- [Vite Docs](https://vite.dev)
-- [Tailwind CSS Docs](https://tailwindcss.com)
-- [Firebase Docs](https://firebase.google.com/docs)
-- [Gemini API Docs](https://ai.google.dev/gemini-api/docs)
-- [Playwright Docs](https://playwright.dev)
-
----
-
-## 🔄 Development Workflow
-
-### 1. Starta Dev Server
+### Problem: "Functions not deployed"
 ```bash
-npm run dev
-# Öppnar http://localhost:3000
+cd functions && npm install
+firebase deploy --only functions
 ```
 
-### 2. Gör ändringar
-- Editera filer i `src/`
-- Hot reload fungerar automatiskt
+### Problem: "CORS error when calling Cloud Functions"
+Verifiera att Firebase Functions är deployade och region matchar (`europe-west1`).
 
-### 3. Testa lokalt
-```bash
-# TypeScript check
-npm run build
+### Problem: "Permission denied"
+Användaren måste vara autentiserad. Cloud Functions kräver `request.auth`.
 
-# Unit tests
-npm test
+---
 
-# E2E tests (snabb check)
-npm run test:e2e -- --project=chromium -g "critical test"
+## 📞 Kontakt & Samordning
+
+**Projektägare:** Joel
+**Branch-konvention:** `claude/feature-name-SESSION_ID`
+
+**Vid konflikter:**
+1. Stoppa arbetet
+2. Meddela användaren
+3. Vänta på instruktioner
+
+---
+
+## ✅ Checklista för AI-agenter
+
 ```
-
-### 4. Deploy
-```bash
-# Build
-npm run build
-
-# Deploy till Firebase (om configured)
-firebase deploy
+[ ] Har jag syncat med git fetch?
+[ ] Använder jag @/ imports?
+[ ] Använder jag Cloud Functions för AI?
+[ ] Har jag testat med npm run build?
+[ ] Är mitt commit message tydligt?
+[ ] Har jag varnat för potentiella konflikter?
 ```
 
 ---
 
-## 🤖 För AI-assistenter: Hur du hjälper bäst
-
-### När användaren ber om hjälp med...
-
-#### **Bug Fixing**
-1. Läs felmedelandet noggrant
-2. Leta i relevanta filer (`@/services/`, `@/components/`)
-3. Kolla om det finns tests som kan reproducera buggen
-4. Föreslå fix med kodexempel
-5. Förklara WHY buggen uppstod
-
-#### **Ny Feature**
-1. Fråga om detaljer (vilka komponenter, services påverkas?)
-2. Föreslå implementation approach
-3. Identifiera dependencies (types, services, etc)
-4. Ge kod-exempel med `@/` imports
-5. Föreslå tests som bör skrivas
-
-#### **Refactoring**
-1. Förstå befintlig kod först
-2. Identifiera patterns som redan används
-3. Föreslå ändringar som följer existing patterns
-4. Peka ut potentiella breaking changes
-5. Föreslå test-uppdateringar
-
-#### **Testing**
-1. Kolla `docs/testing/TEST_RAPPORT.md` för status
-2. Identifiera untested code
-3. Föreslå test cases (unit eller E2E)
-4. Ge kod-exempel för tests
-5. Förklara vad som testas och varför
-
-#### **Performance Optimization**
-1. Identifiera bottlenecks (stora bundle sizes, re-renders)
-2. Föreslå React.memo, useMemo, useCallback
-3. Föreslå code splitting (dynamic imports)
-4. Föreslå lazy loading av komponenter
-
----
-
-## 🔍 Felsökning & Debugging
-
-### TypeScript Errors
-```bash
-# Check all TypeScript errors
-npx tsc --noEmit
-```
-
-### Vite Build Errors
-```bash
-# Verbose build
-npm run build -- --debug
-```
-
-### Firebase Errors
-```typescript
-// Debug Firestore queries
-import { enableIndexedDbPersistence } from 'firebase/firestore';
-enableIndexedDbPersistence(db)
-  .catch((err) => {
-    console.error('Firestore persistence error:', err);
-  });
-```
-
-### Gemini API Errors
-```typescript
-// Debug AI responses
-console.log('Prompt:', prompt);
-console.log('Response:', await model.generateContent(prompt));
-```
-
----
-
-## 📊 Projektmetrik (uppdaterad 2025-01-09)
-
-- **Total kod:** ~50,000 lines
-- **Komponenter:** 23 React components
-- **Services:** 18 service modules
-- **Unit tests:** 186 passing (13 failing)
-- **E2E tests:** ~1175 tests across 5 browsers
-- **Test coverage:** ~28% (services), 0% (components)
-- **Build time:** ~13s
-- **Bundle size:** 1.8 MB (minified)
-
----
-
-## ✅ Checklista för AI-assistenter
-
-Innan du ger ett svar, verifiera:
-- [ ] Har du läst relevant kod i projektet?
-- [ ] Använder ditt kodexempel `@/` imports?
-- [ ] Följer ditt kodexempel TypeScript best practices?
-- [ ] Är ditt kodexempel kompatibelt med befintlig arkitektur?
-- [ ] Har du förklarat WHY, inte bara HOW?
-- [ ] Har du pekat ut potentiella problem/risks?
-- [ ] Har du föreslagit tests om relevant?
-
----
-
-## 📞 Support & Kontakt
-
-**Projektägare:** Joel (Supervisor)
-**AI Team:** ChatGPT, Claude, Gemini
-**GitHub Issues:** [github.com/yourusername/elton-vanplan/issues](https://github.com)
-
-**För frågor:**
-1. Kolla denna guide först
-2. Kolla `docs/` för specifik dokumentation
-3. Läs relevant kod i `src/`
-4. Fråga projektägaren om du är osäker
-
----
-
-**Lycka till med utvecklingen! 🚀**
-
-*Denna guide uppdateras kontinuerligt. Senast uppdaterad: 2025-01-09*
+**Senast uppdaterad:** 2025-12-11
+**Arkitekturversion:** 2.0 (Cloud Functions)
