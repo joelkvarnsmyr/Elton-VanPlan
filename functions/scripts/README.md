@@ -107,9 +107,9 @@ const getSpec = (label: string): string => {
 };
 ```
 
-### Phase 3: Test Scraper (Current Phase)
+### Phase 3: Test Scraper ✅ COMPLETED
 
-#### Local Testing
+#### 3A. Basic Local Testing
 
 ```bash
 cd functions
@@ -127,6 +127,27 @@ This will:
 # Edit test-scraper.js and set:
 USE_MOCK_HTML: true
 ```
+
+#### 3B. Realistic Human Simulation Testing ✅ NEW
+
+```bash
+cd functions
+node scripts/test-scraper-realistic.js
+```
+
+**Features:**
+- 🤖 **Simulates human behavior** - Random delays (3-8s between requests)
+- 🔀 **Randomizes site order** - Appears more natural to anti-bot systems
+- 🚗 **Tests multiple vehicles** - JKN330, JSN398, OHC870
+- ⏱️ **Realistic timing** - 5-12s delays when switching sites
+- 📊 **Comprehensive reporting** - Success rates and detailed summaries
+
+**Mock mode** (for development without rate limits):
+```bash
+node scripts/test-scraper-realistic.js --mock
+```
+
+Note: Create `scripts/mock-html/` directory with saved HTML files for mock mode.
 
 #### Deploy to Cloud Functions
 
@@ -191,21 +212,28 @@ npx playwright install chromium
 - [ ] Screenshot 3-5 different vehicles
 
 ### biluppgifter.se
-- [ ] Run inspection script (low priority - fallback only)
-- [ ] Check for CAPTCHA
-- [ ] Document if accessible
-- [ ] Compare data with car.info
-- [ ] Decide if worth implementing (or skip)
+- [x] Analyze real HTML from user-provided source (JSN398)
+- [x] Document CSS selectors (findings-biluppgifter.md)
+- [x] Discover `<ul class="list">` pattern for all fields
+- [x] Document section IDs (#vehicle-data, #technical-data, etc.)
+- [x] Confirm NO CAPTCHA (in sample - may vary)
+- [x] Compare data with car.info (biluppgifter.se is EASIER to scrape)
+- [x] Implement scrapeBiluppgifter() with real selectors
+- [ ] Test with multiple vehicles
+- [ ] Test if CAPTCHA appears in practice
 
 ### Implementation
-- [x] Update vehicleScraper.ts with real selectors
-- [x] Implement getSpec() helper using .sprow pattern
-- [x] Add H1 parsing for make/model/year
+- [x] Update vehicleScraper.ts with real selectors (car.info)
+- [x] Implement getSpec() helper using .sprow pattern (car.info)
+- [x] Implement scrapeBiluppgifter() with real selectors
+- [x] Implement getSpec() helper using .list pattern (biluppgifter.se)
+- [x] Add H1 parsing for make/model/year (both sites)
 - [x] Add error handling for missing fields
 - [x] Add rate limit detection
 - [x] Create test-scraper.js for local testing
+- [x] Create test-scraper-realistic.js for human simulation
 - [ ] Test locally with real data (pending rate limit)
-- [ ] Create mock HTML file for development
+- [ ] Create mock HTML files for development
 - [ ] Deploy to Cloud Functions
 - [ ] Test from frontend
 - [ ] Monitor cache hit rates in production
@@ -213,16 +241,18 @@ npx playwright install chromium
 ## 🔗 Related Files
 
 ### Implementation
-- **Scraper:** `functions/src/scraper/vehicleScraper.ts.draft` ✅ UPDATED with real selectors
+- **Scraper:** `functions/src/scraper/vehicleScraper.ts.draft` ✅ UPDATED with real selectors (both sites)
 - **Deep Research v2:** `functions/src/ai/aiDeepResearch_v2.ts.draft` (scraper integration)
 - **Types:** `functions/src/types/types.ts`
 
 ### Scripts
-- **Test Scraper:** `scripts/test-scraper.js` ✅ NEW - Local testing tool
+- **Realistic Test:** `scripts/test-scraper-realistic.js` ✅ NEW - Human simulation testing
+- **Basic Test:** `scripts/test-scraper.js` ✅ NEW - Local testing tool
 - **HTML Inspector:** `scripts/inspect-scraper.js` (browser automation)
 
 ### Documentation
-- **Real HTML Analysis:** `scripts/findings-car-info-REAL.md` ✅ CRITICAL - Verified selectors
+- **car.info Analysis:** `scripts/findings-car-info-REAL.md` ✅ CRITICAL - Verified selectors
+- **biluppgifter.se Analysis:** `scripts/findings-biluppgifter.md` ✅ CRITICAL - Verified selectors
 - **Initial Findings:** `scripts/findings-car-info.md` (preliminary analysis)
 - **Next Steps:** `scripts/NEXT_STEPS.md` (strategy & options)
 - **Strategy Doc:** `docs/analysis/SCRAPER_STRATEGY_ANALYSIS.md`

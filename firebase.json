@@ -10,6 +10,11 @@
       "region": "europe-west1"
     }
   },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20",
+    "region": "europe-west1"
+  },
   "firestore": {
     "rules": "firestore.rules"
   },

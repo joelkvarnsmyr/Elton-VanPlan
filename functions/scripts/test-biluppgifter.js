@@ -1,10 +1,10 @@
 /**
- * TEST SCRIPT: Vehicle Scraper
+ * TEST SCRIPT: biluppgifter.se Scraper
  *
- * Tests the scrapeCarInfo function locally without deploying to Cloud Functions.
+ * Tests the scrapeBiluppgifter function locally.
  *
  * Usage:
- *   node scripts/test-scraper.js JSN398
+ *   node scripts/test-biluppgifter.js JSN398 --mock
  */
 
 import * as cheerio from 'cheerio';
@@ -15,11 +15,11 @@ import fs from 'fs';
 // =============================================================================
 
 const CONFIG = {
-    CAR_INFO_BASE_URL: 'https://www.car.info/sv-se/license-plate/S/',
+    BILUPPGIFTER_BASE_URL: 'https://biluppgifter.se/fordon/',
     USER_AGENT: 'VanPlan/1.0 (Vehicle Project Manager; contact@vanplan.se)',
     FETCH_TIMEOUT_MS: 10000,
-    USE_MOCK_HTML: process.argv.includes('--mock'), // Set to true to use saved HTML file
-    MOCK_HTML_PATH: './scripts/mock-html/car-info-JSN398.html'
+    USE_MOCK_HTML: process.argv.includes('--mock'),
+    MOCK_HTML_PATH: './scripts/mock-html/biluppgifter-JSN398.html'
 };
 
 // =============================================================================
@@ -58,14 +58,14 @@ function parseSwedishDate(str) {
 // SCRAPER FUNCTION
 // =============================================================================
 
-async function scrapeCarInfo(regNo) {
+async function scrapeBiluppgifter(regNo) {
     let html;
 
     if (CONFIG.USE_MOCK_HTML) {
         console.log(`📁 Using mock HTML from: ${CONFIG.MOCK_HTML_PATH}`);
         html = fs.readFileSync(CONFIG.MOCK_HTML_PATH, 'utf-8');
     } else {
-        const url = `${CONFIG.CAR_INFO_BASE_URL}${regNo}`;
+        const url = `${CONFIG.BILUPPGIFTER_BASE_URL}${regNo.toLowerCase()}/`;
         console.log(`🌐 Fetching: ${url}`);
 
         const controller = new AbortController();
@@ -82,6 +82,11 @@ async function scrapeCarInfo(regNo) {
             });
             clearTimeout(timeoutId);
 
+            if (response.status === 403) {
+                console.error(`❌ HTTP 403 - Blocked`);
+                return null;
+            }
+
             if (!response.ok) {
                 console.error(`❌ HTTP ${response.status}`);
                 return null;
@@ -97,40 +102,30 @@ async function scrapeCarInfo(regNo) {
 
     const $ = cheerio.load(html);
 
-    // Check for rate limiting
-    if (html.includes('Kaffepaus') || html.includes('förhöjd aktivitet')) {
-        console.error('⚠️ RATE LIMITED - "Kaffepaus" screen detected');
-        console.error('⏰ Please wait 60 seconds and try again');
-        return null;
-    }
-
-    // Check if vehicle found
-    if (html.includes('Inget fordon hittades') || html.includes('No vehicle found')) {
-        console.error('❌ Vehicle not found');
+    // Check for CAPTCHA
+    if (html.includes('captcha') || html.includes('Verifiera')) {
+        console.error('⚠️ CAPTCHA required');
         return null;
     }
 
     // Helper: Get spec value by label
     const getSpec = (label) => {
         let result = '';
-        $('.sprow').each((_, el) => {
-            const $el = $(el);
-            const titleEl = $el.find('.sptitle');
+        $('ul.list li').each((_, li) => {
+            const $li = $(li);
+            const labelEl = $li.find('.label');
+            const valueEl = $li.find('.value');
 
-            if (titleEl.text().trim() === label) {
-                const clone = $el.clone();
-                clone.find('.icon_').remove();
-                clone.find('.sptitle').remove();
-                result = clone.text().trim();
-                return false; // Break
+            if (labelEl.text().trim() === label) {
+                result = valueEl.clone().find('a').remove().end().text().trim();
+                return false;
             }
         });
         return result;
     };
 
-    // Parse H1
-    const h1Text = $('h1 a.ident_name').text().trim();
-    console.log(`📋 H1: "${h1Text}"`);
+    // Note: H1 on biluppgifter.se contains page title, not vehicle info
+    // We get make/model from specs instead
 
     const vehicleData = {
         regNo: regNo,
@@ -144,57 +139,58 @@ async function scrapeCarInfo(regNo) {
         engine: { fuel: '', power: '', volume: '' },
         gearbox: '',
         wheels: { drive: '', tiresFront: '', tiresRear: '', boltPattern: '' },
-        dimensions: { length: 0, width: 0, height: '' },
+        dimensions: { length: 0, width: 0, height: '', wheelbase: 0 },
         weights: { curb: 0, total: 0, load: 0, trailer: 0, trailerB: 0 },
         inspection: { last: 'Okänt', next: 'Okänt', mileage: 'Okänt' },
-        history: { owners: 0 }
+        history: { owners: 0, lastOwnerChange: '' }
     };
 
-    // Parse H1
-    if (h1Text) {
-        const yearMatch = h1Text.match(/(\d{4})$/);
+    // Extract data - get make/model from specs (not H1)
+    vehicleData.vin = getSpec('Chassinr / VIN');
+    vehicleData.make = getSpec('Fabrikat');
+    vehicleData.model = getSpec('Modell');
+
+    const yearStr = getSpec('Fordonsår / Modellår');
+    if (yearStr) {
+        const yearMatch = yearStr.match(/(\d{4})/);
         if (yearMatch) vehicleData.year = parseInt(yearMatch[1]);
-
-        const makeMatch = h1Text.match(/^(\w+)/);
-        if (makeMatch) vehicleData.make = makeMatch[1];
-
-        const modelMatch = h1Text.match(/^\w+\s+([\w\s]+?)(?:\s+Skåpbil|\s+Sedan|\s+Kombi|\s+SUV|,)/);
-        if (modelMatch) vehicleData.model = modelMatch[1].trim();
     }
 
-    // Extract specs
-    vehicleData.status = getSpec('I trafik').includes('Ja') ? 'I trafik' : 'Avställd';
+    vehicleData.status = getSpec('Status');
     vehicleData.color = getSpec('Färg');
-    vehicleData.history.owners = parseSwedishNumber(getSpec('Antal ägare'));
-    vehicleData.inspection.mileage = getSpec('Mätarställning');
     vehicleData.bodyType = getSpec('Kaross');
-    vehicleData.vin = getSpec('Chassinummer (vin)');
+    vehicleData.history.owners = parseSwedishNumber(getSpec('Antal ägare'));
+    vehicleData.history.lastOwnerChange = parseSwedishDate(getSpec('Senaste ägarbyte'));
 
-    vehicleData.engine.power = getSpec('Effekt');
+    vehicleData.inspection.last = parseSwedishDate(getSpec('Senast besiktigad'));
+    vehicleData.inspection.next = parseSwedishDate(getSpec('Nästa besiktning senast'));
+    vehicleData.inspection.mileage = getSpec('Mätarställning (besiktning)');
+
+    vehicleData.engine.power = getSpec('Motoreffekt');
     vehicleData.engine.volume = getSpec('Motorvolym');
-    vehicleData.engine.fuel = getSpec('Bränsle');
-
-    vehicleData.wheels.drive = getSpec('Drivlina');
+    vehicleData.engine.fuel = getSpec('Drivmedel');
     vehicleData.gearbox = getSpec('Växellåda');
+
+    const fourWheelDrive = getSpec('Fyrhjulsdrift');
+    if (fourWheelDrive) {
+        vehicleData.wheels.drive = fourWheelDrive.includes('Ja') ? 'Fyrhjulsdrift' : 'Tvåhjulsdrift';
+    }
 
     vehicleData.dimensions.length = parseSwedishNumber(getSpec('Längd'));
     vehicleData.dimensions.width = parseSwedishNumber(getSpec('Bredd'));
     vehicleData.dimensions.height = getSpec('Höjd');
+    vehicleData.dimensions.wheelbase = parseSwedishNumber(getSpec('Axelavstånd'));
 
     vehicleData.weights.curb = parseSwedishNumber(getSpec('Tjänstevikt'));
     vehicleData.weights.total = parseSwedishNumber(getSpec('Totalvikt'));
+    vehicleData.weights.load = parseSwedishNumber(getSpec('Lastvikt'));
     vehicleData.weights.trailer = parseSwedishNumber(getSpec('Släpvagnsvikt'));
-    vehicleData.weights.trailerB = parseSwedishNumber(getSpec('Släpvagnsvikt obromsad'));
-
-    vehicleData.inspection.last = parseSwedishDate(getSpec('Senaste besiktning'));
-    vehicleData.inspection.next = parseSwedishDate(getSpec('Nästa besiktning'));
 
     vehicleData.wheels.tiresFront = getSpec('Däck fram');
     vehicleData.wheels.tiresRear = getSpec('Däck bak');
-    vehicleData.wheels.boltPattern = getSpec('Bultmönster');
 
-    // Calculate load
-    if (vehicleData.weights.total && vehicleData.weights.curb) {
+    // Calculate load if not set
+    if (vehicleData.weights.total && vehicleData.weights.curb && !vehicleData.weights.load) {
         vehicleData.weights.load = vehicleData.weights.total - vehicleData.weights.curb;
     }
 
@@ -208,13 +204,13 @@ async function scrapeCarInfo(regNo) {
 async function main() {
     const regNo = process.argv[2] || 'JSN398';
 
-    console.log('🚗 Vehicle Scraper Test');
+    console.log('🚗 biluppgifter.se Scraper Test');
     console.log('='.repeat(50));
     console.log(`📌 RegNo: ${regNo}`);
     console.log('');
 
     const startTime = Date.now();
-    const data = await scrapeCarInfo(regNo);
+    const data = await scrapeBiluppgifter(regNo);
     const duration = Date.now() - startTime;
 
     if (!data) {
@@ -243,7 +239,7 @@ async function main() {
     console.log('');
 
     // Field coverage
-    const totalFields = 30; // Approximate
+    const totalFields = 30;
     const filledFields = Object.values(data).filter(v =>
         v && (typeof v !== 'object' || Object.values(v).some(x => x && x !== 'Okänt' && x !== 0))
     ).length;

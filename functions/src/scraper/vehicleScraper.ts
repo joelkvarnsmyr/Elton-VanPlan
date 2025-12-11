@@ -38,17 +38,17 @@ const CONFIG = {
     // User agent (var ärlig om vem du är)
     USER_AGENT: 'VanPlan/1.0 (Vehicle Project Manager; contact@vanplan.se)',
 
-    // Sources in priority order
+    // Sources in priority order (biluppgifter.se has more detailed data!)
     SOURCES: {
-        CAR_INFO: {
-            name: 'car.info',
-            baseUrl: 'https://www.car.info/sv-se/license-plate/S/',
-            priority: 1
-        },
         BILUPPGIFTER: {
             name: 'biluppgifter.se',
             baseUrl: 'https://biluppgifter.se/fordon/',
-            priority: 2
+            priority: 1  // PRIMARY - Better data quality
+        },
+        CAR_INFO: {
+            name: 'car.info',
+            baseUrl: 'https://www.car.info/sv-se/license-plate/S/',
+            priority: 2  // FALLBACK - Good but less detailed
         }
     }
 };
@@ -203,7 +203,7 @@ async function scrapeCarInfo(regNo: string): Promise<Partial<VehicleData> | null
                     clone.find('.icon_').remove(); // Remove icons (e.g., icon_cross, icon_check)
                     clone.find('.sptitle').remove(); // Remove title
                     result = clone.text().trim();
-                    return false; // Break loop
+                    return false as any; // Break loop
                 }
             });
             return result;
@@ -286,7 +286,7 @@ async function scrapeCarInfo(regNo: string): Promise<Partial<VehicleData> | null
         const bodyType = getSpec('Kaross');
         if (bodyType) vehicleData.bodyType = bodyType;
 
-        const classification = getSpec('Klassificering');
+        // const classification = getSpec('Klassificering');
         // Classification kan användas som extra info
 
         const vin = getSpec('Chassinummer (vin)');
@@ -296,7 +296,7 @@ async function scrapeCarInfo(regNo: string): Promise<Partial<VehicleData> | null
         const power = getSpec('Effekt');
         if (power) vehicleData.engine!.power = power;
 
-        const horsePower = getSpec('Hästkrafter');
+        // const horsePower = getSpec('Hästkrafter');
         // Already have power in kW, this is redundant
 
         const engineVolume = getSpec('Motorvolym');
@@ -305,7 +305,7 @@ async function scrapeCarInfo(regNo: string): Promise<Partial<VehicleData> | null
         const fuel = getSpec('Bränsle');
         if (fuel) vehicleData.engine!.fuel = fuel;
 
-        const tankVolume = getSpec('Tankvolym');
+        // const tankVolume = getSpec('Tankvolym');
         // Can add to engine if needed
 
         // Transmission & Drive
@@ -381,11 +381,16 @@ async function scrapeCarInfo(regNo: string): Promise<Partial<VehicleData> | null
 /**
  * Scrapar fordonsdata från biluppgifter.se
  *
- * OBS: Denna sida har ofta CAPTCHA och kan blockera automatiserad åtkomst.
- * Använd endast som fallback.
+ * Verifierad struktur (2025-12-11):
+ * - Alla fält: <ul class="list"><li><span class="label">Label</span><span class="value">Value</span></li></ul>
+ * - H1 format: "Volkswagen LT 31 Skåp"
+ * - Sektioner: #vehicle-data, #technical-data, #meter-history, #history-log
+ *
+ * OBS: Denna sida kan ha CAPTCHA och blockera automatiserad åtkomst.
+ * Använd som fallback till car.info.
  */
 async function scrapeBiluppgifter(regNo: string): Promise<Partial<VehicleData> | null> {
-    const url = `${CONFIG.SOURCES.BILUPPGIFTER.baseUrl}${regNo}`;
+    const url = `${CONFIG.SOURCES.BILUPPGIFTER.baseUrl}${regNo.toLowerCase()}/`;
 
     console.log(`[Biluppgifter] Fetching: ${url}`);
 
@@ -406,27 +411,153 @@ async function scrapeBiluppgifter(regNo: string): Promise<Partial<VehicleData> |
         const html = await response.text();
 
         // Kontrollera om vi fick en CAPTCHA-sida
-        if (html.includes('captcha') || html.includes('Verifiera att du är människa')) {
+        if (html.includes('captcha') || html.includes('Verifiera')) {
             console.log(`[Biluppgifter] CAPTCHA required for ${regNo}`);
             return null;
         }
 
         const $ = cheerio.load(html);
 
-        // Biluppgifter har en annan HTML-struktur
-        // Implementera liknande logik som för car.info
-        // men anpassad för biluppgifter.se's layout
+        // Helper: Get spec value by label from <ul class="list"> pattern
+        const getSpec = (label: string): string => {
+            let result = '';
+            $('ul.list li').each((_, li) => {
+                const $li = $(li);
+                const labelEl = $li.find('.label');
+                const valueEl = $li.find('.value');
 
-        const vehicleData: Partial<VehicleData> = {
-            regNo: regNo,
-            // ... (liknande struktur som car.info)
+                if (labelEl.text().trim() === label) {
+                    // Remove any nested links/icons, get just text
+                    result = valueEl.clone().find('a').remove().end().text().trim();
+                    return false as any; // Break
+                }
+            });
+            return result;
         };
 
-        // TODO: Implementera parsing för biluppgifter.se
-        // Strukturen liknar car.info men med andra CSS-klasser
+        // Note: H1 on biluppgifter.se contains page title, not vehicle info
+        // We get make/model from specs instead
 
-        console.log(`[Biluppgifter] Scraping not fully implemented yet`);
-        return null;
+        // Initialize vehicleData
+        const vehicleData: Partial<VehicleData> = {
+            regNo: regNo,
+            make: '',
+            model: '',
+            year: 0,
+            prodYear: 0,
+            regDate: 'Okänt',
+            status: 'Okänt',
+            bodyType: '',
+            passengers: 0,
+            inspection: { last: 'Okänt', next: 'Okänt', mileage: 'Okänt' },
+            engine: { fuel: '', power: '', volume: '' },
+            gearbox: '',
+            wheels: { drive: '', tiresFront: '', tiresRear: '', boltPattern: '' },
+            dimensions: { length: 0, width: 0, height: '', wheelbase: 0 },
+            weights: { curb: 0, total: 0, load: 0, trailer: 0, trailerB: 0 },
+            vin: '',
+            color: '',
+            history: { owners: 0, events: 0, lastOwnerChange: '' }
+        };
+
+        // Extract data from #vehicle-data section
+        vehicleData.vin = getSpec('Chassinr / VIN');
+
+        // Get make/model from specs (H1 is not reliable)
+        vehicleData.make = getSpec('Fabrikat');
+        vehicleData.model = getSpec('Modell');
+
+        // Parse year (format: "1976 / 1976")
+        const yearStr = getSpec('Fordonsår / Modellår');
+        if (yearStr) {
+            const yearMatch = yearStr.match(/(\d{4})/);
+            if (yearMatch) {
+                vehicleData.year = parseInt(yearMatch[1]);
+                vehicleData.prodYear = parseInt(yearMatch[1]);
+            }
+        }
+
+        vehicleData.status = getSpec('Status');
+
+        const firstReg = getSpec('Först registrerad');
+        if (firstReg) vehicleData.regDate = parseSwedishDate(firstReg);
+
+        const owners = getSpec('Antal ägare');
+        if (owners) vehicleData.history!.owners = parseSwedishNumber(owners);
+
+        const lastOwnerChange = getSpec('Senaste ägarbyte');
+        if (lastOwnerChange) vehicleData.history!.lastOwnerChange = parseSwedishDate(lastOwnerChange);
+
+        const lastInspection = getSpec('Senast besiktigad');
+        if (lastInspection) vehicleData.inspection!.last = parseSwedishDate(lastInspection);
+
+        const nextInspection = getSpec('Nästa besiktning senast');
+        if (nextInspection) vehicleData.inspection!.next = parseSwedishDate(nextInspection);
+
+        const mileage = getSpec('Mätarställning (besiktning)');
+        if (mileage) vehicleData.inspection!.mileage = mileage;
+
+        // Extract data from #technical-data section
+        const power = getSpec('Motoreffekt');
+        if (power) vehicleData.engine!.power = power;
+
+        const volume = getSpec('Motorvolym');
+        if (volume) vehicleData.engine!.volume = volume;
+
+        const fuel = getSpec('Drivmedel');
+        if (fuel) vehicleData.engine!.fuel = fuel;
+
+        const gearbox = getSpec('Växellåda');
+        if (gearbox) vehicleData.gearbox = gearbox;
+
+        const fourWheelDrive = getSpec('Fyrhjulsdrift');
+        if (fourWheelDrive) {
+            vehicleData.wheels!.drive = fourWheelDrive.includes('Ja') ? 'Fyrhjulsdrift' : 'Tvåhjulsdrift';
+        }
+
+        vehicleData.color = getSpec('Färg');
+        vehicleData.bodyType = getSpec('Kaross');
+
+        const length = getSpec('Längd');
+        if (length) vehicleData.dimensions!.length = parseSwedishNumber(length);
+
+        const width = getSpec('Bredd');
+        if (width) vehicleData.dimensions!.width = parseSwedishNumber(width);
+
+        const height = getSpec('Höjd');
+        if (height) vehicleData.dimensions!.height = height;
+
+        const wheelbase = getSpec('Axelavstånd');
+        if (wheelbase) vehicleData.dimensions!.wheelbase = parseSwedishNumber(wheelbase);
+
+        const curbWeight = getSpec('Tjänstevikt');
+        if (curbWeight) vehicleData.weights!.curb = parseSwedishNumber(curbWeight);
+
+        const totalWeight = getSpec('Totalvikt');
+        if (totalWeight) vehicleData.weights!.total = parseSwedishNumber(totalWeight);
+
+        const loadWeight = getSpec('Lastvikt');
+        if (loadWeight) vehicleData.weights!.load = parseSwedishNumber(loadWeight);
+
+        const trailerWeight = getSpec('Släpvagnsvikt');
+        if (trailerWeight) vehicleData.weights!.trailer = parseSwedishNumber(trailerWeight);
+
+        // Tires
+        const tiresFront = getSpec('Däck fram');
+        if (tiresFront) vehicleData.wheels!.tiresFront = tiresFront;
+
+        const tiresRear = getSpec('Däck bak');
+        if (tiresRear) vehicleData.wheels!.tiresRear = tiresRear;
+
+        // Calculate load capacity if not already set
+        if (vehicleData.weights!.total && vehicleData.weights!.curb && !vehicleData.weights!.load) {
+            vehicleData.weights!.load = vehicleData.weights!.total - vehicleData.weights!.curb;
+        }
+
+        console.log(`[Biluppgifter] Successfully scraped: ${vehicleData.make} ${vehicleData.model} (${vehicleData.year})`);
+        console.log(`[Biluppgifter] Found specs: VIN=${!!vehicleData.vin}, Weight=${vehicleData.weights!.curb}kg, Fuel=${vehicleData.engine!.fuel}`);
+
+        return vehicleData;
 
     } catch (error) {
         console.error(`[Biluppgifter] Error scraping ${regNo}:`, error);
@@ -561,15 +692,15 @@ export const scrapeVehicleData = functions
             };
         }
 
-        // 2. Försök car.info först (bäst struktur)
-        let vehicleData = await scrapeCarInfo(normalizedRegNo);
-        let source = CONFIG.SOURCES.CAR_INFO.name;
+        // 2. Försök biluppgifter.se först (bäst datakvalitet)
+        let vehicleData = await scrapeBiluppgifter(normalizedRegNo);
+        let source = CONFIG.SOURCES.BILUPPGIFTER.name;
 
-        // 3. Fallback till biluppgifter.se
+        // 3. Fallback till car.info
         if (!vehicleData) {
-            console.log(`[Main] Falling back to biluppgifter.se`);
-            vehicleData = await scrapeBiluppgifter(normalizedRegNo);
-            source = CONFIG.SOURCES.BILUPPGIFTER.name;
+            console.log(`[Main] Falling back to car.info`);
+            vehicleData = await scrapeCarInfo(normalizedRegNo);
+            source = CONFIG.SOURCES.CAR_INFO.name;
         }
 
         // 4. Om vi fick data, cacha och returnera

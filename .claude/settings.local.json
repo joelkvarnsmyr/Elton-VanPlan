@@ -5,7 +5,11 @@
       "Bash(npx playwright install:*)",
       "Bash(node scripts/inspect-scraper.js:*)",
       "Bash(timeout 20 node:*)",
-      "Bash(timeout 25 node:*)"
+      "Bash(timeout 25 node:*)",
+      "Bash(node scripts/test-scraper-realistic.js:*)",
+      "Bash(ls:*)",
+      "Bash(node scripts/test-scraper.js:*)",
+      "Bash(node scripts/test-biluppgifter.js:*)"
     ]
   }
 }
