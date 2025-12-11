@@ -276,7 +276,7 @@ export const getAIService = async (): Promise<AIServiceManager> => {
   
   aiServiceInstance = new AIServiceManager();
   await aiServiceInstance.initializeClients(); // Nytt: anropar den asynkrona initieringen
-  return aiServiceİnstance;
+  return aiServiceInstance;
 };
 
 /**
