@@ -38,6 +38,9 @@ function getProjectRef(projectId: string): any {
 
 const getTasksRef = (projectId: string) => collection(db, 'projects', projectId, 'tasks');
 const getShoppingRef = (projectId: string) => collection(db, 'projects', projectId, 'shoppingList');
+const getServiceLogRef = (projectId: string) => collection(db, 'projects', projectId, 'serviceLog');
+const getFuelLogRef = (projectId: string) => collection(db, 'projects', projectId, 'fuelLog');
+const getKnowledgeBaseRef = (projectId: string) => collection(db, 'projects', projectId, 'knowledgeBase');
 
 
 // --- SEEDING ---
@@ -83,7 +86,34 @@ export const forceSeedProject = async (userEmail: string, userId: string) => {
     const itemRef = doc(shoppingRef, item.id);
     batch.set(itemRef, item);
   }
-  
+
+  // Seed serviceLog sub-collection (if demo data exists)
+  if (DEMO_PROJECT.serviceLog && DEMO_PROJECT.serviceLog.length > 0) {
+    const serviceLogRef = getServiceLogRef(projectId);
+    for (const entry of DEMO_PROJECT.serviceLog) {
+      const entryRef = doc(serviceLogRef, entry.id);
+      batch.set(entryRef, entry);
+    }
+  }
+
+  // Seed fuelLog sub-collection (if demo data exists)
+  if (DEMO_PROJECT.fuelLog && DEMO_PROJECT.fuelLog.length > 0) {
+    const fuelLogRef = getFuelLogRef(projectId);
+    for (const entry of DEMO_PROJECT.fuelLog) {
+      const entryRef = doc(fuelLogRef, entry.id);
+      batch.set(entryRef, entry);
+    }
+  }
+
+  // Seed knowledgeBase sub-collection (if demo data exists)
+  if (DEMO_PROJECT.knowledgeArticles && DEMO_PROJECT.knowledgeArticles.length > 0) {
+    const knowledgeRef = getKnowledgeBaseRef(projectId);
+    for (const article of DEMO_PROJECT.knowledgeArticles) {
+      const articleRef = doc(knowledgeRef, article.id);
+      batch.set(articleRef, article);
+    }
+  }
+
   await batch.commit();
   console.log('Database seeded successfully.');
 };
@@ -190,10 +220,11 @@ export const getProjectsForUser = async (userId: string, userEmail?: string): Pr
 
 export const getProject = async (projectId: string): Promise<Project | null> => {
   const docSnap = await getDoc(getProjectRef(projectId));
-  if (docSnap.exists()) {
-    return { id: docSnap.id, ...docSnap.data() } as Project;
+  if (!docSnap.exists()) {
+    return null;
   }
-  return null;
+  const data = docSnap.data() as Record<string, unknown>;
+  return { ...data, id: docSnap.id } as Project;
 };
 
 export const createProject = async (
@@ -309,47 +340,108 @@ export const createProject = async (
 };
 
 export const deleteProjectFull = async (projectId: string) => {
+    // Get all sub-collections
     const tasksSnap = await getDocs(getTasksRef(projectId));
     const itemsSnap = await getDocs(getShoppingRef(projectId));
-    
+    const serviceLogSnap = await getDocs(getServiceLogRef(projectId));
+    const fuelLogSnap = await getDocs(getFuelLogRef(projectId));
+    const knowledgeSnap = await getDocs(getKnowledgeBaseRef(projectId));
+
     const batch = writeBatch(db);
-    
-    tasksSnap.forEach((doc) => batch.delete(doc.ref));
-    itemsSnap.forEach((doc) => batch.delete(doc.ref));
-    
+
+    // Delete all sub-collection documents
+    tasksSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+    itemsSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+    serviceLogSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+    fuelLogSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+    knowledgeSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+
+    // Delete chat history if exists
+    const chatRef = doc(db, 'projects', projectId, 'chat', 'history');
+    batch.delete(chatRef);
+
+    // Delete project document
     batch.delete(getProjectRef(projectId));
-    
+
     await batch.commit();
 };
 
-export const addServiceEntry = async (projectId: string, entry: ServiceItem) => {
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        serviceLog: arrayUnion(entry)
-    });
+// --- SERVICE LOG (Sub-collection) ---
+
+export const getServiceLog = async (projectId: string): Promise<ServiceItem[]> => {
+    const querySnapshot = await getDocs(getServiceLogRef(projectId));
+    return querySnapshot.docs.map(doc => doc.data() as ServiceItem);
 };
 
-export const addFuelEntry = async (projectId: string, entry: FuelLogItem) => {
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        fuelLog: arrayUnion(entry)
-    });
+export const addServiceEntry = async (projectId: string, entry: Omit<ServiceItem, 'id'>) => {
+    const docRef = await addDoc(getServiceLogRef(projectId), entry);
+    await updateDoc(docRef, { id: docRef.id });
+    return { ...entry, id: docRef.id } as ServiceItem;
 };
 
+export const updateServiceEntry = async (projectId: string, entryId: string, updates: Partial<ServiceItem>) => {
+    const entryRef = doc(getServiceLogRef(projectId), entryId);
+    await updateDoc(entryRef, updates);
+};
+
+export const deleteServiceEntry = async (projectId: string, entryId: string) => {
+    const entryRef = doc(getServiceLogRef(projectId), entryId);
+    await deleteDoc(entryRef);
+};
+
+// --- FUEL LOG (Sub-collection) ---
+
+export const getFuelLog = async (projectId: string): Promise<FuelLogItem[]> => {
+    const querySnapshot = await getDocs(getFuelLogRef(projectId));
+    return querySnapshot.docs.map(doc => doc.data() as FuelLogItem);
+};
+
+export const addFuelEntry = async (projectId: string, entry: Omit<FuelLogItem, 'id'>) => {
+    const docRef = await addDoc(getFuelLogRef(projectId), entry);
+    await updateDoc(docRef, { id: docRef.id });
+    return { ...entry, id: docRef.id } as FuelLogItem;
+};
+
+export const updateFuelEntry = async (projectId: string, entryId: string, updates: Partial<FuelLogItem>) => {
+    const entryRef = doc(getFuelLogRef(projectId), entryId);
+    await updateDoc(entryRef, updates);
+};
+
+export const deleteFuelEntry = async (projectId: string, entryId: string) => {
+    const entryRef = doc(getFuelLogRef(projectId), entryId);
+    await deleteDoc(entryRef);
+};
+
+// Legacy batch update (kept for backwards compatibility during migration)
 export const updateFuelLog = async (projectId: string, updatedFuelLog: FuelLogItem[]) => {
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        fuelLog: updatedFuelLog,
-        lastModified: new Date().toISOString()
-    });
+    // Delete all existing entries and re-create
+    const existingDocs = await getDocs(getFuelLogRef(projectId));
+    const batch = writeBatch(db);
+    existingDocs.forEach(docSnap => batch.delete(docSnap.ref));
+
+    // Add new entries
+    for (const entry of updatedFuelLog) {
+        const entryRef = doc(getFuelLogRef(projectId), entry.id || undefined);
+        batch.set(entryRef, { ...entry, id: entry.id || entryRef.id });
+    }
+
+    await batch.commit();
 };
 
+// Legacy batch update (kept for backwards compatibility during migration)
 export const updateServiceLog = async (projectId: string, updatedServiceLog: ServiceItem[]) => {
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        serviceLog: updatedServiceLog,
-        lastModified: new Date().toISOString()
-    });
+    // Delete all existing entries and re-create
+    const existingDocs = await getDocs(getServiceLogRef(projectId));
+    const batch = writeBatch(db);
+    existingDocs.forEach(docSnap => batch.delete(docSnap.ref));
+
+    // Add new entries
+    for (const entry of updatedServiceLog) {
+        const entryRef = doc(getServiceLogRef(projectId), entry.id || undefined);
+        batch.set(entryRef, { ...entry, id: entry.id || entryRef.id });
+    }
+
+    await batch.commit();
 };
 
 export const updateContacts = async (projectId: string, contacts: Contact[]) => {
@@ -368,11 +460,27 @@ export const updateProjectLocation = async (projectId: string, location: any) =>
     });
 };
 
-export const addKnowledgeArticle = async (projectId: string, article: KnowledgeArticle) => {
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        knowledgeArticles: arrayUnion(article)
-    });
+// --- KNOWLEDGE BASE (Sub-collection) ---
+
+export const getKnowledgeBase = async (projectId: string): Promise<KnowledgeArticle[]> => {
+    const querySnapshot = await getDocs(getKnowledgeBaseRef(projectId));
+    return querySnapshot.docs.map(doc => doc.data() as KnowledgeArticle);
+};
+
+export const addKnowledgeArticle = async (projectId: string, article: Omit<KnowledgeArticle, 'id'>) => {
+    const docRef = await addDoc(getKnowledgeBaseRef(projectId), article);
+    await updateDoc(docRef, { id: docRef.id });
+    return { ...article, id: docRef.id } as KnowledgeArticle;
+};
+
+export const updateKnowledgeArticle = async (projectId: string, articleId: string, updates: Partial<KnowledgeArticle>) => {
+    const articleRef = doc(getKnowledgeBaseRef(projectId), articleId);
+    await updateDoc(articleRef, updates);
+};
+
+export const deleteKnowledgeArticle = async (projectId: string, articleId: string) => {
+    const articleRef = doc(getKnowledgeBaseRef(projectId), articleId);
+    await deleteDoc(articleRef);
 };
 
 export const updateVehicleData = async (projectId: string, data: Partial<VehicleData>) => {

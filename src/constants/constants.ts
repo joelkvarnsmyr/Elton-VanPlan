@@ -233,7 +233,7 @@ const ELTON_TASKS: Task[] = [
     priority: Priority.MEDIUM,
     buildPhase: BuildPhase.B1_SHELL,
     phase: 'Fas 4: Inredning & Finish',
-    blockers: ['mek-3'],
+    blockers: [{ taskId: 'mek-3', reason: 'Måste svetsa balkar innan isolering' }],
     estimatedCostMin: 3000, 
     estimatedCostMax: 5000,
     actualCost: 0,
@@ -327,6 +327,12 @@ export const DEMO_PROJECT: Project = {
     name: 'Elton (VW LT31)',
     type: 'conversion', // Updated type
     brand: 'vanplan',
+    // NEW ownership model
+    ownerIds: ['demo'],
+    primaryOwnerId: 'demo',
+    memberIds: [],
+    invitedEmails: [],
+    // Legacy fields (for backwards compatibility)
     ownerId: 'demo',
     ownerEmail: 'demo',
     vehicleData: ELTON_VEHICLE_DATA,
@@ -347,6 +353,12 @@ export const EMPTY_PROJECT_TEMPLATE: Project = {
     name: 'Nytt Projekt',
     type: 'renovation',
     brand: 'vanplan',
+    // NEW ownership model
+    ownerIds: [],
+    primaryOwnerId: '',
+    memberIds: [],
+    invitedEmails: [],
+    // Legacy fields (for backwards compatibility)
     ownerId: '',
     ownerEmail: '',
     vehicleData: {

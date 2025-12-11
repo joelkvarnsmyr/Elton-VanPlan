@@ -14,6 +14,9 @@ export { ocrLicensePlate, ocrReceipt, ocrVIN, ocrServiceDocument, ocrExtractText
 // Project Management Functions
 export { transferProjectOwnership } from './project/management';
 
+// Firestore Triggers
+export { onTaskComplete, onTaskDelete, onProjectDelete } from './project/triggers';
+
 // Future: Add more function exports here
 // export { userCleanup } from './admin/cleanup';
 // export { webhooks } from './integrations/webhooks';
