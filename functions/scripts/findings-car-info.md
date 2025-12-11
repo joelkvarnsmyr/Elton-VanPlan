@@ -219,21 +219,80 @@ Map all grid items using proper selectors:
 
 ---
 
+## ⚠️ CRITICAL DISCOVERY: Rate Limiting
+
+### "Kaffepaus" (Coffee Break) Screen
+
+**Observed:** 2025-12-11 22:02
+
+car.info implements **rate limiting** that shows a "Kaffepaus" screen when too many requests are made:
+
+```
+H1: "Kaffepaus"
+Message: "Vi behöver en paus! Vi ser förhöjd aktivitet på car.info..."
+```
+
+**Implications for Scraper:**
+
+1. **Must implement delays** between requests
+   - Minimum 2-3 seconds per request
+   - Ideally 5-10 seconds to be safe
+
+2. **Need intelligent retry logic**
+   - Detect "Kaffepaus" response
+   - Back off exponentially
+   - Wait 30-60 seconds before retry
+
+3. **Cache is CRITICAL**
+   - With rate limits, we MUST cache aggressively
+   - 7-day TTL is good
+   - Consider 30-day for older vehicles (specs don't change)
+
+4. **Session management**
+   - May need to manage cookies/sessions
+   - Rotate User-Agent strings
+   - Add randomized delays
+
+**Detection Code:**
+```typescript
+// In scraper
+const html = await response.text();
+if (html.includes('Kaffepaus') || html.includes('förhöjd aktivitet')) {
+  console.log('⚠️ Rate limited by car.info');
+  return {
+    error: 'RATE_LIMITED',
+    retryAfter: 60000 // 60 seconds
+  };
+}
+```
+
+**Workaround for Development:**
+- Wait a few minutes between test runs
+- Use cached data during development
+- Test with biluppgifter.se as fallback
+
+---
+
 ## Open Questions
 
 1. **Is car.info structure consistent across all vehicles?**
    - Need to test with 5-10 different cars
+   - **BLOCKER:** Rate limiting makes rapid testing impossible
 
 2. **Does structure change for old vs new cars?**
    - JSN398 is from 1976 - test with 2020+ car
+   - **Must wait between tests** due to rate limit
 
-3. **Are there any CAPTCHA or rate limits?**
-   - No CAPTCHA observed so far
-   - Need to test 10+ rapid requests
+3. **Rate limit details:**
+   - ✅ Confirmed: Rate limiting exists ("Kaffepaus" screen)
+   - ❓ What's the exact limit? (requests per minute/hour)
+   - ❓ Is it IP-based or session-based?
+   - ❓ How long is the cooldown period?
 
 4. **Can we get VIN from this page?**
    - Not visible in current screenshot
    - May be in collapsed section or separate tab
+   - **Cannot test yet** due to rate limit
 
 ---
 

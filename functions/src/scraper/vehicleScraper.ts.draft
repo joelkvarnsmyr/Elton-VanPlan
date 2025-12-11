@@ -173,6 +173,13 @@ async function scrapeCarInfo(regNo: string): Promise<Partial<VehicleData> | null
         const html = await response.text();
         const $ = cheerio.load(html);
 
+        // Kontrollera för rate limiting ("Kaffepaus")
+        if (html.includes('Kaffepaus') || html.includes('förhöjd aktivitet')) {
+            console.log(`[CarInfo] ⚠️ RATE LIMITED - "Kaffepaus" screen detected`);
+            console.log(`[CarInfo] Please wait 60 seconds and try again`);
+            throw new Error('RATE_LIMITED');
+        }
+
         // Kontrollera om fordonet hittades
         if (html.includes('Inget fordon hittades') || html.includes('No vehicle found')) {
             console.log(`[CarInfo] Vehicle not found: ${regNo}`);

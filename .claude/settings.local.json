@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git pull:*)",
+      "Bash(npx playwright install:*)",
+      "Bash(node scripts/inspect-scraper.js:*)",
+      "Bash(timeout 20 node:*)",
+      "Bash(timeout 25 node:*)"
+    ]
+  }
+}

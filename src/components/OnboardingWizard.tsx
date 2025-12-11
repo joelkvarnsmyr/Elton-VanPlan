@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { ProjectType, UserSkillLevel } from '@/types/types';
-import { Sparkles, Wrench, Hammer, Leaf, Award, User, Zap, CheckCircle2, Loader2, Search, ImageIcon, Trash2, Edit3, ChevronLeft, AlertTriangle } from 'lucide-react';
+import { Sparkles, Wrench, Hammer, Leaf, Award, User, Zap, CheckCircle2, Loader2, Search, ImageIcon, Trash2, Edit3, ChevronLeft, AlertTriangle, Info } from 'lucide-react';
 import { generateProjectProfile, generateVehicleIcon } from '@/services/geminiService';
 import { useToasts, ToastContainer } from './Toast';
 import type { AIProvider } from '@/services/aiService';
@@ -20,6 +21,21 @@ export interface OnboardingData {
     aiData?: any; // Full AI response from generateProjectProfile
     generatedIcon?: string | null; // Generated vehicle icon
 }
+
+const Disclaimer = () => (
+    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-4 mb-6">
+        <div className="flex items-start gap-3">
+            <Info size={20} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div>
+                <h4 className="font-bold text-blue-800 dark:text-blue-300">Ett litet meddelande från verkstan:</h4>
+                <p className="text-sm text-blue-700 dark:text-blue-400/80 mt-1">
+                    Elton gör sitt bästa för att hämta korrekt data, men ibland kan det smyga sig in ett fel. Dubbelkolla alltid kritisk information! Om du hittar något som inte stämmer, blir vi superglada om du <a href="mailto:feedback@elton.se" className="font-bold underline hover:text-blue-600">rapporterar det till oss</a>. Tillsammans gör vi Elton smartare!
+                </p>
+            </div>
+        </div>
+    </div>
+);
+
 
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onCancel }) => {
     const { toasts, removeToast, success, warning, error, info } = useToasts();
@@ -363,6 +379,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                         </div>
 
                         <div className="space-y-6">
+                            <Disclaimer />
+
                             {/* Projektnamn */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Projektnamn</label>

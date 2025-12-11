@@ -41,8 +41,61 @@ async function inspectCarInfo(regNo) {
 
         console.log(`${colors.green}✅ Page loaded successfully${colors.reset}\n`);
 
-        // Wait a bit to see the page
-        await page.waitForTimeout(2000);
+        // Look for "Visa alla X fordonsuppgifter" button and click it
+        console.log(`${colors.cyan}🔘 Looking for "Visa alla fordonsuppgifter" button...${colors.reset}`);
+
+        try {
+            // Try different button selectors
+            const buttonSelectors = [
+                'button:has-text("Visa alla")',
+                'a:has-text("Visa alla")',
+                '.show-all-specs',
+                'button:has-text("fordonsuppgifter")',
+                '[data-toggle="collapse"]'
+            ];
+
+            let buttonFound = false;
+            for (const selector of buttonSelectors) {
+                const button = await page.$(selector).catch(() => null);
+                if (button) {
+                    const buttonText = await button.textContent();
+                    console.log(`  ${colors.green}✅ Found button: "${buttonText.trim()}"${colors.reset}`);
+
+                    // Click the button
+                    await button.click();
+                    console.log(`  ${colors.green}✅ Clicked! Waiting for content to expand...${colors.reset}`);
+
+                    // Wait for content to load
+                    await page.waitForTimeout(1000);
+                    buttonFound = true;
+                    break;
+                }
+            }
+
+            if (!buttonFound) {
+                console.log(`  ${colors.yellow}⚠️  No expand button found - content may already be visible${colors.reset}`);
+            }
+        } catch (error) {
+            console.log(`  ${colors.yellow}⚠️  Could not click expand button: ${error.message}${colors.reset}`);
+        }
+
+        // Scroll down to trigger lazy loading
+        console.log(`${colors.cyan}📜 Scrolling page to load all content...${colors.reset}`);
+        await page.evaluate(() => {
+            window.scrollTo(0, document.body.scrollHeight / 2);
+        });
+        await page.waitForTimeout(500);
+
+        await page.evaluate(() => {
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+        await page.waitForTimeout(1000);
+
+        // Scroll back to top
+        await page.evaluate(() => {
+            window.scrollTo(0, 0);
+        });
+        await page.waitForTimeout(500);
 
         // Extract basic structure
         console.log(`${colors.bright}📋 PAGE STRUCTURE:${colors.reset}`);
@@ -115,18 +168,19 @@ async function inspectCarInfo(regNo) {
             });
         }
 
-        // Extract table data (car.info uses tables instead of dt/dd)
-        const tableData = await page.evaluate(() => {
-            const tables = document.querySelectorAll('table');
-            const allData = [];
+        // Extract ALL spec data (tables, grids, divs, etc.)
+        const allSpecs = await page.evaluate(() => {
+            const specs = [];
 
+            // Method 1: Tables
+            const tables = document.querySelectorAll('table');
             tables.forEach((table, tableIndex) => {
                 const rows = table.querySelectorAll('tr');
                 rows.forEach(row => {
                     const cells = row.querySelectorAll('td, th');
                     if (cells.length >= 2) {
-                        allData.push({
-                            table: tableIndex,
+                        specs.push({
+                            source: `table-${tableIndex}`,
                             label: cells[0].textContent.trim(),
                             value: cells[1].textContent.trim()
                         });
@@ -134,14 +188,75 @@ async function inspectCarInfo(regNo) {
                 });
             });
 
-            return allData;
+            // Method 2: Look for spec-like divs (label + value pattern)
+            const allDivs = document.querySelectorAll('div');
+            allDivs.forEach(div => {
+                // Find divs that look like spec containers
+                const text = div.textContent.trim();
+                if (text.length > 0 && text.length < 200) {
+                    // Look for common vehicle spec keywords
+                    const keywords = ['Märke', 'Modell', 'År', 'Motor', 'Bränsle', 'Växellåda',
+                                     'Färg', 'VIN', 'Besiktning', 'Vikt', 'Längd', 'Bredd'];
+
+                    if (keywords.some(kw => text.includes(kw))) {
+                        // Try to split into label:value
+                        const children = Array.from(div.children);
+                        if (children.length === 2) {
+                            specs.push({
+                                source: 'div-container',
+                                label: children[0].textContent.trim(),
+                                value: children[1].textContent.trim()
+                            });
+                        }
+                    }
+                }
+            });
+
+            // Method 3: Look for dl/dt/dd (if any got expanded)
+            const dtElements = document.querySelectorAll('dt');
+            dtElements.forEach(dt => {
+                const dd = dt.nextElementSibling;
+                if (dd && dd.tagName === 'DD') {
+                    specs.push({
+                        source: 'dl-list',
+                        label: dt.textContent.trim(),
+                        value: dd.textContent.trim()
+                    });
+                }
+            });
+
+            // Deduplicate based on label
+            const unique = [];
+            const seen = new Set();
+            specs.forEach(spec => {
+                const key = `${spec.label}:${spec.value}`;
+                if (!seen.has(key) && spec.label && spec.value && spec.label !== spec.value) {
+                    seen.add(key);
+                    unique.push(spec);
+                }
+            });
+
+            return unique;
         });
 
-        if (tableData.length > 0) {
-            console.log(`\n${colors.bright}📊 TABLE DATA (extracted from ${tableData.filter(d => d.table === 0).length} rows):${colors.reset}`);
-            tableData.forEach(({ table, label, value }) => {
-                console.log(`  [T${table}] ${colors.cyan}${label}${colors.reset}: ${colors.yellow}${value}${colors.reset}`);
+        if (allSpecs.length > 0) {
+            console.log(`\n${colors.bright}📊 ALL VEHICLE SPECS (${allSpecs.length} fields found):${colors.reset}`);
+
+            // Group by source
+            const bySource = allSpecs.reduce((acc, spec) => {
+                if (!acc[spec.source]) acc[spec.source] = [];
+                acc[spec.source].push(spec);
+                return acc;
+            }, {});
+
+            Object.entries(bySource).forEach(([source, specs]) => {
+                console.log(`\n  ${colors.bright}${colors.blue}[${source}]${colors.reset}`);
+                specs.forEach(({ label, value }) => {
+                    console.log(`    ${colors.cyan}${label}${colors.reset}: ${colors.yellow}${value}${colors.reset}`);
+                });
             });
+        } else {
+            console.log(`\n${colors.yellow}⚠️  No specs found - may need to adjust selectors${colors.reset}`);
         }
 
         // Take screenshot
