@@ -4,9 +4,11 @@ Interaktiva verktyg för att utveckla och testa vehicle data scraper.
 
 ## 🎯 Workflow
 
-### Phase 1: HTML Inspection (Current Phase)
+### Phase 1: HTML Inspection ✅ COMPLETED
 
 **Mål:** Förstå HTML-strukturen på car.info och biluppgifter.se
+
+**Status:** DONE - Real HTML analyzed from user-provided source (JSN398)
 
 #### 1. Kör inspection-scriptet
 
@@ -75,26 +77,64 @@ https://www.car.info/sv-se/license-plate/S/{REGNO}
 - Fast response (~500ms)
 ```
 
-### Phase 2: Implement Selectors
+### Phase 2: Implement Selectors ✅ COMPLETED
 
-Efter du dokumenterat selectors, uppdatera:
-`functions/src/scraper/vehicleScraper.ts.draft`
+**Status:** DONE - Real selectors implemented based on HTML analysis
+
+Key discoveries from real HTML (findings-car-info-REAL.md):
+- ✅ All specs use `.sprow` class with `.sptitle` for labels
+- ✅ H1 format: "Volkswagen LT Skåpbil 31 2.0 Manuell, 75hk, 1976"
+- ✅ All 105 specs already in HTML source (CSS hidden) - NO PLAYWRIGHT NEEDED!
+- ✅ Simple Cheerio is sufficient for scraping
+
+Implementation complete in: `functions/src/scraper/vehicleScraper.ts.draft`
 
 ```typescript
-// Replace placeholder selectors with actual ones from findings
-const make = $('dt:contains("Märke")').next('dd').text().trim();
-const model = $('dt:contains("Modell")').next('dd').text().trim();
-// etc.
+// Real implementation using verified selectors
+const getSpec = (label: string): string => {
+    let result = '';
+    $('.sprow').each((_, el) => {
+        const titleEl = $(el).find('.sptitle');
+        if (titleEl.text().trim() === label) {
+            const clone = $(el).clone();
+            clone.find('.icon_').remove();
+            clone.find('.sptitle').remove();
+            result = clone.text().trim();
+            return false;
+        }
+    });
+    return result;
+};
 ```
 
-### Phase 3: Test Scraper
+### Phase 3: Test Scraper (Current Phase)
+
+#### Local Testing
 
 ```bash
-# Deploy Cloud Function
+cd functions
+node scripts/test-scraper.js JSN398
+```
+
+This will:
+- ✅ Fetch live data from car.info
+- ✅ Parse using real selectors
+- ✅ Display extracted data with coverage statistics
+- ✅ Validate scraper logic without deploying
+
+**Alternative:** Use mock HTML to avoid rate limiting:
+```bash
+# Edit test-scraper.js and set:
+USE_MOCK_HTML: true
+```
+
+#### Deploy to Cloud Functions
+
+```bash
+# When ready for production
 firebase deploy --only functions:scrapeVehicleData
 
-# Test from frontend
-# (eller via curl/Postman)
+# Test from frontend or via curl
 ```
 
 ## 📸 Screenshots
@@ -141,30 +181,49 @@ npx playwright install chromium
 ## 📋 Checklist
 
 ### car.info
-- [ ] Run inspection script
-- [ ] Document CSS selectors
-- [ ] Test with multiple vehicles
-- [ ] Note edge cases (missing data, old vehicles)
+- [x] Run inspection script
+- [x] Document CSS selectors (findings-car-info-REAL.md)
+- [x] Analyze real HTML from user-provided source
+- [x] Discover .sprow pattern for all 105 specs
+- [x] Confirm NO PLAYWRIGHT needed (all data in HTML source)
+- [x] Document rate limiting ("Kaffepaus" screen)
+- [ ] Test with multiple vehicles (pending rate limit cooldown)
 - [ ] Screenshot 3-5 different vehicles
 
 ### biluppgifter.se
-- [ ] Run inspection script
+- [ ] Run inspection script (low priority - fallback only)
 - [ ] Check for CAPTCHA
 - [ ] Document if accessible
 - [ ] Compare data with car.info
 - [ ] Decide if worth implementing (or skip)
 
 ### Implementation
-- [ ] Update vehicleScraper.ts with real selectors
-- [ ] Add error handling for missing fields
-- [ ] Test locally
+- [x] Update vehicleScraper.ts with real selectors
+- [x] Implement getSpec() helper using .sprow pattern
+- [x] Add H1 parsing for make/model/year
+- [x] Add error handling for missing fields
+- [x] Add rate limit detection
+- [x] Create test-scraper.js for local testing
+- [ ] Test locally with real data (pending rate limit)
+- [ ] Create mock HTML file for development
 - [ ] Deploy to Cloud Functions
 - [ ] Test from frontend
+- [ ] Monitor cache hit rates in production
 
 ## 🔗 Related Files
 
-- Implementation: `functions/src/scraper/vehicleScraper.ts.draft`
-- Types: `functions/src/types/types.ts`
-- Deep Research v2: `functions/src/ai/aiDeepResearch_v2.ts.draft`
-- Strategy Doc: `docs/analysis/SCRAPER_STRATEGY_ANALYSIS.md`
-- Feature Spec: `docs/features/VEHICLE_SCRAPER.md`
+### Implementation
+- **Scraper:** `functions/src/scraper/vehicleScraper.ts.draft` ✅ UPDATED with real selectors
+- **Deep Research v2:** `functions/src/ai/aiDeepResearch_v2.ts.draft` (scraper integration)
+- **Types:** `functions/src/types/types.ts`
+
+### Scripts
+- **Test Scraper:** `scripts/test-scraper.js` ✅ NEW - Local testing tool
+- **HTML Inspector:** `scripts/inspect-scraper.js` (browser automation)
+
+### Documentation
+- **Real HTML Analysis:** `scripts/findings-car-info-REAL.md` ✅ CRITICAL - Verified selectors
+- **Initial Findings:** `scripts/findings-car-info.md` (preliminary analysis)
+- **Next Steps:** `scripts/NEXT_STEPS.md` (strategy & options)
+- **Strategy Doc:** `docs/analysis/SCRAPER_STRATEGY_ANALYSIS.md`
+- **Feature Spec:** `docs/features/VEHICLE_SCRAPER.md`

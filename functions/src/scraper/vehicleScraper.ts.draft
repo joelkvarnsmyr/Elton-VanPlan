@@ -154,8 +154,12 @@ function parseSwedishDate(str: string | undefined): string {
 /**
  * Scrapar fordonsdata från car.info
  *
- * Car.info har en väldigt strukturerad sida med tydliga CSS-selektorer.
- * Datan presenteras i en tabell med label/value-par.
+ * Car.info har en väldigt strukturerad sida med .sprow-klasser för alla specs.
+ * ALL data finns redan i HTML-källan (CSS-gömd), så vi behöver INTE Playwright!
+ *
+ * Verifierad struktur (2025-12-11):
+ * - Alla specs: <div class="sprow"><span class="sptitle">Label</span> Value</div>
+ * - H1 format: "Volkswagen LT Skåpbil 31 2.0 Manuell, 75hk, 1976"
  */
 async function scrapeCarInfo(regNo: string): Promise<Partial<VehicleData> | null> {
     const url = `${CONFIG.SOURCES.CAR_INFO.baseUrl}${regNo}`;
@@ -186,8 +190,30 @@ async function scrapeCarInfo(regNo: string): Promise<Partial<VehicleData> | null
             return null;
         }
 
-        // Extrahera data från car.info's struktur
-        // OBS: Dessa selektorer kan behöva uppdateras om car.info ändrar sin HTML
+        // Helper: Get spec value by label from .sprow elements
+        const getSpec = (label: string): string => {
+            let result = '';
+            $('.sprow').each((_, el) => {
+                const $el = $(el);
+                const titleEl = $el.find('.sptitle');
+
+                if (titleEl.text().trim() === label) {
+                    // Clone element, remove icons and title, get remaining text
+                    const clone = $el.clone();
+                    clone.find('.icon_').remove(); // Remove icons (e.g., icon_cross, icon_check)
+                    clone.find('.sptitle').remove(); // Remove title
+                    result = clone.text().trim();
+                    return false; // Break loop
+                }
+            });
+            return result;
+        };
+
+        // Parse H1 for basic info: "Volkswagen LT Skåpbil 31 2.0 Manuell, 75hk, 1976"
+        const h1Text = $('h1 a.ident_name').text().trim();
+        console.log(`[CarInfo] H1 text: "${h1Text}"`);
+
+        // Initialize vehicleData
         const vehicleData: Partial<VehicleData> = {
             regNo: regNo,
             make: '',
@@ -209,145 +235,137 @@ async function scrapeCarInfo(regNo: string): Promise<Partial<VehicleData> | null
             history: { owners: 0, events: 0, lastOwnerChange: '' }
         };
 
-        // Car.info använder ofta en struktur med dt/dd eller table rows
-        // Här är exempel-selektorer - anpassa efter faktisk HTML-struktur
-
-        // Huvudrubrik innehåller ofta märke och modell
-        const titleText = $('h1').first().text().trim();
-        const titleMatch = titleText.match(/^(\w+)\s+(.+?)(?:\s+\d{4})?$/);
-        if (titleMatch) {
-            vehicleData.make = titleMatch[1];
-            vehicleData.model = titleMatch[2];
-        }
-
-        // Iterera över alla specifikationsrader
-        // Car.info använder ofta en lista med label: value
-        $('[class*="spec"], [class*="detail"], dl, table tr').each((_, el) => {
-            const $el = $(el);
-            const labelEl = $el.find('dt, th, [class*="label"]').first();
-            const valueEl = $el.find('dd, td, [class*="value"]').first();
-
-            const label = labelEl.text().trim().toLowerCase();
-            const value = valueEl.text().trim();
-
-            if (!label || !value) return;
-
-            // Mappa labels till våra fält
-            switch (true) {
-                // Status
-                case label.includes('status'):
-                    vehicleData.status = value.includes('trafik') ? 'I trafik' : 'Avställd';
-                    break;
-
-                // Årsmodell
-                case label.includes('årsmodell') || label.includes('model year'):
-                    vehicleData.year = parseInt(value) || 0;
-                    break;
-
-                // Första registrering
-                case label.includes('registrering') || label.includes('first registered'):
-                    vehicleData.regDate = parseSwedishDate(value);
-                    break;
-
-                // Motor
-                case label.includes('bränsle') || label.includes('fuel'):
-                    vehicleData.engine!.fuel = value;
-                    break;
-
-                case label.includes('effekt') || label.includes('power'):
-                    vehicleData.engine!.power = value;
-                    break;
-
-                case label.includes('motorvolym') || label.includes('displacement'):
-                    vehicleData.engine!.volume = value;
-                    break;
-
-                // Växellåda
-                case label.includes('växellåda') || label.includes('transmission'):
-                    vehicleData.gearbox = value;
-                    break;
-
-                // Vikter
-                case label.includes('tjänstevikt') || label.includes('curb weight'):
-                    vehicleData.weights!.curb = parseSwedishNumber(value);
-                    break;
-
-                case label.includes('totalvikt') || label.includes('gross weight'):
-                    vehicleData.weights!.total = parseSwedishNumber(value);
-                    break;
-
-                case label.includes('lastvikt') || label.includes('payload'):
-                    vehicleData.weights!.load = parseSwedishNumber(value);
-                    break;
-
-                case label.includes('släpvagnsvikt'):
-                    if (label.includes('b-kort') || label.includes('obromsad')) {
-                        vehicleData.weights!.trailerB = parseSwedishNumber(value);
-                    } else {
-                        vehicleData.weights!.trailer = parseSwedishNumber(value);
-                    }
-                    break;
-
-                // Mått
-                case label.includes('längd') || label.includes('length'):
-                    vehicleData.dimensions!.length = parseSwedishNumber(value);
-                    break;
-
-                case label.includes('bredd') || label.includes('width'):
-                    vehicleData.dimensions!.width = parseSwedishNumber(value);
-                    break;
-
-                case label.includes('höjd') || label.includes('height'):
-                    vehicleData.dimensions!.height = value;
-                    break;
-
-                case label.includes('hjulbas') || label.includes('wheelbase'):
-                    vehicleData.dimensions!.wheelbase = parseSwedishNumber(value);
-                    break;
-
-                // Besiktning
-                case label.includes('besiktning') || label.includes('inspection'):
-                    if (label.includes('senaste') || label.includes('last')) {
-                        vehicleData.inspection!.last = parseSwedishDate(value);
-                    } else if (label.includes('nästa') || label.includes('next')) {
-                        vehicleData.inspection!.next = parseSwedishDate(value);
-                    }
-                    break;
-
-                case label.includes('mätarställning') || label.includes('odometer'):
-                    vehicleData.inspection!.mileage = value;
-                    break;
-
-                // Övrigt
-                case label.includes('färg') || label.includes('color'):
-                    vehicleData.color = value;
-                    break;
-
-                case label.includes('kaross') || label.includes('body'):
-                    vehicleData.bodyType = value;
-                    break;
-
-                case label.includes('chassi') || label.includes('vin'):
-                    vehicleData.vin = value;
-                    break;
-
-                case label.includes('ägare') || label.includes('owner'):
-                    vehicleData.history!.owners = parseSwedishNumber(value);
-                    break;
+        // Parse H1 - Example: "Volkswagen LT Skåpbil 31 2.0 Manuell, 75hk, 1976"
+        // Pattern: {Make} {Model} {BodyType} {Variant} {Transmission}, {Power}, {Year}
+        if (h1Text) {
+            // Extract year (last 4 digits)
+            const yearMatch = h1Text.match(/(\d{4})$/);
+            if (yearMatch) {
+                vehicleData.year = parseInt(yearMatch[1]);
+                vehicleData.prodYear = parseInt(yearMatch[1]);
             }
-        });
 
-        // Sätt prodYear till year om inte separat angiven
-        if (!vehicleData.prodYear && vehicleData.year) {
-            vehicleData.prodYear = vehicleData.year;
+            // Extract make (first word)
+            const makeMatch = h1Text.match(/^(\w+)/);
+            if (makeMatch) {
+                vehicleData.make = makeMatch[1];
+            }
+
+            // Extract model (everything between make and body type or first comma)
+            // This is tricky - let's try to extract the model name
+            const modelMatch = h1Text.match(/^\w+\s+([\w\s]+?)(?:\s+Skåpbil|\s+Sedan|\s+Kombi|\s+SUV|,)/);
+            if (modelMatch) {
+                vehicleData.model = modelMatch[1].trim();
+            }
+
+            // Extract transmission
+            if (h1Text.includes('Manuell')) {
+                vehicleData.gearbox = 'Manuell';
+            } else if (h1Text.includes('Automat')) {
+                vehicleData.gearbox = 'Automat';
+            }
         }
 
-        // Beräkna lastvikt om vi har total och tjänstevikt
+        // Extract all specs using .sprow pattern
+
+        // Basic Info
+        const inTraffic = getSpec('I trafik');
+        if (inTraffic) {
+            vehicleData.status = inTraffic.includes('Ja') ? 'I trafik' : 'Avställd';
+        }
+
+        const color = getSpec('Färg');
+        if (color) vehicleData.color = color;
+
+        const owners = getSpec('Antal ägare');
+        if (owners) vehicleData.history!.owners = parseSwedishNumber(owners);
+
+        const mileage = getSpec('Mätarställning');
+        if (mileage) vehicleData.inspection!.mileage = mileage;
+
+        const bodyType = getSpec('Kaross');
+        if (bodyType) vehicleData.bodyType = bodyType;
+
+        const classification = getSpec('Klassificering');
+        // Classification kan användas som extra info
+
+        const vin = getSpec('Chassinummer (vin)');
+        if (vin) vehicleData.vin = vin;
+
+        // Engine & Performance
+        const power = getSpec('Effekt');
+        if (power) vehicleData.engine!.power = power;
+
+        const horsePower = getSpec('Hästkrafter');
+        // Already have power in kW, this is redundant
+
+        const engineVolume = getSpec('Motorvolym');
+        if (engineVolume) vehicleData.engine!.volume = engineVolume;
+
+        const fuel = getSpec('Bränsle');
+        if (fuel) vehicleData.engine!.fuel = fuel;
+
+        const tankVolume = getSpec('Tankvolym');
+        // Can add to engine if needed
+
+        // Transmission & Drive
+        const drive = getSpec('Drivlina');
+        if (drive) vehicleData.wheels!.drive = drive;
+
+        const gearbox = getSpec('Växellåda');
+        if (gearbox) vehicleData.gearbox = gearbox;
+
+        // Dimensions & Weights
+        const length = getSpec('Längd');
+        if (length) vehicleData.dimensions!.length = parseSwedishNumber(length);
+
+        const width = getSpec('Bredd');
+        if (width) vehicleData.dimensions!.width = parseSwedishNumber(width);
+
+        const height = getSpec('Höjd');
+        if (height) vehicleData.dimensions!.height = height;
+
+        const curbWeight = getSpec('Tjänstevikt');
+        if (curbWeight) vehicleData.weights!.curb = parseSwedishNumber(curbWeight);
+
+        const totalWeight = getSpec('Totalvikt');
+        if (totalWeight) vehicleData.weights!.total = parseSwedishNumber(totalWeight);
+
+        const trailerWeight = getSpec('Släpvagnsvikt');
+        if (trailerWeight) vehicleData.weights!.trailer = parseSwedishNumber(trailerWeight);
+
+        const trailerBWeight = getSpec('Släpvagnsvikt obromsad');
+        if (trailerBWeight) vehicleData.weights!.trailerB = parseSwedishNumber(trailerBWeight);
+
+        // Registration info
+        const regDate = getSpec('Första registrering');
+        if (regDate) vehicleData.regDate = parseSwedishDate(regDate);
+
+        // Inspection
+        const lastInspection = getSpec('Senaste besiktning');
+        if (lastInspection) vehicleData.inspection!.last = parseSwedishDate(lastInspection);
+
+        const nextInspection = getSpec('Nästa besiktning');
+        if (nextInspection) vehicleData.inspection!.next = parseSwedishDate(nextInspection);
+
+        // Tires
+        const tiresFront = getSpec('Däck fram');
+        if (tiresFront) vehicleData.wheels!.tiresFront = tiresFront;
+
+        const tiresRear = getSpec('Däck bak');
+        if (tiresRear) vehicleData.wheels!.tiresRear = tiresRear;
+
+        const boltPattern = getSpec('Bultmönster');
+        if (boltPattern) vehicleData.wheels!.boltPattern = boltPattern;
+
+        // Calculate load capacity if not provided
         if (vehicleData.weights!.total && vehicleData.weights!.curb && !vehicleData.weights!.load) {
             vehicleData.weights!.load = vehicleData.weights!.total - vehicleData.weights!.curb;
         }
 
-        console.log(`[CarInfo] Successfully scraped: ${vehicleData.make} ${vehicleData.model}`);
+        console.log(`[CarInfo] Successfully scraped: ${vehicleData.make} ${vehicleData.model} (${vehicleData.year})`);
+        console.log(`[CarInfo] Found specs: VIN=${!!vehicleData.vin}, Weight=${vehicleData.weights!.curb}kg, Fuel=${vehicleData.engine!.fuel}`);
+
         return vehicleData;
 
     } catch (error) {
