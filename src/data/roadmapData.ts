@@ -1,6 +1,6 @@
 /**
  * ROADMAP DATA
- * Uppdaterad: 2025-12-11 (Projektgranskning)
+ * Uppdaterad: 2025-12-12 (Spec-ändring)
  *
  * Strukturerad i faser:
  * - Fas 1: Akut (Kritiska buggar och säkerhetsproblem)
@@ -53,38 +53,19 @@ export const ROADMAP_FEATURES: Feature[] = [
         category: 'Säkerhet',
         phase: 1,
         description: 'KRITISKT: Gemini API-nyckel exponeras i frontend. Måste flyttas till Cloud Functions.',
-        detailedDescription: 'Nuvarande implementation exponerar VITE_GEMINI_API_KEY i klientkoden vilket är en allvarlig säkerhetsrisk. API-nyckeln kan läsas av vem som helst som inspekterar webbsidan. Lösning: Implementera Firebase Cloud Functions som proxy för alla AI-anrop.',
+        detailedDescription: 'Arbete pågår. De flesta anrop har flyttats till Cloud Functions, men komponenten LiveElton.tsx använder fortfarande nyckeln direkt och måste åtgärdas.',
         purpose: 'Förhindra obehörig användning av API-nycklar och potentiella kostnader.',
-        status: 'planned',
+        status: 'in-progress',
         tech: ['Firebase Cloud Functions', 'Secret Manager', 'API Gateway'],
         priority: 'critical',
         tags: ['Security', 'Backend', 'Critical'],
         checklist: [
-            { label: 'Skapa Cloud Function för AI-proxy', completed: false },
-            { label: 'Flytta API-nyckel till Secret Manager', completed: false },
-            { label: 'Uppdatera frontend att anropa Cloud Function', completed: false },
-            { label: 'Ta bort VITE_GEMINI_API_KEY', completed: false },
+            { label: 'Skapa Cloud Function för AI-proxy', completed: true },
+            { label: 'Flytta API-nyckel till Secret Manager', completed: true },
+            { label: 'Uppdatera frontend att anropa Cloud Function', completed: true },
+            { label: 'Åtgärda LiveElton.tsx', completed: false, inProgress: true },
+            { label: 'Ta bort VITE_GEMINI_API_KEY helt', completed: false },
             { label: 'Testa i produktion', completed: false }
-        ]
-    },
-    {
-        id: 101,
-        title: 'Bugfix: Import-funktionen',
-        category: 'Bugfix',
-        phase: 1,
-        description: 'Import-knappen i inställningar returnerar "Ej implementerad". Implementera eller ta bort.',
-        detailedDescription: 'handleImportData i App.tsx (rad 230-231) visar bara ett felmeddelande. Export fungerar men användare kan inte återställa sin data. Detta måste fixas för att backup-funktionen ska vara komplett.',
-        purpose: 'Komplettera backup-funktionaliteten så användare kan återställa projekt.',
-        status: 'planned',
-        tech: ['JSON parsing', 'Firestore', 'File API'],
-        priority: 'high',
-        tags: ['Bugfix', 'Data', 'UX'],
-        checklist: [
-            { label: 'Implementera JSON-validering', completed: false },
-            { label: 'Skapa importlogik för projekt', completed: false },
-            { label: 'Hantera tasks/shopping items', completed: false },
-            { label: 'Lägg till konflikthantering', completed: false },
-            { label: 'Testa import/export-cykel', completed: false }
         ]
     },
     {
@@ -115,14 +96,14 @@ export const ROADMAP_FEATURES: Feature[] = [
         description: 'Duplicerad kod i prototype_app/ skapar förvirring och underhållsbörda.',
         detailedDescription: 'Mappen prototype_app/ innehåller en äldre version av applikationen med överlappande komponenter och services. Detta leder till förvirring och risk för att ändringar görs på fel ställe.',
         purpose: 'Reducera teknisk skuld och förenkla kodbas.',
-        status: 'planned',
+        status: 'in-progress',
         tech: ['Git', 'Cleanup'],
         priority: 'medium',
         tags: ['TechDebt', 'Cleanup'],
         checklist: [
-            { label: 'Verifiera att allt är migrerat', completed: false },
-            { label: 'Arkivera i egen branch', completed: false },
-            { label: 'Ta bort från main', completed: false },
+            { label: 'Verifiera att allt är migrerat', completed: true },
+            { label: 'Ta bort från main', completed: false, inProgress: true },
+            { label: 'Verifiera att inga beroenden finns kvar', completed: false },
             { label: 'Uppdatera dokumentation', completed: false }
         ]
     },
@@ -443,6 +424,26 @@ export const ROADMAP_FEATURES: Feature[] = [
             { label: 'Migrerings-script', completed: false },
             { label: 'Testad', completed: false },
             { label: 'Lanserad', completed: false }
+        ]
+    },
+    {
+        id: 107,
+        title: 'Transfer Project Ownership',
+        category: 'UX/Teams',
+        phase: 2,
+        description: 'Allows a project owner to transfer ownership to another team member. Replaces the old Import/Export feature.',
+        detailedDescription: 'Instead of a file-based import/export, this feature allows a seamless transfer of a project to another user within the platform. This is crucial for when a vehicle is sold or project responsibility changes.',
+        purpose: 'Provide a secure and integrated way to hand over project ownership.',
+        status: 'planned',
+        tech: ['Firebase Cloud Functions', 'Firestore Transactions', 'React'],
+        priority: 'medium',
+        tags: ['UX', 'Teams', 'Ownership', 'Data'],
+        checklist: [
+            { label: 'Specifikation skriven', completed: true },
+            { label: 'Skapa Cloud Function (transferProjectOwnership)', completed: false },
+            { label: 'Uppdatera Firestore Security Rules', completed: false },
+            { label: 'Implementera UI i Project Settings', completed: false },
+            { label: 'Testa överföringsflödet', completed: false }
         ]
     },
     {

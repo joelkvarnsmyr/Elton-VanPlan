@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(if [ -f .env.local ])",
+      "Bash(then echo \"✅ .env.local exists\")",
+      "Bash(else echo \"❌ .env.local missing\")",
+      "Bash(fi)",
+      "Bash(if [ -d node_modules ])",
+      "Bash(then echo \"✅ node_modules exists\")",
+      "Bash(else echo \"❌ node_modules missing - installing...\")",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git fetch:*)",
+      "Bash(test:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(grep:*)",
+      "Bash(firebase functions:secrets:set:*)"
+    ]
+  }
+}

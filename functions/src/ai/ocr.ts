@@ -80,8 +80,7 @@ export const ocrLicensePlate = onCall(
     }
 
     try {
-      const ai = new GoogleGenAI(apiKey);
-      const model = ai.getGenerativeModel({ model: DEFAULT_MODEL });
+      const ai = new GoogleGenAI({ apiKey });
 
       const prompt = `Analysera denna bild och hitta registreringsnumret (bilskylt).
 
@@ -101,12 +100,15 @@ Om du inte kan hitta ett registreringsnummer, returnera:
   "country": null
 }`;
 
-      const result = await model.generateContent([
-        { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
-        { text: prompt }
-      ]);
+      const result = await ai.models.generateContent({
+        model: DEFAULT_MODEL,
+        contents: [{ role: 'user', parts: [
+          { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+          { text: prompt }
+        ]}]
+      });
 
-      const text = result.response.text();
+      const text = result.text || "";
       const jsonMatch = text.match(/\{[\s\S]*\}/);
 
       if (!jsonMatch) {
@@ -149,8 +151,8 @@ export const ocrReceipt = onCall(
     }
 
     try {
-      const ai = new GoogleGenAI(apiKey);
-      const model = ai.getGenerativeModel({ model: DEFAULT_MODEL });
+      const ai = new GoogleGenAI({ apiKey });
+      // Model will be used directly via ai.models.generateContent
 
       const prompt = `Analysera detta kvitto och extrahera all information.
 
@@ -178,12 +180,12 @@ VIKTIGT:
 
 SVARA ENDAST MED JSON, inget annat.`;
 
-      const result = await model.generateContent([
+      const result = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: [{ role: 'user', parts: [
         { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
         { text: prompt }
-      ]);
+      ]}] });
 
-      const text = result.response.text();
+      const text = result.text || "";
       const jsonMatch = text.match(/\{[\s\S]*\}/);
 
       if (!jsonMatch) {
@@ -226,8 +228,8 @@ export const ocrVIN = onCall(
     }
 
     try {
-      const ai = new GoogleGenAI(apiKey);
-      const model = ai.getGenerativeModel({ model: DEFAULT_MODEL });
+      const ai = new GoogleGenAI({ apiKey });
+      // Model will be used directly via ai.models.generateContent
 
       const prompt = `Hitta VIN-numret (Vehicle Identification Number) i denna bild.
 
@@ -246,12 +248,12 @@ Om du inte hittar något VIN:
   "confidence": 0
 }`;
 
-      const result = await model.generateContent([
+      const result = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: [{ role: 'user', parts: [
         { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
         { text: prompt }
-      ]);
+      ]}] });
 
-      const text = result.response.text();
+      const text = result.text || "";
       const jsonMatch = text.match(/\{[\s\S]*\}/);
 
       if (!jsonMatch) {
@@ -302,8 +304,8 @@ export const ocrServiceDocument = onCall(
     }
 
     try {
-      const ai = new GoogleGenAI(apiKey);
-      const model = ai.getGenerativeModel({ model: DEFAULT_MODEL });
+      const ai = new GoogleGenAI({ apiKey });
+      // Model will be used directly via ai.models.generateContent
 
       const prompt = `Läs detta servicedokument och extrahera information.
 
@@ -320,12 +322,12 @@ Returnera JSON:
 
 SVARA MED ENDAST JSON.`;
 
-      const result = await model.generateContent([
+      const result = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: [{ role: 'user', parts: [
         { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
         { text: prompt }
-      ]);
+      ]}] });
 
-      const text = result.response.text();
+      const text = result.text || "";
       const jsonMatch = text.match(/\{[\s\S]*\}/);
 
       if (!jsonMatch) {
@@ -368,15 +370,15 @@ export const ocrExtractText = onCall(
     }
 
     try {
-      const ai = new GoogleGenAI(apiKey);
-      const model = ai.getGenerativeModel({ model: DEFAULT_MODEL });
+      const ai = new GoogleGenAI({ apiKey });
+      // Model will be used directly via ai.models.generateContent
 
-      const result = await model.generateContent([
+      const result = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: [{ role: 'user', parts: [
         { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
         { text: 'Extrahera all läsbar text från denna bild. Returnera texten i vanligt textformat.' }
-      ]);
+      ]}] });
 
-      return { text: result.response.text() };
+      return { text: result.text };
 
     } catch (error: any) {
       console.error('Text extraction failed:', error);

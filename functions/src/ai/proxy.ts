@@ -204,28 +204,34 @@ export const aiChat = onCall(
     }
 
     try {
-      const ai = new GoogleGenAI(apiKey);
+      const ai = new GoogleGenAI({ apiKey });
       const modelName = model || DEFAULT_MODEL;
 
-      const chat = ai.getGenerativeModel({
-        model: modelName,
-        tools,
-        systemInstruction
-      }).startChat({
-        history: history.map(h => {
-          const parts: any[] = [{ text: h.content }];
-          if (h.image) {
-            parts.push({
-              inlineData: {
-                mimeType: 'image/jpeg',
-                data: h.image.split(',')[1] || h.image
-              }
-            });
-          }
-          return { role: h.role, parts };
-        })
+      // Map history to new API format
+      const historyContents = history.map(h => {
+        const parts: any[] = [{ text: h.content }];
+        if (h.image) {
+          parts.push({
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: h.image.split(',')[1] || h.image
+            }
+          });
+        }
+        return { role: h.role, parts };
       });
 
+      // Create chat with new API
+      const chat = ai.chats.create({
+        model: modelName,
+        config: {
+          tools,
+          systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined
+        },
+        history: historyContents
+      });
+
+      // Prepare message parts
       const parts: any[] = [{ text: newMessage }];
       if (imageBase64) {
         parts.push({
@@ -236,8 +242,8 @@ export const aiChat = onCall(
         });
       }
 
-      const result = await chat.sendMessage(parts);
-      const response = result.response;
+      const result = await chat.sendMessage({ message: parts });
+      const response = result;
 
       // Extract text and function calls
       const textParts = response.candidates?.[0]?.content?.parts?.filter((p: any) => p.text) || [];
@@ -326,7 +332,7 @@ export const aiParse = onCall(
     };
 
     try {
-      const ai = new GoogleGenAI(apiKey);
+      const ai = new GoogleGenAI({ apiKey });
       const modelName = model || DEFAULT_MODEL;
 
       const parts: any[] = [];
@@ -337,17 +343,17 @@ export const aiParse = onCall(
         parts.push({ text: `Analysera följande:\n\n${input}` });
       }
 
-      const modelInstance = ai.getGenerativeModel({
+      const result = await ai.models.generateContent({
         model: modelName,
-        generationConfig: {
+        contents: [{ role: 'user', parts }],
+        config: {
           responseMimeType: 'application/json',
-          responseSchema: outputSchema
-        },
-        systemInstruction: systemInstruction || 'Du är en expert på att strukturera projektdata för fordonsrenovering.'
+          responseSchema: outputSchema,
+          systemInstruction: { parts: [{ text: systemInstruction || 'Du är en expert på att strukturera projektdata för fordonsrenovering.' }] }
+        }
       });
 
-      const result = await modelInstance.generateContent({ contents: [{ parts }] });
-      const jsonText = result.response.text();
+      const jsonText = result.text;
 
       if (!jsonText) {
         return { tasks: [], shoppingItems: [] };
@@ -382,7 +388,7 @@ export const aiDeepResearch = onCall(
       vehicleDescription,
       imageBase64,
       projectType,
-      userSkillLevel,
+      // userSkillLevel, // TODO: Use this in prompts
       detectivePrompt,
       plannerPrompt
     } = request.data;
@@ -397,7 +403,7 @@ export const aiDeepResearch = onCall(
     }
 
     try {
-      const ai = new GoogleGenAI(apiKey);
+      const ai = new GoogleGenAI({ apiKey });
       const modelName = DEFAULT_MODEL;
 
       // --- AGENT 1: DETECTIVE ---
@@ -411,15 +417,15 @@ export const aiDeepResearch = onCall(
       let detectiveData: any = {};
 
       try {
-        const detectiveModel = ai.getGenerativeModel({
+        const detectiveResponse = await ai.models.generateContent({
           model: modelName,
-          tools: [{ googleSearch: {} }]
-        });
-        const detectiveResponse = await detectiveModel.generateContent({
-          contents: [{ parts: detectiveParts }]
+          contents: [{ role: 'user', parts: detectiveParts }],
+          config: {
+            tools: [{ googleSearch: {} }]
+          }
         });
 
-        let detectiveJson = detectiveResponse.response.text() || '{}';
+        let detectiveJson = detectiveResponse.text || '{}';
         if (detectiveJson.includes('```json')) {
           detectiveJson = detectiveJson.split('```json')[1].split('```')[0].trim();
         }
@@ -441,18 +447,15 @@ export const aiDeepResearch = onCall(
       // --- AGENT 2: PLANNER ---
       console.log('Agent 2: Planner started...');
 
-      const plannerModel = ai.getGenerativeModel({
+      const plannerResponse = await ai.models.generateContent({
         model: modelName,
-        generationConfig: {
+        contents: [{ role: 'user', parts: [{ text: plannerPrompt }] }],
+        config: {
           responseMimeType: 'application/json'
         }
       });
 
-      const plannerResponse = await plannerModel.generateContent({
-        contents: [{ parts: [{ text: plannerPrompt }] }]
-      });
-
-      let plannerJson = plannerResponse.response.text() || '{}';
+      let plannerJson = plannerResponse.text || '{}';
       if (plannerJson.includes('```json')) {
         plannerJson = plannerJson.split('```json')[1].split('```')[0].trim();
       }
@@ -521,30 +524,33 @@ export const aiToolResponse = onCall(
     }
 
     try {
-      const ai = new GoogleGenAI(apiKey);
+      const ai = new GoogleGenAI({ apiKey });
       const modelName = model || DEFAULT_MODEL;
 
-      const chat = ai.getGenerativeModel({
+      const historyContents = history.map(h => ({
+        role: h.role,
+        parts: [{ text: h.content }]
+      }));
+
+      const chat = ai.chats.create({
         model: modelName,
-        tools,
-        systemInstruction
-      }).startChat({
-        history: history.map(h => ({
-          role: h.role,
-          parts: [{ text: h.content }]
-        }))
+        config: {
+          tools,
+          systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined
+        },
+        history: historyContents
       });
 
-      const result = await chat.sendMessage(
-        toolResponses.map(r => ({
-          toolResponse: {
+      const result = await chat.sendMessage({
+        message: toolResponses.map(r => ({
+          functionResponse: {
             name: r.name,
             response: { result: r.result }
           }
         }))
-      );
+      });
 
-      const response = result.response;
+      const response = result;
       const textParts = response.candidates?.[0]?.content?.parts?.filter((p: any) => p.text) || [];
       const functionCalls = response.candidates?.[0]?.content?.parts?.filter((p: any) => p.functionCall)?.map((p: any) => p.functionCall) || [];
 
