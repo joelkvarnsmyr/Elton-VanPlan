@@ -17,6 +17,9 @@ export { transferProjectOwnership } from './project/management';
 // Firestore Triggers
 export { onTaskComplete, onTaskDelete, onProjectDelete } from './project/triggers';
 
+// Vehicle Scraper
+export * from './scraper/vehicleScraper';
+
 // Future: Add more function exports here
 // export { userCleanup } from './admin/cleanup';
 // export { webhooks } from './integrations/webhooks';

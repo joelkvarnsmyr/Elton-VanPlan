@@ -1,19 +1,21 @@
 
 import { db } from './firebase';
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  setDoc, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
+import {
+  collection,
+  doc,
+  getDoc,
+  setDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
   query,
   writeBatch,
   where,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  onSnapshot,
+  Unsubscribe
 } from 'firebase/firestore';
 import {
   Task,
@@ -218,6 +220,10 @@ export const getProjectsForUser = async (userId: string, userEmail?: string): Pr
     return allProjects;
 }
 
+/**
+ * Get project metadata only (no sub-collections)
+ * Use this for lightweight operations
+ */
 export const getProject = async (projectId: string): Promise<Project | null> => {
   const docSnap = await getDoc(getProjectRef(projectId));
   if (!docSnap.exists()) {
@@ -225,6 +231,27 @@ export const getProject = async (projectId: string): Promise<Project | null> => 
   }
   const data = docSnap.data() as Record<string, unknown>;
   return { ...data, id: docSnap.id } as Project;
+};
+
+/**
+ * Get project with all sub-collections loaded
+ * Use this when you need the complete project state
+ */
+export const getProjectFull = async (projectId: string): Promise<Project | null> => {
+  const project = await getProject(projectId);
+  if (!project) return null;
+
+  // Load sub-collections in parallel
+  const [tasks, shoppingItems] = await Promise.all([
+    getTasks(projectId),
+    getShoppingItems(projectId)
+  ]);
+
+  return {
+    ...project,
+    tasks,
+    shoppingItems
+  };
 };
 
 export const createProject = async (
@@ -666,4 +693,281 @@ export const saveChatHistory = async (projectId: string, messages: ChatMessage[]
 export const clearChatHistory = async (projectId: string) => {
   const chatRef = getChatRef(projectId);
   await deleteDoc(chatRef);
+};
+
+// --- DEPENDENCY ENGINE (BLOCKERS) ---
+
+/**
+ * Check if a task is blocked by other tasks
+ * Returns: { blocked: boolean, blockedBy: Task[] }
+ */
+export const getTaskBlockers = async (
+  projectId: string,
+  taskId: string
+): Promise<{ blocked: boolean; blockedBy: Task[] }> => {
+  const allTasks = await getTasks(projectId);
+  const currentTask = allTasks.find(t => t.id === taskId);
+
+  if (!currentTask || !currentTask.blockers || currentTask.blockers.length === 0) {
+    return { blocked: false, blockedBy: [] };
+  }
+
+  const blockedBy = allTasks.filter(t =>
+    currentTask.blockers!.includes(t.id) && t.status !== 'Klart'
+  );
+
+  return {
+    blocked: blockedBy.length > 0,
+    blockedBy
+  };
+};
+
+/**
+ * Get all tasks that are currently blocked
+ */
+export const getBlockedTasks = async (projectId: string): Promise<Task[]> => {
+  const allTasks = await getTasks(projectId);
+
+  const blockedTasks = await Promise.all(
+    allTasks.map(async task => {
+      const { blocked } = await getTaskBlockers(projectId, task.id);
+      return blocked ? task : null;
+    })
+  );
+
+  return blockedTasks.filter((t): t is Task => t !== null);
+};
+
+/**
+ * Get tasks that can be started now (not blocked)
+ */
+export const getAvailableTasks = async (projectId: string): Promise<Task[]> => {
+  const allTasks = await getTasks(projectId);
+
+  const availableTasks = await Promise.all(
+    allTasks.map(async task => {
+      if (task.status === 'Klart' || task.status === 'Pågående') {
+        return null; // Already done or in progress
+      }
+
+      const { blocked } = await getTaskBlockers(projectId, task.id);
+      return !blocked ? task : null;
+    })
+  );
+
+  return availableTasks.filter((t): t is Task => t !== null);
+};
+
+// --- SHOPPING INTELLIGENCE (STORE MODE) ---
+
+export interface ShoppingItemsByStore {
+  store: string;
+  items: ShoppingItem[];
+  totalCost: number;
+  itemsWithLocation: ShoppingItem[];
+  itemsWithoutLocation: ShoppingItem[];
+}
+
+/**
+ * Get shopping items grouped by store
+ * Perfect for "Store Mode" - when you're physically in a store
+ */
+export const getShoppingItemsByStore = async (
+  projectId: string,
+  storeName?: string
+): Promise<ShoppingItemsByStore[]> => {
+  const allItems = await getShoppingItems(projectId);
+
+  // Build a map of store -> items
+  const storeMap = new Map<string, ShoppingItem[]>();
+
+  allItems.forEach(item => {
+    // Check both item.store and selected option
+    let itemStore = item.store || 'Ospecificerad';
+
+    if (item.options && item.selectedOptionId) {
+      const selectedOption = item.options.find(opt => opt.id === item.selectedOptionId);
+      if (selectedOption) {
+        itemStore = selectedOption.store;
+      }
+    }
+
+    if (!storeMap.has(itemStore)) {
+      storeMap.set(itemStore, []);
+    }
+    storeMap.get(itemStore)!.push(item);
+  });
+
+  // Convert to array and sort
+  const result: ShoppingItemsByStore[] = Array.from(storeMap.entries()).map(
+    ([store, items]) => {
+      // Separate items with/without shelf location
+      const itemsWithLocation = items.filter(item => {
+        if (item.options && item.selectedOptionId) {
+          const selectedOption = item.options.find(opt => opt.id === item.selectedOptionId);
+          return selectedOption?.shelfLocation;
+        }
+        return false;
+      });
+
+      const itemsWithoutLocation = items.filter(item => {
+        if (item.options && item.selectedOptionId) {
+          const selectedOption = item.options.find(opt => opt.id === item.selectedOptionId);
+          return !selectedOption?.shelfLocation;
+        }
+        return true;
+      });
+
+      // Sort items with location by shelf
+      itemsWithLocation.sort((a, b) => {
+        const aOption = a.options?.find(opt => opt.id === a.selectedOptionId);
+        const bOption = b.options?.find(opt => opt.id === b.selectedOptionId);
+        const aLocation = aOption?.shelfLocation || '';
+        const bLocation = bOption?.shelfLocation || '';
+        return aLocation.localeCompare(bLocation, 'sv');
+      });
+
+      // Sort items without location by article number
+      itemsWithoutLocation.sort((a, b) => {
+        const aOption = a.options?.find(opt => opt.id === a.selectedOptionId);
+        const bOption = b.options?.find(opt => opt.id === b.selectedOptionId);
+        const aArticle = aOption?.articleNumber || '';
+        const bArticle = bOption?.articleNumber || '';
+        return aArticle.localeCompare(bArticle, 'sv');
+      });
+
+      const totalCost = items.reduce((sum, item) => sum + (item.estimatedCost || 0), 0);
+
+      return {
+        store,
+        items,
+        totalCost,
+        itemsWithLocation,
+        itemsWithoutLocation
+      };
+    }
+  );
+
+  // Filter by store if specified
+  if (storeName) {
+    return result.filter(s => s.store.toLowerCase().includes(storeName.toLowerCase()));
+  }
+
+  // Sort by total cost (most expensive first)
+  return result.sort((a, b) => b.totalCost - a.totalCost);
+};
+
+/**
+ * Get shopping items for a specific store, optimized for in-store shopping
+ */
+export const getStoreShoppingList = async (
+  projectId: string,
+  storeName: string
+): Promise<ShoppingItem[]> => {
+  const storeGroups = await getShoppingItemsByStore(projectId, storeName);
+
+  if (storeGroups.length === 0) {
+    return [];
+  }
+
+  // Return items sorted: first with location (by shelf), then without (by article number)
+  return [
+    ...storeGroups[0].itemsWithLocation,
+    ...storeGroups[0].itemsWithoutLocation
+  ];
+};
+
+// --- REAL-TIME LISTENERS ---
+
+/**
+ * Subscribe to tasks updates in real-time
+ * Returns an unsubscribe function
+ */
+export const subscribeToTasks = (
+  projectId: string,
+  callback: (tasks: Task[]) => void
+): Unsubscribe => {
+  return onSnapshot(getTasksRef(projectId), (snapshot) => {
+    const tasks = snapshot.docs.map(doc => doc.data() as Task);
+    callback(tasks);
+  });
+};
+
+/**
+ * Subscribe to shopping items updates in real-time
+ * Returns an unsubscribe function
+ */
+export const subscribeToShoppingItems = (
+  projectId: string,
+  callback: (items: ShoppingItem[]) => void
+): Unsubscribe => {
+  return onSnapshot(getShoppingRef(projectId), (snapshot) => {
+    const items = snapshot.docs.map(doc => doc.data() as ShoppingItem);
+    callback(items);
+  });
+};
+
+/**
+ * Subscribe to project metadata updates in real-time
+ * Returns an unsubscribe function
+ */
+export const subscribeToProject = (
+  projectId: string,
+  callback: (project: Project | null) => void
+): Unsubscribe => {
+  return onSnapshot(getProjectRef(projectId), (snapshot) => {
+    if (snapshot.exists()) {
+      callback({ id: snapshot.id, ...snapshot.data() } as Project);
+    } else {
+      callback(null);
+    }
+  });
+};
+
+/**
+ * Subscribe to complete project (metadata + sub-collections) in real-time
+ * Returns an unsubscribe function
+ */
+export const subscribeToProjectFull = (
+  projectId: string,
+  callback: (project: Project | null) => void
+): Unsubscribe => {
+  let projectData: Project | null = null;
+  let tasksData: Task[] = [];
+  let shoppingData: ShoppingItem[] = [];
+
+  const merge = () => {
+    if (projectData) {
+      callback({
+        ...projectData,
+        tasks: tasksData,
+        shoppingItems: shoppingData
+      });
+    }
+  };
+
+  // Subscribe to project metadata
+  const unsubProject = subscribeToProject(projectId, (project) => {
+    projectData = project;
+    merge();
+  });
+
+  // Subscribe to tasks
+  const unsubTasks = subscribeToTasks(projectId, (tasks) => {
+    tasksData = tasks;
+    merge();
+  });
+
+  // Subscribe to shopping items
+  const unsubShopping = subscribeToShoppingItems(projectId, (items) => {
+    shoppingData = items;
+    merge();
+  });
+
+  // Return combined unsubscribe function
+  return () => {
+    unsubProject();
+    unsubTasks();
+    unsubShopping();
+  };
 };

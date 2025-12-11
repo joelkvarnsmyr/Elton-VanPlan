@@ -1,11 +1,11 @@
+
 import React, { useState } from 'react';
 import { ProjectType, UserSkillLevel } from '@/types/types';
-import { Sparkles, Wrench, Hammer, Leaf, Award, User, Zap, CheckCircle2, Loader2, Search, ImageIcon, Trash2, Edit3, ChevronLeft, AlertTriangle } from 'lucide-react';
-import { performDeepResearch } from '@/services/aiProxyService';
-import { generateVehicleIcon } from '@/services/geminiService';
+import { Sparkles, Wrench, Hammer, Leaf, Award, User, Zap, CheckCircle2, Loader2, Search, ImageIcon, Trash2, Edit3, ChevronLeft, AlertTriangle, Info } from 'lucide-react';
+import { generateProjectProfile, generateVehicleIcon } from '@/services/geminiService';
 import { useToasts, ToastContainer } from './Toast';
 import type { AIProvider } from '@/services/aiService';
-import { ACTIVE_PROMPTS } from '@/config/prompts';
+import { CarLogo } from './CarLogo';
 
 interface OnboardingWizardProps {
     onComplete: (data: OnboardingData) => void;
@@ -19,9 +19,24 @@ export interface OnboardingData {
     imageBase64?: string;
     nickname?: string;
     additionalNotes?: string;
-    aiData?: any; // Full AI response from Cloud Functions Deep Research
+    aiData?: any; // Full AI response from generateProjectProfile
     generatedIcon?: string | null; // Generated vehicle icon
 }
+
+const Disclaimer = () => (
+    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-4 mb-6">
+        <div className="flex items-start gap-3">
+            <Info size={20} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div>
+                <h4 className="font-bold text-blue-800 dark:text-blue-300">Ett litet meddelande från verkstan:</h4>
+                <p className="text-sm text-blue-700 dark:text-blue-400/80 mt-1">
+                    Elton gör sitt bästa för att hämta korrekt data, men ibland kan det smyga sig in ett fel. Dubbelkolla alltid kritisk information! Om du hittar något som inte stämmer, blir vi superglada om du <a href="mailto:feedback@elton.se" className="font-bold underline hover:text-blue-600">rapporterar det till oss</a>. Tillsammans gör vi Elton smartare!
+                </p>
+            </div>
+        </div>
+    </div>
+);
+
 
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onCancel }) => {
     const { toasts, removeToast, success, warning, error, info } = useToasts();
@@ -81,70 +96,19 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
         }, 2500);
 
         try {
-            console.log('🎬 [OnboardingWizard] Research starting:', {
-                vehicleDesc,
-                projectType,
-                userSkillLevel,
-                hasImage: !!selectedImage
-            });
-
             const base64Data = selectedImage ? selectedImage.split(',')[1] : undefined;
 
-            // Get prompts for Deep Research
-            const vehicleDataStr = JSON.stringify({ description: vehicleDesc });
-            const detectivePrompt = ACTIVE_PROMPTS.agents.detective.text(vehicleDataStr);
-            const plannerPrompt = ACTIVE_PROMPTS.agents.planner.text(vehicleDataStr, projectType, userSkillLevel);
-
-            console.log('📝 [OnboardingWizard] Prompts generated:', {
-                detectivePromptLength: detectivePrompt.length,
-                plannerPromptLength: plannerPrompt.length
-            });
-
-            // Run AI analysis via Cloud Functions and icon generation in parallel
-            console.log('⚡ [OnboardingWizard] Starting parallel tasks: Deep Research + Icon Generation');
+            // Run AI analysis and icon generation in parallel
+            // Pass projectType and userSkillLevel to AI for personalized task generation
             const [aiDataResult, iconResult] = await Promise.allSettled([
-                performDeepResearch(
-                    vehicleDesc,
-                    base64Data,
-                    projectType || 'renovation',
-                    userSkillLevel || 'intermediate',
-                    detectivePrompt,
-                    plannerPrompt
-                ),
+                generateProjectProfile(vehicleDesc, base64Data, projectType, userSkillLevel),
                 base64Data ? generateVehicleIcon(base64Data, 2) : Promise.resolve(null)
             ]);
 
             clearInterval(stepInterval);
 
-            const rawAiData = aiDataResult.status === 'fulfilled' ? aiDataResult.value : { error: 'AI-tjänster otillgängliga' };
+            const aiData = aiDataResult.status === 'fulfilled' ? aiDataResult.value : {};
             const iconData = iconResult.status === 'fulfilled' ? iconResult.value : null;
-
-            console.log('📊 [OnboardingWizard] Results received:', {
-                aiDataSuccess: aiDataResult.status === 'fulfilled',
-                iconSuccess: iconResult.status === 'fulfilled',
-                hasVehicleData: !!rawAiData.vehicleData,
-                hasIcon: !!iconData
-            });
-
-            // Map Cloud Functions response to expected format
-            const aiData = {
-                vehicleData: rawAiData.vehicleData,
-                projectName: rawAiData.projectName,
-                aiProvider: rawAiData.provider as AIProvider, // Map 'provider' to 'aiProvider'
-                error: rawAiData.error,
-                initialTasks: rawAiData.initialTasks,
-                analysisReport: rawAiData.analysisReport
-            };
-
-            console.log('✨ [OnboardingWizard] AI data mapped:', {
-                projectName: aiData.projectName,
-                make: aiData.vehicleData?.make,
-                model: aiData.vehicleData?.model,
-                year: aiData.vehicleData?.year,
-                tasksCount: aiData.initialTasks?.length || 0,
-                provider: aiData.aiProvider,
-                hasError: !!aiData.error
-            });
 
             // Track which AI provider was used
             if (aiData.aiProvider) {
@@ -416,6 +380,32 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                         </div>
 
                         <div className="space-y-6">
+                            <Disclaimer />
+
+                            {/* Vehicle Preview Card */}
+                            {aiSuggestions && (aiSuggestions.detectedMake || aiSuggestions.detectedModel) && (
+                                <div className="bg-gradient-to-br from-teal-50 to-blue-50 dark:from-teal-900/20 dark:to-blue-900/20 rounded-2xl p-6 border-2 border-teal-200 dark:border-teal-800">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-16 h-16 bg-white dark:bg-nordic-charcoal rounded-2xl flex items-center justify-center shadow-lg">
+                                            <CarLogo
+                                                make={aiSuggestions.detectedMake || 'Unknown'}
+                                                size={40}
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="font-serif font-bold text-xl text-nordic-charcoal dark:text-white">
+                                                {aiSuggestions.detectedMake || '?'} {aiSuggestions.detectedModel || '?'}
+                                            </h3>
+                                            {aiSuggestions.detectedYear && (
+                                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                    Årsmodell: {aiSuggestions.detectedYear}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Projektnamn */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Projektnamn</label>

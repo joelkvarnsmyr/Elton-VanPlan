@@ -37,8 +37,12 @@ import {
   updateContacts,
   updateProjectLocation,
   getUserProfile,
-  updateUserProfile
+  updateUserProfile,
+  subscribeToProjectFull,
+  subscribeToTasks,
+  subscribeToShoppingItems
 } from './services/db';
+import { CarLogo } from './components/CarLogo';
 
 const EltonLogo = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" id="Lager_1" data-name="Lager 1" viewBox="0 0 500 316.64" className={className}>
@@ -119,6 +123,25 @@ export const App = () => {
     }
     setIsLoading(false);
   }
+
+  // Real-time subscription to active project
+  useEffect(() => {
+    if (!activeProject?.id) return;
+
+    console.log('🔴 Setting up real-time listeners for project:', activeProject.id);
+
+    const unsubscribe = subscribeToProjectFull(activeProject.id, (updatedProject) => {
+      if (updatedProject) {
+        console.log('📡 Real-time update received:', updatedProject.name);
+        setActiveProject(updatedProject);
+      }
+    });
+
+    return () => {
+      console.log('🔴 Cleaning up real-time listeners');
+      unsubscribe();
+    };
+  }, [activeProject?.id]); // Only re-subscribe when project ID changes
 
   useEffect(() => {
       document.documentElement.classList.toggle('dark', isDarkMode);
@@ -405,7 +428,10 @@ export const App = () => {
                  {activeProject.customIcon ? (
                      <img src={`data:image/png;base64,${activeProject.customIcon}`} alt="Project Icon" className="w-full h-full object-cover" />
                  ) : (
-                     <EltonLogo className="w-full h-full" />
+                     <CarLogo
+                       make={activeProject.vehicleData?.make || 'Unknown'}
+                       size={32}
+                     />
                  )}
               </div>
               <div>
