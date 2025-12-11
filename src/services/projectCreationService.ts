@@ -6,13 +6,13 @@
  * - vehicleDataService (reg number lookup)
  * - expertAnalysisService (AI analysis)
  * - onboardingService (complete data generation)
- * - geminiService (existing AI features)
+ * - aiProxyService (secure AI via Cloud Functions)
  */
 
 import { ProjectType, Project, VehicleData } from '@/types/types';
 import { fetchVehicleByRegNo, enrichVehicleData } from './vehicleDataService';
 import { generateCompleteOnboarding, OnboardingInput } from './onboardingService';
-import { generateProjectProfile } from './geminiService';
+import { performDeepResearch } from './aiProxyService';
 import { EMPTY_PROJECT_TEMPLATE } from '@/constants/constants';
 
 // ===========================
@@ -83,14 +83,18 @@ export async function createProjectWithOnboarding(
       }
     }
 
-    // Method 2: AI analysis of description/image
+    // Method 2: AI analysis of description/image via Cloud Functions
     if (!vehicleData.make && (input.userDescription || input.imageBase64)) {
-      console.log(`🤖 Using AI to analyze vehicle...`);
+      console.log(`🤖 Using AI Cloud Functions to analyze vehicle...`);
 
       try {
-        const aiResult = await generateProjectProfile(
+        const aiResult = await performDeepResearch(
           input.userDescription || '',
-          input.imageBase64
+          input.imageBase64,
+          input.projectType,
+          undefined, // userSkillLevel - will be handled by onboarding later
+          undefined, // detectivePrompt - will use default
+          undefined  // plannerPrompt - will use default
         );
 
         if (aiResult.vehicleData) {
