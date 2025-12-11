@@ -14,7 +14,7 @@
  * - Överväg att kontakta car.info för API-access vid hög volym
  */
 
-import * as functions from 'firebase-functions';
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 import * as cheerio from 'cheerio';
 
@@ -643,16 +643,16 @@ async function setCachedVehicleData(
  * Request: { regNo: "JSN398" }
  * Response: ScrapeResult
  */
-export const scrapeVehicleData = functions
-    .region('europe-west1')
-    .runWith({
+export const scrapeVehicleData = onCall(
+    {
+        region: 'europe-west1',
         timeoutSeconds: 30,
-        memory: '256MB'
-    })
-    .https.onCall(async (data, context): Promise<ScrapeResult> => {
+        memory: '256MiB'
+    },
+    async (request): Promise<ScrapeResult> => {
 
         // Validera input
-        const regNo = data?.regNo;
+        const regNo = request.data?.regNo;
         if (!regNo || typeof regNo !== 'string') {
             return {
                 success: false,
@@ -792,20 +792,20 @@ function fillDefaultValues(partial: Partial<VehicleData>): VehicleData {
 /**
  * Rensar cachen för ett specifikt fordon (admin-only)
  */
-export const clearVehicleCache = functions
-    .region('europe-west1')
-    .https.onCall(async (data, context) => {
+export const clearVehicleCache = onCall(
+    { region: 'europe-west1' },
+    async (request) => {
         // Kräv admin-behörighet
-        if (!context.auth?.token?.admin) {
-            throw new functions.https.HttpsError(
+        if (!request.auth?.token?.admin) {
+            throw new HttpsError(
                 'permission-denied',
                 'Endast administratörer kan rensa cachen'
             );
         }
 
-        const regNo = normalizeRegNo(data?.regNo || '');
+        const regNo = normalizeRegNo(request.data?.regNo || '');
         if (!regNo) {
-            throw new functions.https.HttpsError(
+            throw new HttpsError(
                 'invalid-argument',
                 'Registreringsnummer krävs'
             );

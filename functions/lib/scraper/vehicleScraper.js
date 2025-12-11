@@ -49,7 +49,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.clearVehicleCache = exports.scrapeVehicleData = void 0;
-const functions = __importStar(require("firebase-functions"));
+const https_1 = require("firebase-functions/v2/https");
 const admin = __importStar(require("firebase-admin"));
 const cheerio = __importStar(require("cheerio"));
 // =============================================================================
@@ -580,15 +580,13 @@ async function setCachedVehicleData(regNo, vehicleData, source) {
  * Request: { regNo: "JSN398" }
  * Response: ScrapeResult
  */
-exports.scrapeVehicleData = functions
-    .region('europe-west1')
-    .runWith({
+exports.scrapeVehicleData = (0, https_1.onCall)({
+    region: 'europe-west1',
     timeoutSeconds: 30,
-    memory: '256MB'
-})
-    .https.onCall(async (data, context) => {
+    memory: '256MiB'
+}, async (request) => {
     // Validera input
-    const regNo = data?.regNo;
+    const regNo = request.data?.regNo;
     if (!regNo || typeof regNo !== 'string') {
         return {
             success: false,
@@ -715,16 +713,14 @@ function fillDefaultValues(partial) {
 /**
  * Rensar cachen för ett specifikt fordon (admin-only)
  */
-exports.clearVehicleCache = functions
-    .region('europe-west1')
-    .https.onCall(async (data, context) => {
+exports.clearVehicleCache = (0, https_1.onCall)({ region: 'europe-west1' }, async (request) => {
     // Kräv admin-behörighet
-    if (!context.auth?.token?.admin) {
-        throw new functions.https.HttpsError('permission-denied', 'Endast administratörer kan rensa cachen');
+    if (!request.auth?.token?.admin) {
+        throw new https_1.HttpsError('permission-denied', 'Endast administratörer kan rensa cachen');
     }
-    const regNo = normalizeRegNo(data?.regNo || '');
+    const regNo = normalizeRegNo(request.data?.regNo || '');
     if (!regNo) {
-        throw new functions.https.HttpsError('invalid-argument', 'Registreringsnummer krävs');
+        throw new https_1.HttpsError('invalid-argument', 'Registreringsnummer krävs');
     }
     const db = admin.firestore();
     await db.collection('vehicleDataCache').doc(regNo).delete();
