@@ -1,4 +1,4 @@
-Projekten jag skapar med min profil verkar inte sparas/länkas till min profil? Är det något fel? Vad kan vara fel? /**
+/**
  * ONBOARDING & PROMPT PERSONALIZATION TESTS
  *
  * Verifierar att userSkillLevel och projectType propageras korrekt genom hela systemet
