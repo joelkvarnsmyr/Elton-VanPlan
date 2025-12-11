@@ -1,7 +1,8 @@
 # Data Model Architecture & Migration Plan
 
-**Status:** Draft
-**Date:** 2025-01-28
+**Status:** Phase 2 Complete ✅
+**Date:** 2025-12-11 (Updated)
+**Original:** 2025-01-28
 **Context:** Transitioning "Elton - The VanPlan" from a monolithic document structure to a scalable Firestore sub-collection architecture.
 
 ---
@@ -83,24 +84,80 @@ Ensure `src/types/types.ts` reflects the atomic nature of the data.
 *   ✅ `Task` interface updated with `blockers` and `phases`.
 *   [ ] Verify `ShoppingItem` includes `options` array with `shelfLocation`.
 
-### Phase 2: Database Service Layer (`src/services/db.ts`)
-We need to rewrite data access patterns. Instead of `getDoc(project)`, we need composite loaders.
+### Phase 2: Database Service Layer (`src/services/db.ts`) ✅ COMPLETE
 
-**Key Changes Required:**
-1.  **`getProject(id)`**: Should fetch the *root* document (metadata + vehicle info), but NOT all sub-collections by default.
-2.  **`getProjectTasks(id)`**: New function to fetch from `projects/{id}/tasks`.
-3.  **`createProject(...)`**: Needs to use `WriteBatch` to create the root doc AND iterate through template tasks/items to create individual documents in sub-collections.
-4.  **`updateTask(...)`**: Point to specific document in `tasks` sub-collection.
+**Implemented Functions:**
 
-### Phase 3: AI Service Integration (`src/services/geminiService.ts`)
+#### Basic CRUD (Already existed, now documented)
+- ✅ `getTasks(projectId)` - Fetch all tasks from sub-collection
+- ✅ `addTask(projectId, task)` - Create task in sub-collection
+- ✅ `updateTask(projectId, taskId, updates)` - Update specific task
+- ✅ `deleteTask(projectId, taskId)` - Delete specific task
+- ✅ `getShoppingItems(projectId)` - Fetch shopping items
+- ✅ `addShoppingItem(projectId, item)` - Create shopping item
+- ✅ `updateShoppingItem(projectId, itemId, updates)` - Update item
+- ✅ `deleteShoppingItem(projectId, itemId)` - Delete item
+
+#### NEW: Advanced Loading
+- ✅ `getProject(projectId)` - Lightweight: metadata only (no sub-collections)
+- ✅ `getProjectFull(projectId)` - Complete: metadata + all sub-collections loaded in parallel
+
+#### NEW: Dependency Engine (Blockers)
+- ✅ `getTaskBlockers(projectId, taskId)` - Check if task is blocked + get blocking tasks
+- ✅ `getBlockedTasks(projectId)` - Get all currently blocked tasks
+- ✅ `getAvailableTasks(projectId)` - Get tasks that can be started now (not blocked, not done)
+
+#### NEW: Shopping Intelligence (Store Mode)
+- ✅ `getShoppingItemsByStore(projectId, storeName?)` - Group items by store with smart sorting
+  - Items WITH `shelfLocation` sorted alphabetically by shelf
+  - Items WITHOUT `shelfLocation` sorted by article number
+  - Returns total cost per store
+- ✅ `getStoreShoppingList(projectId, storeName)` - Optimized list for in-store shopping
+
+#### NEW: Real-Time Listeners
+- ✅ `subscribeToTasks(projectId, callback)` - Real-time task updates
+- ✅ `subscribeToShoppingItems(projectId, callback)` - Real-time shopping updates
+- ✅ `subscribeToProject(projectId, callback)` - Real-time project metadata
+- ✅ `subscribeToProjectFull(projectId, callback)` - Real-time complete project (metadata + sub-collections)
+
+All functions return `Unsubscribe` for proper cleanup.
+
+### Phase 3: AI Service Integration (`src/services/geminiService.ts`) ✅ VERIFIED
 The AI generates a big JSON blob. The "Deep Research" logic needs to remain the same (generating the plan), but the **saving logic** needs to handle the split.
-*   **Action:** Ensure `createProject` in `db.ts` handles the JSON blob from AI and distributes it into sub-collections.
+*   ✅ **Done:** `createProject` in `db.ts` already handles AI-generated templates and distributes tasks into sub-collections (see lines 241-259)
 
-### Phase 4: UI Adaptation
+### Phase 4: UI Adaptation ⚠️ IN PROGRESS
 Components expecting a full `Project` object with arrays need to be updated to handle async loading or new hooks.
-*   **`Dashboard`**: Needs to subscribe to `tasks` sub-collection count/stats.
-*   **`TaskBoard`**: Needs to fetch/subscribe to `tasks`.
-*   **`ShoppingList`**: Needs to fetch/subscribe to `shoppingItems`.
+
+**Migration Guide for Components:**
+
+```typescript
+// OLD WAY (will still work, but loads everything)
+const project = await getProject(projectId);
+const tasks = project.tasks; // Empty array!
+
+// NEW WAY Option 1: Load everything at once
+const project = await getProjectFull(projectId);
+const tasks = project.tasks; // ✅ Populated
+
+// NEW WAY Option 2: Load sub-collections separately (more efficient)
+const project = await getProject(projectId); // Lightweight
+const tasks = await getTasks(projectId); // Only tasks
+
+// NEW WAY Option 3: Real-time updates (recommended for interactive UIs)
+useEffect(() => {
+  const unsubscribe = subscribeToTasks(projectId, (tasks) => {
+    setTasks(tasks);
+  });
+  return () => unsubscribe();
+}, [projectId]);
+```
+
+**Components to Update:**
+*   ⚠️ **`Dashboard`**: Should use `subscribeToTasks` for real-time stats
+*   ⚠️ **`TaskBoard`**: Should use `subscribeToTasks` for live kanban updates
+*   ⚠️ **`ShoppingList`**: Should use `subscribeToShoppingItems` or `getShoppingItemsByStore`
+*   ⚠️ **`AIAssistant`**: Verify it works with new structure
 
 ## 4. Smart Logic Specs
 
@@ -136,6 +193,40 @@ With sub-collections, we unlock:
 
 ---
 
-**Approval Needed:**
-- Confirm moving to Sub-collections.
-- Confirm `Project` type update in frontend to still look "full" but be populated via multiple queries.
+## 7. Implementation Summary (2025-12-11)
+
+### ✅ What's Working
+- Sub-collection architecture fully implemented in `db.ts`
+- Dependency engine for task blockers
+- Shopping intelligence with Store Mode
+- Real-time listeners for all data types
+- Backward compatible: `Project` type unchanged, `getProjectFull()` makes it look "full"
+
+### ⚠️ Next Steps
+1. Update UI components to use new functions (Dashboard, TaskBoard, ShoppingList)
+2. Add visual indicators for blocked tasks in TaskBoard
+3. Implement Store Mode toggle in ShoppingList component
+4. Test with real data and multiple users
+
+### 📊 Performance Benefits
+- **Before:** Loading 1 project = 1 large document (could hit 1MB limit with images)
+- **After:** Loading 1 project = 1 small doc + parallel sub-collection queries
+- **Real-time:** Components can subscribe only to data they need
+
+### 🔧 Developer Experience
+```typescript
+// Efficient: Load only what you need
+const tasks = await getTasks(projectId);
+
+// Complete: Load everything
+const project = await getProjectFull(projectId);
+
+// Live: Subscribe to changes
+const unsubscribe = subscribeToTasks(projectId, setTasks);
+```
+
+---
+
+**Status:** Database layer complete. UI migration pending.
+**AI-Agent:** Claude (Session: 01Xjmi7N7aGQ7316aLT5r53t)
+**Date:** 2025-12-11
