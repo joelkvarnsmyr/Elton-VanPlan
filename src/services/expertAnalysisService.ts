@@ -6,29 +6,12 @@
  * - Modification tips
  * - Maintenance schedules
  * - Model-specific recommendations
+ *
+ * All AI calls are handled via Cloud Functions for security.
  */
 
-import { GoogleGenAI } from "@google/genai";
-import { ExpertAnalysis, VehicleData, VehicleMaintenanceData } from '@/types/types';
+import { ExpertAnalysis, VehicleMaintenanceData } from '@/types/types';
 import { generateJSON } from './aiService';
-
-// ===========================
-// GEMINI CLIENT
-// ===========================
-
-let client: GoogleGenAI | null = null;
-
-const getClient = (): GoogleGenAI => {
-  if (!client) {
-    // @ts-ignore
-    const apiKey = import.meta.env?.VITE_GEMINI_API_KEY || '';
-    if (!apiKey) {
-      console.warn("API Key missing for Gemini. Expert analysis will use fallback data.");
-    }
-    client = new GoogleGenAI({ apiKey });
-  }
-  return client;
-};
 
 // ===========================
 // MAIN EXPERT ANALYSIS GENERATOR

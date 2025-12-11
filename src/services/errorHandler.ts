@@ -74,7 +74,7 @@ export function classifyGeminiError(error: any): AIError {
       message: 'Gemini API-nyckel ogiltig eller saknas',
       userMessage: '🔑 Gemini API-nyckel fungerar inte. Använder Grok istället...',
       isRetryable: false,
-      suggestedAction: 'Kontrollera VITE_GEMINI_API_KEY i .env'
+      suggestedAction: 'Kontrollera att Cloud Functions är konfigurerade korrekt'
     };
   }
 
@@ -174,7 +174,7 @@ export function classifyGrokError(error: any): AIError {
       message: 'Grok API-nyckel ogiltig',
       userMessage: '🔑 Grok API-nyckel fungerar inte. Använder standarddata...',
       isRetryable: false,
-      suggestedAction: 'Kontrollera VITE_GROK_API_KEY i .env'
+      suggestedAction: 'Kontrollera att Cloud Functions är konfigurerade korrekt'
     };
   }
 
@@ -186,7 +186,7 @@ export function classifyGrokError(error: any): AIError {
       message: 'Grok API-nyckel saknas',
       userMessage: '🔑 Grok API-nyckel saknas. Använder standarddata...',
       isRetryable: false,
-      suggestedAction: 'Lägg till VITE_GROK_API_KEY i .env'
+      suggestedAction: 'Kontrollera att Cloud Functions är konfigurerade med Grok API-nyckel'
     };
   }
 

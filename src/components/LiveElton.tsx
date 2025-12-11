@@ -86,9 +86,14 @@ export const LiveElton: React.FC<LiveEltonProps> = ({ project, onClose }) => {
 
   const startSession = async () => {
     try {
+      // TODO: LiveElton uses Gemini Live API with WebRTC which requires direct API key access.
+      // This needs to be refactored to use a secure token-based authentication flow.
+      // See: https://cloud.google.com/gemini/docs/live-api for secure implementation patterns.
+      // For now, this feature should be disabled in production until properly secured.
       const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || '';
       if (!apiKey) {
-          setStatusMessage("Ingen API-nyckel hittades.");
+          setStatusMessage("Live Elton är inte konfigurerad. Kontakta administratör.");
+          console.warn("LiveElton: API key not configured. This feature needs secure token-based auth.");
           return;
       }
 

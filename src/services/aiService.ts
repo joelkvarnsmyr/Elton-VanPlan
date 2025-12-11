@@ -1,8 +1,11 @@
+/**
+ * AI Service
+ *
+ * Unified AI service that uses Cloud Functions for all AI operations.
+ * API keys are handled securely on the backend.
+ */
 
-import { GoogleGenAI } from "@google/genai";
-import { getGrokClient, GrokConfig } from './grokService';
-import { classifyGeminiError, classifyGrokError, type AIError } from './errorHandler';
-import { getLoadedApiKeys } from './secretService'; // Importerar den nya funktionen
+import { sendChatMessage, parseInput, type ChatResponse } from './aiProxyService';
 
 // ===========================
 // TYPES
@@ -15,7 +18,7 @@ export interface AIResponse<T = string> {
   provider: AIProvider;
   success: boolean;
   warning?: string;
-  errors?: AIError[]; // Track all errors that occurred during fallback chain
+  errors?: Array<{ provider: string; message: string }>;
 }
 
 export interface AIConfig {
@@ -27,291 +30,105 @@ export interface AIConfig {
 }
 
 // ===========================
-// AI CLIENT MANAGER
+// AI SERVICE FUNCTIONS
 // ===========================
 
-class AIServiceManager {
-  private geminiClient: GoogleGenAI | null = null;
-  private grokClient: Awaited<ReturnType<typeof getGrokClient>> | null = null;
-
-  // Nu en asynkron metod som måste anropas efter att nycklarna laddats.
-  async initializeClients() {
-    const { geminiApiKey, grokApiKey } = await getLoadedApiKeys();
-
-    if (geminiApiKey) {
-      this.geminiClient = new GoogleGenAI(geminiApiKey);
-      console.log(`✅ Gemini initialized with key: ${geminiApiKey.substring(0, 10)}...`);
-    } else {
-      console.warn('⚠️ VITE_GEMINI_API_KEY saknas');
-    }
-
-    if (grokApiKey) {
-        this.grokClient = await getGrokClient();
-        console.log('✅ Grok client ready');
-    } else {
-        console.warn("Grok API-nyckel inte tillgänglig, fallback inaktiverad.");
-    }
-  }
-
-  /**
-   * Check which AI providers are available
-   */
-  async checkAvailability(): Promise<{
-    gemini: boolean;
-    grok: boolean;
-  }> {
-    const checks = await Promise.allSettled([
-      this.geminiClient
-        ? this.geminiClient.getGenerativeModel({model: 'gemini-pro'}).generateContent('test')
-        : Promise.reject('No client'),
-      this.grokClient?.healthCheck() || Promise.reject('No client')
-    ]);
-
-    return {
-      gemini: checks[0].status === 'fulfilled',
-      grok: checks[1].status === 'fulfilled' && checks[1].value === true,
-    };
-  }
-
-  /**
-   * Generate text with automatic fallback
-   */
-  async generateText(
-    systemPrompt: string,
-    userPrompt: string,
-    config?: AIConfig
-  ): Promise<AIResponse<string>> {
-
-    const retryCount = config?.retryCount ?? 2;
-    const temperature = config?.temperature ?? 0.7;
-    const maxTokens = config?.maxTokens || 4000;
-    const errors: AIError[] = [];
-
-    // Try Gemini first (unless Grok is preferred)
-    if (config?.preferredProvider !== 'grok' && this.geminiClient) {
-      try {
-        console.log('🤖 Trying Gemini...');
-        const result = await this.callGemini(systemPrompt, userPrompt, { temperature, maxTokens });
-        console.log('✅ Gemini success');
-        return {
-          data: result,
-          provider: 'gemini',
-          success: true
-        };
-      } catch (error: any) {
-        const classifiedError = classifyGeminiError(error);
-        errors.push(classifiedError);
-        console.warn('⚠️ Gemini failed:', classifiedError.userMessage);
-        console.error('   Details:', classifiedError.message);
-      }
-    }
-
-    // Fallback to Grok
-    if (this.grokClient) {
-      try {
-        console.log('🤖 Trying Grok fallback...');
-        const result = await this.grokClient.generateContent([
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ], { temperature, maxTokens });
-
-        console.log('✅ Grok success');
-        return {
-          data: result,
-          provider: 'grok',
-          success: true,
-          warning: errors[0]?.userMessage || 'Gemini otillgänglig, använder Grok',
-          errors
-        };
-      } catch (error: any) {
-        const classifiedError = classifyGrokError(error);
-        errors.push(classifiedError);
-        console.warn('⚠️ Grok också failed:', classifiedError.userMessage);
-        console.error('   Details:', classifiedError.message);
-      }
-    }
-
-    // Total failure - provide detailed error message
-    const errorMsg = errors.length > 0
-      ? `AI-tjänster otillgängliga:\n${errors.map(e => `• ${e.provider}: ${e.message}`).join('\n')}`
-      : 'Alla AI-tjänster är otillgängliga. Kontrollera API-nycklar och nätverksanslutning.';
-
-    throw new Error(errorMsg);
-  }
-
-  /**
-   * Generate structured JSON with automatic fallback
-   */
-  async generateJSON<T = any>(
-    systemPrompt: string,
-    userPrompt: string,
-    config?: AIConfig
-  ): Promise<AIResponse<T>> {
-
-    const retryCount = config?.retryCount ?? 2;
-    const temperature = config?.temperature ?? 0.7;
-    const maxTokens = config?.maxTokens || 4000;
-    const errors: AIError[] = [];
-
-    // Try Gemini first
-    if (config?.preferredProvider !== 'grok' && this.geminiClient) {
-      try {
-        console.log('🤖 Trying Gemini for JSON...');
-        const textResult = await this.callGemini(
-          systemPrompt + '\n\nVIKTIGT: SVARA MED ENDAST JSON. Ingen extra text eller kommentarer.',
-          userPrompt,
-          { temperature, maxTokens }
-        );
-
-        const parsed = this.parseJSON<T>(textResult);
-        console.log('✅ Gemini JSON success');
-        return {
-          data: parsed,
-          provider: 'gemini',
-          success: true
-        };
-      } catch (error: any) {
-        const classifiedError = classifyGeminiError(error);
-        errors.push(classifiedError);
-        console.warn('⚠️ Gemini JSON failed:', classifiedError.userMessage);
-        console.error('   Details:', classifiedError.message);
-        if (classifiedError.type === 'invalid_response') {
-          console.error('   This usually means Gemini returned text instead of JSON');
-        }
-      }
-    }
-
-    // Fallback to Grok (har native JSON mode)
-    if (this.grokClient) {
-      try {
-        console.log('🤖 Trying Grok for JSON...');
-        const result = await this.grokClient.generateJSON<T>(
-          systemPrompt,
-          userPrompt,
-          { temperature, maxTokens }
-        );
-
-        console.log('✅ Grok JSON success');
-        return {
-          data: result,
-          provider: 'grok',
-          success: true,
-          warning: errors[0]?.userMessage || 'Gemini otillgänglig, använder Grok',
-          errors
-        };
-      } catch (error: any) {
-        const classifiedError = classifyGrokError(error);
-        errors.push(classifiedError);
-        console.warn('⚠️ Grok JSON också failed:', classifiedError.userMessage);
-        console.error('   Details:', classifiedError.message);
-      }
-    }
-
-    // Total failure
-    const errorMsg = errors.length > 0
-      ? `Kunde inte generera JSON:\n${errors.map(e => `• ${e.provider}: ${e.message}`).join('\n')}`
-      : 'Kunde inte generera JSON från någon AI-tjänst';
-
-    throw new Error(errorMsg);
-  }
-
-  /**
-   * Call Gemini with retry logic
-   */
-  private async callGemini(
-    systemPrompt: string,
-    userPrompt: string,
-    options: { temperature: number; maxTokens: number }
-  ): Promise<string> {
-
-    if (!this.geminiClient) {
-      throw new Error('Gemini client not initialized');
-    }
-
-    const model = this.geminiClient.getGenerativeModel({
-      model: 'gemini-pro',
-      systemInstruction: { text: systemPrompt },
-    });
-
-    const result = await model.generateContent(userPrompt);
-
-    const response = result.response;
-    const text = response.text();
-
-    if (!text) {
-      throw new Error('Gemini returned empty response');
-    }
-
-    return text;
-  }
-
-  /**
-   * Parse JSON from AI response (handles markdown code blocks)
-   */
-  private parseJSON<T>(text: string): T {
-    try {
-      return JSON.parse(text) as T;
-    } catch (e) {
-      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) ||
-                       text.match(/```\n([\s\S]*?)\n```/) ||
-                       text.match(/\{[\s\S]*\}/);
-
-      if (jsonMatch) {
-        const jsonText = jsonMatch[1] || jsonMatch[0];
-        return JSON.parse(jsonText) as T;
-      }
-
-      throw new Error('Could not parse JSON from response');
-    }
-  }
-}
-
-let aiServiceInstance: AIServiceManager | null = null;
-
-// Funktionen görs om till async för att hantera den asynkrona laddningen.
-export const getAIService = async (): Promise<AIServiceManager> => {
-  if (aiServiceInstance) {
-    return aiServiceInstance;
-  }
-  
-  aiServiceInstance = new AIServiceManager();
-  await aiServiceInstance.initializeClients(); // Nytt: anropar den asynkrona initieringen
-  return aiServiceİnstance;
-};
-
 /**
- * Generate text with automatic fallback
+ * Generate text using AI via Cloud Functions
  */
 export const generateText = async (
   systemPrompt: string,
   userPrompt: string,
   config?: AIConfig
 ): Promise<AIResponse<string>> => {
-  const service = await getAIService();
-  return service.generateText(systemPrompt, userPrompt, config);
+  try {
+    const response = await sendChatMessage(
+      [],
+      userPrompt,
+      systemPrompt
+    );
+
+    return {
+      data: response.text,
+      provider: 'gemini',
+      success: true
+    };
+  } catch (error: any) {
+    console.error('AI generateText error:', error);
+    throw new Error(error.message || 'AI-tjänster otillgängliga');
+  }
 };
 
 /**
- * Generate structured JSON with automatic fallback
+ * Generate structured JSON using AI via Cloud Functions
  */
 export const generateJSON = async <T = any>(
   systemPrompt: string,
   userPrompt: string,
   config?: AIConfig
 ): Promise<AIResponse<T>> => {
-  const service = await getAIService();
-  return service.generateJSON<T>(systemPrompt, userPrompt, config);
+  try {
+    const fullSystemPrompt = systemPrompt + '\n\nVIKTIGT: SVARA MED ENDAST JSON. Ingen extra text.';
+
+    const response = await sendChatMessage(
+      [],
+      userPrompt,
+      fullSystemPrompt
+    );
+
+    // Parse JSON from response
+    let data: T;
+    try {
+      data = JSON.parse(response.text) as T;
+    } catch {
+      // Try to extract JSON from markdown code block
+      const jsonMatch = response.text.match(/```json\n([\s\S]*?)\n```/) ||
+                       response.text.match(/```\n([\s\S]*?)\n```/) ||
+                       response.text.match(/\{[\s\S]*\}/);
+
+      if (jsonMatch) {
+        const jsonText = jsonMatch[1] || jsonMatch[0];
+        data = JSON.parse(jsonText) as T;
+      } else {
+        throw new Error('Could not parse JSON from response');
+      }
+    }
+
+    return {
+      data,
+      provider: 'gemini',
+      success: true
+    };
+  } catch (error: any) {
+    console.error('AI generateJSON error:', error);
+    throw new Error(error.message || 'Kunde inte generera JSON');
+  }
 };
 
 /**
- * Check AI availability
+ * Check AI service availability
  */
 export const checkAIAvailability = async (): Promise<{
   gemini: boolean;
   grok: boolean;
 }> => {
-  const service = await getAIService();
-  return service.checkAvailability();
+  try {
+    await sendChatMessage([], 'ping', 'Respond with pong');
+    return { gemini: true, grok: false };
+  } catch {
+    return { gemini: false, grok: false };
+  }
+};
+
+/**
+ * Legacy function to get AI service - now returns a simple object
+ */
+export const getAIService = async () => {
+  return {
+    generateText,
+    generateJSON,
+    checkAvailability: checkAIAvailability
+  };
 };
 
 export default {

@@ -13,9 +13,10 @@
  * - Shopping lists
  * - Local contacts
  * - Expert tips
+ *
+ * All AI calls are handled via Cloud Functions for security.
  */
 
-import { GoogleGenAI } from "@google/genai";
 import {
   VehicleData,
   ProjectType,
@@ -34,24 +35,6 @@ import {
   generateMaintenanceData
 } from './expertAnalysisService';
 import { generateJSON } from './aiService';
-
-// ===========================
-// GEMINI CLIENT
-// ===========================
-
-let client: GoogleGenAI | null = null;
-
-const getClient = (): GoogleGenAI => {
-  if (!client) {
-    // @ts-ignore
-    const apiKey = import.meta.env?.VITE_GEMINI_API_KEY || '';
-    if (!apiKey) {
-      console.warn("API Key missing. Onboarding will use fallback data.");
-    }
-    client = new GoogleGenAI({ apiKey });
-  }
-  return client;
-};
 
 // ===========================
 // TYPES
