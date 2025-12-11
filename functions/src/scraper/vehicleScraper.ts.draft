@@ -1,0 +1,662 @@
+/**
+ * VEHICLE DATA SCRAPER - Firebase Cloud Function
+ *
+ * Hämtar fordonsdata från svenska register via scraping.
+ * Prioriterar car.info (bäst struktur) med biluppgifter.se som fallback.
+ *
+ * ANVÄNDNING:
+ * POST /scrapeVehicleData
+ * Body: { "regNo": "JSN398" }
+ *
+ * VIKTIGT:
+ * - Respektera robots.txt och rate limits
+ * - Cacha resultat i Firestore för att undvika överflödiga anrop
+ * - Överväg att kontakta car.info för API-access vid hög volym
+ */
+
+import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
+import * as cheerio from 'cheerio';
+
+// Types
+import { VehicleData } from '../types/types';
+
+// =============================================================================
+// CONFIGURATION
+// =============================================================================
+
+const CONFIG = {
+    // Cache duration in seconds (7 days - fordonsdata ändras sällan)
+    CACHE_TTL_SECONDS: 7 * 24 * 60 * 60,
+
+    // Rate limiting
+    MAX_REQUESTS_PER_MINUTE: 10,
+
+    // Timeouts
+    FETCH_TIMEOUT_MS: 10000,
+
+    // User agent (var ärlig om vem du är)
+    USER_AGENT: 'VanPlan/1.0 (Vehicle Project Manager; contact@vanplan.se)',
+
+    // Sources in priority order
+    SOURCES: {
+        CAR_INFO: {
+            name: 'car.info',
+            baseUrl: 'https://www.car.info/sv-se/license-plate/S/',
+            priority: 1
+        },
+        BILUPPGIFTER: {
+            name: 'biluppgifter.se',
+            baseUrl: 'https://biluppgifter.se/fordon/',
+            priority: 2
+        }
+    }
+};
+
+// =============================================================================
+// INTERFACES
+// =============================================================================
+
+interface ScrapeResult {
+    success: boolean;
+    source: string;
+    vehicleData: Partial<VehicleData> | null;
+    error?: string;
+    scrapedAt: string;
+    cached: boolean;
+}
+
+interface CachedVehicleData {
+    vehicleData: VehicleData;
+    source: string;
+    scrapedAt: admin.firestore.Timestamp;
+    expiresAt: admin.firestore.Timestamp;
+}
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * Normaliserar registreringsnummer (tar bort mellanslag, versaler)
+ */
+function normalizeRegNo(regNo: string): string {
+    return regNo.replace(/\s+/g, '').toUpperCase();
+}
+
+/**
+ * Fetch med timeout och headers
+ */
+async function fetchWithTimeout(url: string, timeoutMs: number = CONFIG.FETCH_TIMEOUT_MS): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': CONFIG.USER_AGENT,
+                'Accept': 'text/html,application/xhtml+xml',
+                'Accept-Language': 'sv-SE,sv;q=0.9,en;q=0.8'
+            },
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+    }
+}
+
+/**
+ * Parsar numeriska värden från svenska formaterade strängar
+ * "2 280 kg" -> 2280
+ */
+function parseSwedishNumber(str: string | undefined): number {
+    if (!str) return 0;
+    const cleaned = str.replace(/[^\d]/g, '');
+    return parseInt(cleaned, 10) || 0;
+}
+
+/**
+ * Parsar datum från olika format
+ * "2025-08-13" eller "13 aug 2025" -> "2025-08-13"
+ */
+function parseSwedishDate(str: string | undefined): string {
+    if (!str) return 'Okänt';
+
+    // Om redan ISO-format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+
+    // Försök parsa svenska datum
+    const months: Record<string, string> = {
+        'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+        'maj': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+        'sep': '09', 'okt': '10', 'nov': '11', 'dec': '12'
+    };
+
+    const match = str.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})/i);
+    if (match) {
+        const [, day, monthStr, year] = match;
+        const month = months[monthStr.toLowerCase()];
+        if (month) {
+            return `${year}-${month}-${day.padStart(2, '0')}`;
+        }
+    }
+
+    return str;
+}
+
+// =============================================================================
+// CAR.INFO SCRAPER
+// =============================================================================
+
+/**
+ * Scrapar fordonsdata från car.info
+ *
+ * Car.info har en väldigt strukturerad sida med tydliga CSS-selektorer.
+ * Datan presenteras i en tabell med label/value-par.
+ */
+async function scrapeCarInfo(regNo: string): Promise<Partial<VehicleData> | null> {
+    const url = `${CONFIG.SOURCES.CAR_INFO.baseUrl}${regNo}`;
+
+    console.log(`[CarInfo] Fetching: ${url}`);
+
+    try {
+        const response = await fetchWithTimeout(url);
+
+        if (!response.ok) {
+            console.log(`[CarInfo] HTTP ${response.status} for ${regNo}`);
+            return null;
+        }
+
+        const html = await response.text();
+        const $ = cheerio.load(html);
+
+        // Kontrollera om fordonet hittades
+        if (html.includes('Inget fordon hittades') || html.includes('No vehicle found')) {
+            console.log(`[CarInfo] Vehicle not found: ${regNo}`);
+            return null;
+        }
+
+        // Extrahera data från car.info's struktur
+        // OBS: Dessa selektorer kan behöva uppdateras om car.info ändrar sin HTML
+        const vehicleData: Partial<VehicleData> = {
+            regNo: regNo,
+            make: '',
+            model: '',
+            year: 0,
+            prodYear: 0,
+            regDate: 'Okänt',
+            status: 'Okänt',
+            bodyType: '',
+            passengers: 0,
+            inspection: { last: 'Okänt', next: 'Okänt', mileage: 'Okänt' },
+            engine: { fuel: '', power: '', volume: '' },
+            gearbox: '',
+            wheels: { drive: '', tiresFront: '', tiresRear: '', boltPattern: '' },
+            dimensions: { length: 0, width: 0, height: '', wheelbase: 0 },
+            weights: { curb: 0, total: 0, load: 0, trailer: 0, trailerB: 0 },
+            vin: '',
+            color: '',
+            history: { owners: 0, events: 0, lastOwnerChange: '' }
+        };
+
+        // Car.info använder ofta en struktur med dt/dd eller table rows
+        // Här är exempel-selektorer - anpassa efter faktisk HTML-struktur
+
+        // Huvudrubrik innehåller ofta märke och modell
+        const titleText = $('h1').first().text().trim();
+        const titleMatch = titleText.match(/^(\w+)\s+(.+?)(?:\s+\d{4})?$/);
+        if (titleMatch) {
+            vehicleData.make = titleMatch[1];
+            vehicleData.model = titleMatch[2];
+        }
+
+        // Iterera över alla specifikationsrader
+        // Car.info använder ofta en lista med label: value
+        $('[class*="spec"], [class*="detail"], dl, table tr').each((_, el) => {
+            const $el = $(el);
+            const labelEl = $el.find('dt, th, [class*="label"]').first();
+            const valueEl = $el.find('dd, td, [class*="value"]').first();
+
+            const label = labelEl.text().trim().toLowerCase();
+            const value = valueEl.text().trim();
+
+            if (!label || !value) return;
+
+            // Mappa labels till våra fält
+            switch (true) {
+                // Status
+                case label.includes('status'):
+                    vehicleData.status = value.includes('trafik') ? 'I trafik' : 'Avställd';
+                    break;
+
+                // Årsmodell
+                case label.includes('årsmodell') || label.includes('model year'):
+                    vehicleData.year = parseInt(value) || 0;
+                    break;
+
+                // Första registrering
+                case label.includes('registrering') || label.includes('first registered'):
+                    vehicleData.regDate = parseSwedishDate(value);
+                    break;
+
+                // Motor
+                case label.includes('bränsle') || label.includes('fuel'):
+                    vehicleData.engine!.fuel = value;
+                    break;
+
+                case label.includes('effekt') || label.includes('power'):
+                    vehicleData.engine!.power = value;
+                    break;
+
+                case label.includes('motorvolym') || label.includes('displacement'):
+                    vehicleData.engine!.volume = value;
+                    break;
+
+                // Växellåda
+                case label.includes('växellåda') || label.includes('transmission'):
+                    vehicleData.gearbox = value;
+                    break;
+
+                // Vikter
+                case label.includes('tjänstevikt') || label.includes('curb weight'):
+                    vehicleData.weights!.curb = parseSwedishNumber(value);
+                    break;
+
+                case label.includes('totalvikt') || label.includes('gross weight'):
+                    vehicleData.weights!.total = parseSwedishNumber(value);
+                    break;
+
+                case label.includes('lastvikt') || label.includes('payload'):
+                    vehicleData.weights!.load = parseSwedishNumber(value);
+                    break;
+
+                case label.includes('släpvagnsvikt'):
+                    if (label.includes('b-kort') || label.includes('obromsad')) {
+                        vehicleData.weights!.trailerB = parseSwedishNumber(value);
+                    } else {
+                        vehicleData.weights!.trailer = parseSwedishNumber(value);
+                    }
+                    break;
+
+                // Mått
+                case label.includes('längd') || label.includes('length'):
+                    vehicleData.dimensions!.length = parseSwedishNumber(value);
+                    break;
+
+                case label.includes('bredd') || label.includes('width'):
+                    vehicleData.dimensions!.width = parseSwedishNumber(value);
+                    break;
+
+                case label.includes('höjd') || label.includes('height'):
+                    vehicleData.dimensions!.height = value;
+                    break;
+
+                case label.includes('hjulbas') || label.includes('wheelbase'):
+                    vehicleData.dimensions!.wheelbase = parseSwedishNumber(value);
+                    break;
+
+                // Besiktning
+                case label.includes('besiktning') || label.includes('inspection'):
+                    if (label.includes('senaste') || label.includes('last')) {
+                        vehicleData.inspection!.last = parseSwedishDate(value);
+                    } else if (label.includes('nästa') || label.includes('next')) {
+                        vehicleData.inspection!.next = parseSwedishDate(value);
+                    }
+                    break;
+
+                case label.includes('mätarställning') || label.includes('odometer'):
+                    vehicleData.inspection!.mileage = value;
+                    break;
+
+                // Övrigt
+                case label.includes('färg') || label.includes('color'):
+                    vehicleData.color = value;
+                    break;
+
+                case label.includes('kaross') || label.includes('body'):
+                    vehicleData.bodyType = value;
+                    break;
+
+                case label.includes('chassi') || label.includes('vin'):
+                    vehicleData.vin = value;
+                    break;
+
+                case label.includes('ägare') || label.includes('owner'):
+                    vehicleData.history!.owners = parseSwedishNumber(value);
+                    break;
+            }
+        });
+
+        // Sätt prodYear till year om inte separat angiven
+        if (!vehicleData.prodYear && vehicleData.year) {
+            vehicleData.prodYear = vehicleData.year;
+        }
+
+        // Beräkna lastvikt om vi har total och tjänstevikt
+        if (vehicleData.weights!.total && vehicleData.weights!.curb && !vehicleData.weights!.load) {
+            vehicleData.weights!.load = vehicleData.weights!.total - vehicleData.weights!.curb;
+        }
+
+        console.log(`[CarInfo] Successfully scraped: ${vehicleData.make} ${vehicleData.model}`);
+        return vehicleData;
+
+    } catch (error) {
+        console.error(`[CarInfo] Error scraping ${regNo}:`, error);
+        return null;
+    }
+}
+
+// =============================================================================
+// BILUPPGIFTER.SE SCRAPER (FALLBACK)
+// =============================================================================
+
+/**
+ * Scrapar fordonsdata från biluppgifter.se
+ *
+ * OBS: Denna sida har ofta CAPTCHA och kan blockera automatiserad åtkomst.
+ * Använd endast som fallback.
+ */
+async function scrapeBiluppgifter(regNo: string): Promise<Partial<VehicleData> | null> {
+    const url = `${CONFIG.SOURCES.BILUPPGIFTER.baseUrl}${regNo}`;
+
+    console.log(`[Biluppgifter] Fetching: ${url}`);
+
+    try {
+        const response = await fetchWithTimeout(url);
+
+        // Biluppgifter returnerar ofta 403 eller redirect till CAPTCHA
+        if (response.status === 403) {
+            console.log(`[Biluppgifter] Blocked (403) for ${regNo}`);
+            return null;
+        }
+
+        if (!response.ok) {
+            console.log(`[Biluppgifter] HTTP ${response.status} for ${regNo}`);
+            return null;
+        }
+
+        const html = await response.text();
+
+        // Kontrollera om vi fick en CAPTCHA-sida
+        if (html.includes('captcha') || html.includes('Verifiera att du är människa')) {
+            console.log(`[Biluppgifter] CAPTCHA required for ${regNo}`);
+            return null;
+        }
+
+        const $ = cheerio.load(html);
+
+        // Biluppgifter har en annan HTML-struktur
+        // Implementera liknande logik som för car.info
+        // men anpassad för biluppgifter.se's layout
+
+        const vehicleData: Partial<VehicleData> = {
+            regNo: regNo,
+            // ... (liknande struktur som car.info)
+        };
+
+        // TODO: Implementera parsing för biluppgifter.se
+        // Strukturen liknar car.info men med andra CSS-klasser
+
+        console.log(`[Biluppgifter] Scraping not fully implemented yet`);
+        return null;
+
+    } catch (error) {
+        console.error(`[Biluppgifter] Error scraping ${regNo}:`, error);
+        return null;
+    }
+}
+
+// =============================================================================
+// CACHE LAYER (FIRESTORE)
+// =============================================================================
+
+/**
+ * Hämtar cachad fordonsdata från Firestore
+ */
+async function getCachedVehicleData(regNo: string): Promise<CachedVehicleData | null> {
+    const db = admin.firestore();
+    const docRef = db.collection('vehicleDataCache').doc(regNo);
+
+    try {
+        const doc = await docRef.get();
+
+        if (!doc.exists) {
+            return null;
+        }
+
+        const data = doc.data() as CachedVehicleData;
+
+        // Kontrollera om cachen har gått ut
+        if (data.expiresAt.toMillis() < Date.now()) {
+            console.log(`[Cache] Expired for ${regNo}`);
+            return null;
+        }
+
+        console.log(`[Cache] Hit for ${regNo}`);
+        return data;
+
+    } catch (error) {
+        console.error(`[Cache] Error reading ${regNo}:`, error);
+        return null;
+    }
+}
+
+/**
+ * Sparar fordonsdata i Firestore-cache
+ */
+async function setCachedVehicleData(
+    regNo: string,
+    vehicleData: VehicleData,
+    source: string
+): Promise<void> {
+    const db = admin.firestore();
+    const docRef = db.collection('vehicleDataCache').doc(regNo);
+
+    const now = admin.firestore.Timestamp.now();
+    const expiresAt = admin.firestore.Timestamp.fromMillis(
+        now.toMillis() + (CONFIG.CACHE_TTL_SECONDS * 1000)
+    );
+
+    const cacheData: CachedVehicleData = {
+        vehicleData,
+        source,
+        scrapedAt: now,
+        expiresAt
+    };
+
+    try {
+        await docRef.set(cacheData);
+        console.log(`[Cache] Saved ${regNo} from ${source}`);
+    } catch (error) {
+        console.error(`[Cache] Error saving ${regNo}:`, error);
+    }
+}
+
+// =============================================================================
+// MAIN CLOUD FUNCTION
+// =============================================================================
+
+/**
+ * Cloud Function: scrapeVehicleData
+ *
+ * Hämtar fordonsdata via scraping med caching.
+ *
+ * Request: { regNo: "JSN398" }
+ * Response: ScrapeResult
+ */
+export const scrapeVehicleData = functions
+    .region('europe-west1')
+    .runWith({
+        timeoutSeconds: 30,
+        memory: '256MB'
+    })
+    .https.onCall(async (data, context): Promise<ScrapeResult> => {
+
+        // Validera input
+        const regNo = data?.regNo;
+        if (!regNo || typeof regNo !== 'string') {
+            return {
+                success: false,
+                source: 'none',
+                vehicleData: null,
+                error: 'Registreringsnummer krävs',
+                scrapedAt: new Date().toISOString(),
+                cached: false
+            };
+        }
+
+        const normalizedRegNo = normalizeRegNo(regNo);
+
+        // Validera format (svenska regnummer)
+        if (!/^[A-Z]{3}\d{2}[A-Z0-9]$/.test(normalizedRegNo)) {
+            return {
+                success: false,
+                source: 'none',
+                vehicleData: null,
+                error: 'Ogiltigt registreringsnummerformat. Förväntat: ABC123 eller ABC12A',
+                scrapedAt: new Date().toISOString(),
+                cached: false
+            };
+        }
+
+        console.log(`[Main] Processing: ${normalizedRegNo}`);
+
+        // 1. Kolla cache först
+        const cached = await getCachedVehicleData(normalizedRegNo);
+        if (cached) {
+            return {
+                success: true,
+                source: cached.source,
+                vehicleData: cached.vehicleData,
+                scrapedAt: cached.scrapedAt.toDate().toISOString(),
+                cached: true
+            };
+        }
+
+        // 2. Försök car.info först (bäst struktur)
+        let vehicleData = await scrapeCarInfo(normalizedRegNo);
+        let source = CONFIG.SOURCES.CAR_INFO.name;
+
+        // 3. Fallback till biluppgifter.se
+        if (!vehicleData) {
+            console.log(`[Main] Falling back to biluppgifter.se`);
+            vehicleData = await scrapeBiluppgifter(normalizedRegNo);
+            source = CONFIG.SOURCES.BILUPPGIFTER.name;
+        }
+
+        // 4. Om vi fick data, cacha och returnera
+        if (vehicleData) {
+            // Fyll i standardvärden för saknade fält
+            const completeData = fillDefaultValues(vehicleData);
+
+            // Spara i cache
+            await setCachedVehicleData(normalizedRegNo, completeData, source);
+
+            return {
+                success: true,
+                source,
+                vehicleData: completeData,
+                scrapedAt: new Date().toISOString(),
+                cached: false
+            };
+        }
+
+        // 5. Ingen data hittades
+        return {
+            success: false,
+            source: 'none',
+            vehicleData: null,
+            error: 'Kunde inte hitta fordonsdata. Kontrollera registreringsnumret.',
+            scrapedAt: new Date().toISOString(),
+            cached: false
+        };
+    });
+
+/**
+ * Fyller i standardvärden för saknade fält
+ */
+function fillDefaultValues(partial: Partial<VehicleData>): VehicleData {
+    return {
+        regNo: partial.regNo || '',
+        make: partial.make || 'Okänt',
+        model: partial.model || 'Okänt',
+        year: partial.year || 0,
+        prodYear: partial.prodYear || partial.year || 0,
+        regDate: partial.regDate || 'Okänt',
+        status: partial.status || 'Okänt',
+        bodyType: partial.bodyType || '',
+        passengers: partial.passengers || 0,
+        inspection: {
+            last: partial.inspection?.last || 'Okänt',
+            next: partial.inspection?.next || 'Okänt',
+            mileage: partial.inspection?.mileage || 'Okänt'
+        },
+        engine: {
+            fuel: partial.engine?.fuel || '',
+            power: partial.engine?.power || '',
+            volume: partial.engine?.volume || ''
+        },
+        gearbox: partial.gearbox || '',
+        wheels: {
+            drive: partial.wheels?.drive || '',
+            tiresFront: partial.wheels?.tiresFront || '',
+            tiresRear: partial.wheels?.tiresRear || '',
+            boltPattern: partial.wheels?.boltPattern || ''
+        },
+        dimensions: {
+            length: partial.dimensions?.length || 0,
+            width: partial.dimensions?.width || 0,
+            height: partial.dimensions?.height || '',
+            wheelbase: partial.dimensions?.wheelbase || 0
+        },
+        weights: {
+            curb: partial.weights?.curb || 0,
+            total: partial.weights?.total || 0,
+            load: partial.weights?.load || 0,
+            trailer: partial.weights?.trailer || 0,
+            trailerB: partial.weights?.trailerB || 0
+        },
+        vin: partial.vin || '',
+        color: partial.color || '',
+        history: {
+            owners: partial.history?.owners || 0,
+            events: partial.history?.events || 0,
+            lastOwnerChange: partial.history?.lastOwnerChange || ''
+        }
+    };
+}
+
+// =============================================================================
+// ADMIN FUNCTION: CLEAR CACHE
+// =============================================================================
+
+/**
+ * Rensar cachen för ett specifikt fordon (admin-only)
+ */
+export const clearVehicleCache = functions
+    .region('europe-west1')
+    .https.onCall(async (data, context) => {
+        // Kräv admin-behörighet
+        if (!context.auth?.token?.admin) {
+            throw new functions.https.HttpsError(
+                'permission-denied',
+                'Endast administratörer kan rensa cachen'
+            );
+        }
+
+        const regNo = normalizeRegNo(data?.regNo || '');
+        if (!regNo) {
+            throw new functions.https.HttpsError(
+                'invalid-argument',
+                'Registreringsnummer krävs'
+            );
+        }
+
+        const db = admin.firestore();
+        await db.collection('vehicleDataCache').doc(regNo).delete();
+
+        return { success: true, message: `Cache rensad för ${regNo}` };
+    });
