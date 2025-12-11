@@ -51,8 +51,16 @@ export const forceSeedProject = async (userEmail: string, userId: string) => {
   const projectRef = doc(db, 'projects', projectId);
   const projectData: Project = {
     ...DEMO_PROJECT,
+    // NEW ownership model
+    ownerIds: [userId],
+    primaryOwnerId: userId,
+    memberIds: [],
+    invitedEmails: [],
+    // Legacy fields
     ownerId: userId,
     ownerEmail: userEmail,
+    members: [],
+    // Data
     created: new Date().toISOString(),
     lastModified: new Date().toISOString(),
     isDemo: true,
@@ -60,9 +68,7 @@ export const forceSeedProject = async (userEmail: string, userId: string) => {
     shoppingItems: [],
     serviceLog: [],
     fuelLog: [],
-    knowledgeArticles: [],
-    members: [],
-    invitedEmails: []
+    knowledgeArticles: []
   };
   batch.set(projectRef, projectData);
 
@@ -116,24 +122,50 @@ export const getProjectsForUser = async (userId: string, userEmail?: string): Pr
 
     const projectsMap = new Map<string, Project>();
 
-    // 1. Get owned projects
-    const qOwned = query(collection(db, 'projects'), where("ownerId", "==", userId));
-    const snapOwned = await getDocs(qOwned);
-    console.log('  📊 Owned projects found:', snapOwned.size);
-    snapOwned.forEach(doc => {
+    // 1. Get owned projects (NEW MODEL: ownerIds array)
+    const qOwnerIds = query(collection(db, 'projects'), where("ownerIds", "array-contains", userId));
+    const snapOwnerIds = await getDocs(qOwnerIds);
+    console.log('  📊 Owned projects (ownerIds):', snapOwnerIds.size);
+    snapOwnerIds.forEach(doc => {
         const data = doc.data();
-        console.log('    - Owned:', doc.id, data.name, '(ownerId:', data.ownerId, ')');
+        console.log('    - Owner:', doc.id, data.name);
         projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
     });
 
-    // 2. Get member projects
-    const qMember = query(collection(db, 'projects'), where("members", "array-contains", userId));
-    const snapMember = await getDocs(qMember);
-    console.log('  📊 Member projects found:', snapMember.size);
-    snapMember.forEach(doc => {
+    // 1b. Legacy: Get owned projects (OLD MODEL: ownerId singular)
+    const qOwnerId = query(collection(db, 'projects'), where("ownerId", "==", userId));
+    const snapOwnerId = await getDocs(qOwnerId);
+    console.log('  📊 Owned projects (legacy ownerId):', snapOwnerId.size);
+    snapOwnerId.forEach(doc => {
         const data = doc.data();
-        console.log('    - Member:', doc.id, data.name);
-        projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
+        if (!projectsMap.has(doc.id)) {
+            console.log('    - Owner (legacy):', doc.id, data.name);
+            projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
+        }
+    });
+
+    // 2. Get member projects (NEW MODEL: memberIds array)
+    const qMemberIds = query(collection(db, 'projects'), where("memberIds", "array-contains", userId));
+    const snapMemberIds = await getDocs(qMemberIds);
+    console.log('  📊 Member projects (memberIds):', snapMemberIds.size);
+    snapMemberIds.forEach(doc => {
+        const data = doc.data();
+        if (!projectsMap.has(doc.id)) {
+            console.log('    - Member:', doc.id, data.name);
+            projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
+        }
+    });
+
+    // 2b. Legacy: Get member projects (OLD MODEL: members array)
+    const qMembers = query(collection(db, 'projects'), where("members", "array-contains", userId));
+    const snapMembers = await getDocs(qMembers);
+    console.log('  📊 Member projects (legacy members):', snapMembers.size);
+    snapMembers.forEach(doc => {
+        const data = doc.data();
+        if (!projectsMap.has(doc.id)) {
+            console.log('    - Member (legacy):', doc.id, data.name);
+            projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
+        }
     });
 
     // 3. Get invited projects (if email is provided)
@@ -143,8 +175,10 @@ export const getProjectsForUser = async (userId: string, userEmail?: string): Pr
         console.log('  📊 Invited projects found:', snapInvited.size);
         snapInvited.forEach(doc => {
             const data = doc.data();
-            console.log('    - Invited:', doc.id, data.name);
-            projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
+            if (!projectsMap.has(doc.id)) {
+                console.log('    - Invited:', doc.id, data.name);
+                projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
+            }
         });
     }
 
@@ -207,13 +241,21 @@ export const createProject = async (
     const newProject: Project = {
         id: newProjectRef.id,
         name: name || 'Nytt Projekt',
-        type: (template?.type || 'renovation') as any, // Use template type or default
+        type: (template?.type || 'renovation') as any,
         brand: 'vanplan',
+
+        // NEW ownership model
+        ownerIds: [userId],
+        primaryOwnerId: userId,
+        memberIds: [],
+        invitedEmails: [],
+
+        // Legacy fields (for backwards compatibility)
         ownerId: userId,
         ownerEmail: userEmail,
-        created: new Date().toISOString(),
-        lastModified: new Date().toISOString(),
-        isDemo: false,
+        members: [],
+
+        // Data
         vehicleData: vehicleData,
         tasks: [],
         shoppingItems: [],
@@ -221,8 +263,13 @@ export const createProject = async (
         fuelLog: [],
         knowledgeArticles: template?.knowledgeArticles || [],
         customIcon: template?.customIcon || null,
-        members: [],
-        invitedEmails: [],
+
+        // Metadata
+        created: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+        isDemo: false,
+
+        // User preferences
         userSkillLevel: template?.userSkillLevel,
         nickname: template?.nickname
     };
@@ -341,29 +388,83 @@ export const updateVehicleData = async (projectId: string, data: Partial<Vehicle
 export const inviteUserToProject = async (projectId: string, email: string) => {
     const projectRef = getProjectRef(projectId);
     await updateDoc(projectRef, {
-        invitedEmails: arrayUnion(email)
+        invitedEmails: arrayUnion(email),
+        lastModified: new Date().toISOString()
     });
 };
 
 export const acceptProjectInvite = async (projectId: string, userId: string, email: string) => {
     const projectRef = getProjectRef(projectId);
     await updateDoc(projectRef, {
+        // NEW model
+        memberIds: arrayUnion(userId),
+        // Legacy (keep in sync)
         members: arrayUnion(userId),
-        invitedEmails: arrayRemove(email)
+        // Remove from invited
+        invitedEmails: arrayRemove(email),
+        lastModified: new Date().toISOString()
     });
 };
 
 export const removeMemberFromProject = async (projectId: string, userId: string) => {
     const projectRef = getProjectRef(projectId);
     await updateDoc(projectRef, {
-        members: arrayRemove(userId)
+        // NEW model
+        memberIds: arrayRemove(userId),
+        // Legacy (keep in sync)
+        members: arrayRemove(userId),
+        lastModified: new Date().toISOString()
     });
 };
 
 export const cancelInvite = async (projectId: string, email: string) => {
-     const projectRef = getProjectRef(projectId);
+    const projectRef = getProjectRef(projectId);
     await updateDoc(projectRef, {
-        invitedEmails: arrayRemove(email)
+        invitedEmails: arrayRemove(email),
+        lastModified: new Date().toISOString()
+    });
+};
+
+// Add a co-owner to a project (new feature)
+export const addCoOwner = async (projectId: string, userId: string) => {
+    const projectRef = getProjectRef(projectId);
+    await updateDoc(projectRef, {
+        ownerIds: arrayUnion(userId),
+        lastModified: new Date().toISOString()
+    });
+};
+
+// Remove a co-owner from a project (new feature)
+export const removeCoOwner = async (projectId: string, userId: string) => {
+    const project = await getProject(projectId);
+    if (!project) throw new Error('Project not found');
+
+    // Cannot remove primary owner
+    if (project.primaryOwnerId === userId) {
+        throw new Error('Cannot remove primary owner. Transfer ownership first.');
+    }
+
+    const projectRef = getProjectRef(projectId);
+    await updateDoc(projectRef, {
+        ownerIds: arrayRemove(userId),
+        lastModified: new Date().toISOString()
+    });
+};
+
+// Transfer primary ownership (new feature)
+export const transferPrimaryOwnership = async (projectId: string, newPrimaryOwnerId: string) => {
+    const project = await getProject(projectId);
+    if (!project) throw new Error('Project not found');
+
+    // New owner must already be in ownerIds
+    if (!project.ownerIds.includes(newPrimaryOwnerId)) {
+        throw new Error('New owner must be added as co-owner first');
+    }
+
+    const projectRef = getProjectRef(projectId);
+    await updateDoc(projectRef, {
+        primaryOwnerId: newPrimaryOwnerId,
+        lastModified: new Date().toISOString()
     });
 }
 

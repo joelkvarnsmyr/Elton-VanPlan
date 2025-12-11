@@ -1,51 +1,154 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // User Profiles
+
+    // ===========================
+    // USER PROFILES
+    // ===========================
     match /users/{userId} {
+      // Users can only read/write their own profile
       allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // User's project access sub-collection
+      match /projectAccess/{projectId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
-    // Projects
+    // ===========================
+    // PROJECTS
+    // ===========================
     match /projects/{projectId} {
-      
-      // Helper function to check project access
-      function hasAccess() {
+
+      // --- HELPER FUNCTIONS ---
+
+      // Check if user is an owner (new multi-owner model)
+      function isOwner() {
         return request.auth != null && (
-          resource.data.ownerId == request.auth.uid || 
+          // New model: check ownerIds array
+          (resource.data.ownerIds != null && request.auth.uid in resource.data.ownerIds) ||
+          // Legacy fallback: check single ownerId
+          resource.data.ownerId == request.auth.uid
+        );
+      }
+
+      // Check if user is primary owner (for destructive actions)
+      function isPrimaryOwner() {
+        return request.auth != null && (
+          // New model
+          resource.data.primaryOwnerId == request.auth.uid ||
+          // Legacy fallback
+          resource.data.ownerId == request.auth.uid
+        );
+      }
+
+      // Check if user is a member/collaborator
+      function isMember() {
+        return request.auth != null && (
+          // New model: check memberIds array
+          (resource.data.memberIds != null && request.auth.uid in resource.data.memberIds) ||
+          // Legacy fallback: check members array
           (resource.data.members != null && request.auth.uid in resource.data.members)
         );
       }
-      
-      // Helper to check if user is invited (for accepting invites)
+
+      // Check if user has any access (owner or member)
+      function hasAccess() {
+        return isOwner() || isMember();
+      }
+
+      // Check if user is invited (for accepting invites)
       function isInvited() {
-        return request.auth != null && 
-               resource.data.invitedEmails != null && 
+        return request.auth != null &&
+               resource.data.invitedEmails != null &&
                request.auth.token.email in resource.data.invitedEmails;
       }
 
-      // Allow read if owner, member, or invited
-      allow read: if hasAccess() || isInvited();
-      
-      // Allow update if owner or member. 
-      // Also allow update if invited user is removing themselves from invitedEmails and adding to members (accepting invite)
-      // Ideally we would be stricter about the "accept invite" transition, but for MVP:
-      allow update: if hasAccess() || isInvited();
-      
-      // Only owner can delete
-      allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
-      
-      // Allow create if the NEW document claims to be owned by the user
-      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
-
-      match /{allPaths=**} {
-        // Subcollections inherit access based on the parent project (owner or member)
-        // Note: Invited users cannot see subcollections until they accept (become members)
-        allow read, write: if request.auth != null && (
-          get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid ||
-          request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.members
+      // Check if new document claims correct ownership
+      function isValidCreate() {
+        return request.auth != null && (
+          // New model: user must be in ownerIds
+          (request.resource.data.ownerIds != null &&
+           request.auth.uid in request.resource.data.ownerIds) ||
+          // Legacy: user must be ownerId
+          request.resource.data.ownerId == request.auth.uid
         );
+      }
+
+      // --- ACCESS RULES ---
+
+      // Read: owner, member, or invited user
+      allow read: if hasAccess() || isInvited();
+
+      // Create: user must claim ownership
+      allow create: if isValidCreate();
+
+      // Update: owner, member, or invited user (for accepting invite)
+      allow update: if hasAccess() || isInvited();
+
+      // Delete: only primary owner can delete
+      allow delete: if isPrimaryOwner();
+
+      // ===========================
+      // SUB-COLLECTIONS
+      // ===========================
+
+      // Helper for sub-collection access (must read parent doc)
+      function parentHasAccess() {
+        let project = get(/databases/$(database)/documents/projects/$(projectId)).data;
+        return request.auth != null && (
+          // New model
+          (project.ownerIds != null && request.auth.uid in project.ownerIds) ||
+          (project.memberIds != null && request.auth.uid in project.memberIds) ||
+          // Legacy
+          project.ownerId == request.auth.uid ||
+          (project.members != null && request.auth.uid in project.members)
+        );
+      }
+
+      // Tasks sub-collection
+      match /tasks/{taskId} {
+        allow read, write: if parentHasAccess();
+      }
+
+      // Shopping items sub-collection
+      match /shoppingItems/{itemId} {
+        allow read, write: if parentHasAccess();
+      }
+
+      // Legacy: shoppingList (same as shoppingItems)
+      match /shoppingList/{itemId} {
+        allow read, write: if parentHasAccess();
+      }
+
+      // Service log sub-collection
+      match /serviceLog/{logId} {
+        allow read, write: if parentHasAccess();
+      }
+
+      // Fuel log sub-collection
+      match /fuelLog/{logId} {
+        allow read, write: if parentHasAccess();
+      }
+
+      // Knowledge base sub-collection
+      match /knowledgeBase/{articleId} {
+        allow read, write: if parentHasAccess();
+      }
+
+      // Inspections sub-collection
+      match /inspections/{inspectionId} {
+        allow read, write: if parentHasAccess();
+      }
+
+      // Chat history sub-collection
+      match /chat/{chatId} {
+        allow read, write: if parentHasAccess();
+      }
+
+      // Catch-all for any other sub-collections
+      match /{subcollection}/{docId} {
+        allow read, write: if parentHasAccess();
       }
     }
   }

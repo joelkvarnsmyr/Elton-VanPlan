@@ -54,8 +54,21 @@ export enum Priority {
 }
 
 export enum CostType {
-  INVESTMENT = 'Investering', 
-  OPERATION = 'Drift', 
+  INVESTMENT = 'Investering',
+  OPERATION = 'Drift',
+}
+
+// Shopping Item Status (for shopping intelligence)
+export enum ShoppingItemStatus {
+  RESEARCH = 'RESEARCH',   // Still comparing options
+  DECIDED = 'DECIDED',     // Option selected, ready to buy
+  BOUGHT = 'BOUGHT'        // Purchased
+}
+
+// Task Blocker (dependency reference)
+export interface TaskBlocker {
+  taskId: string;
+  reason?: string;  // e.g., "Måste svetsa innan isolering"
 }
 
 export interface Link {
@@ -122,7 +135,11 @@ export interface Task {
   type?: TaskType;
   mechanicalPhase?: MechanicalPhase;
   buildPhase?: BuildPhase;
-  blockers?: string[]; // IDs of tasks blocking this one
+  blockers?: TaskBlocker[]; // Tasks blocking this one (with optional reason)
+
+  // Timestamps
+  created?: string;
+  lastModified?: string;
 }
 
 // --- SHOPPING INTELLIGENCE ---
@@ -131,15 +148,17 @@ export interface VendorOption {
   id: string;
   store: string;          // 'Biltema', 'Autodoc', 'Jula'
   articleNumber?: string;  // T.ex. '80-275' (Används för deep-links/sök)
-  
+
   price: number;
   currency: 'SEK' | 'EUR';
   shippingCost: number;   // Avgörande för jämförelse (Tyskland vs Butik)
-  
+  totalCost?: number;     // Beräknat: price + shippingCost
+
   deliveryTimeDays?: number; // 0 = Hämta direkt
   inStock?: boolean;
   shelfLocation?: string; // 'Gång 4, Hylla 12' (Endast fysisk butik)
   url?: string;            // Direktlänk till produkt
+  lastPriceCheck?: string; // ISO date - priser ändras!
 }
 
 export interface ShoppingItem {
@@ -149,13 +168,14 @@ export interface ShoppingItem {
   estimatedCost: number;
   actualCost?: number;
   quantity: string;
-  checked: boolean;
+  checked: boolean;        // Legacy - use status instead
+  status?: ShoppingItemStatus; // RESEARCH | DECIDED | BOUGHT
   url?: string;
   store?: string;
   purchaseDate?: string;
-  receiptUrl?: string; 
+  receiptUrl?: string;
   linkedTaskId?: string;
-  
+
   // Smart Shopping Features
   options?: VendorOption[];
   selectedOptionId?: string;
@@ -399,33 +419,46 @@ export interface Project {
     name: string;
     type: ProjectType;
     brand: BrandId;
-    ownerId: string;
-    ownerEmail: string;
 
-    // Co-working fields
+    // === OWNERSHIP (Multi-owner support) ===
+    ownerIds: string[];        // All owners (e.g., married couple sharing a project)
+    primaryOwnerId: string;    // "Account holder" for billing/primary contact
+    memberIds: string[];       // Editors who don't own (collaborators)
+    invitedEmails: string[];   // Pending invitations
+
+    // Legacy fields (deprecated - for backwards compatibility)
+    /** @deprecated Use ownerIds[0] instead */
+    ownerId?: string;
+    /** @deprecated Lookup in users collection instead */
+    ownerEmail?: string;
+    /** @deprecated Use memberIds instead */
     members?: string[];
-    invitedEmails?: string[];
 
+    // === VEHICLE DATA ===
     vehicleData: VehicleData;
+
+    // === SUB-COLLECTION REFERENCES (data loaded separately) ===
+    // Note: These arrays are kept for backwards compatibility but
+    // should be loaded via getTasks(), getShoppingItems() etc.
     tasks: Task[];
     shoppingItems: ShoppingItem[];
     serviceLog: ServiceItem[];
     fuelLog: FuelLogItem[];
-    // NEW: Inspection Findings
     inspections?: InspectionFinding[];
-    
     contacts?: Contact[];
     knowledgeArticles?: KnowledgeArticle[];
+
+    // === METADATA ===
     customIcon?: string;
     created: string;
     lastModified: string;
     isDemo?: boolean;
 
-    // User preferences & personalization
-    userSkillLevel?: UserSkillLevel; // Påverkar AI:ns kommunikation och rekommendationer
+    // === USER PREFERENCES ===
+    userSkillLevel?: UserSkillLevel;
     nickname?: string; // Fordonets smeknamn (påverkar Eltons personlighet)
 
-    // Location for workshop recommendations
+    // === LOCATION ===
     location?: {
         city: string;
         region: string;
