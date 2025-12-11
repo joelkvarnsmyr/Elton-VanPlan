@@ -6,18 +6,24 @@ import { getAIModelVersion } from './featureFlagService';
 import { buildPersonalizedPrompt, buildSoundDoctorPrompt, type DialectId } from './promptBuilder';
 import { Task, TaskStatus, ProjectType, PROJECT_PHASES, CostType, Priority, ShoppingItem, VehicleData, Project, ServiceItem, FuelLogItem } from '@/types/types';
 import { generateJSON, type AIResponse } from './aiService';
+import { getLoadedApiKeys } from './secretService'; // Importerar den nya funktionen
 
 let client: GoogleGenAI | null = null;
 
-const getClient = (): GoogleGenAI => {
-  if (!client) {
-    // @ts-ignore - Handle Vite env vs process env
-    const apiKey = import.meta.env?.VITE_GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
-    if (!apiKey) {
-      console.warn("API Key missing for Gemini. Please set VITE_GEMINI_API_KEY.");
-    }
-    client = new GoogleGenAI({ apiKey });
+// Funktionen görs om till async för att kunna invänta API-nyckeln
+const getClient = async (): Promise<GoogleGenAI | null> => {
+  if (client) {
+    return client;
   }
+
+  const { geminiApiKey } = await getLoadedApiKeys();
+
+  if (!geminiApiKey) {
+    console.warn("API Key missing for Gemini. Please set VITE_GEMINI_API_KEY.");
+    return null;
+  }
+  
+  client = new GoogleGenAI(geminiApiKey);
   return client;
 };
 
@@ -172,7 +178,7 @@ const createTaskContext = (tasks: Task[], shoppingList: ShoppingItem[]): string 
       if (phaseTasks.length > 0) {
           context += `\n--- ${phase.toUpperCase()} ---\n`;
           phaseTasks.forEach(task => {
-            const statusIcon = task.status === TaskStatus.DONE ? '✅' : task.status === TaskStatus.IN_PROGRESS ? '🚧' : '⬜';
+            const statusIcon = task.status === TaskStatus.DONE ? '✅' : task.status === TaskStatus.IN_PROGRESS ? '🚧' : '⬜️';
             context += `${statusIcon} UPPGIFT: ${task.title} (ID: ${task.id})\n`;
             context += `   Status: ${task.status} | Prio: ${task.priority || 'Normal'}\n`;
             context += `   Beskrivning: ${task.description}\n`;
@@ -220,7 +226,11 @@ export const streamGeminiResponse = async (
   userSkillLevel?: string,  // Optional user skill level
   projectType?: ProjectType  // Optional project type
 ) => {
-  const ai = getClient();
+  const ai = await getClient();
+    if (!ai) {
+        onChunk("\n⚠️ Kunde inte nå AI-mekanikern just nu. API-nyckel saknas eller är ogiltig.");
+        return;
+    }
   const model = getModelName();
 
   // DYNAMIC VEHICLE-SPECIFIC PERSONA
@@ -266,22 +276,23 @@ export const streamGeminiResponse = async (
     Sök på Google för priser om det saknas.`;
 
   try {
-    const chat = ai.chats.create({
-      model,
-      config: {
-        systemInstruction: fullSystemInstruction,
+    const chat = ai.getGenerativeModel({ 
+        model,
+        generationConfig: {},
+        safetySettings: [],
         tools: tools,
-      },
-      history: history.map(h => {
-          const parts: any[] = [{ text: h.content }];
-          if (h.image) {
-              parts.push({ inlineData: { mimeType: 'image/jpeg', data: h.image.split(',')[1] } }); // Assuming stored as dataURI
-          }
-          return {
-            role: h.role,
-            parts: parts,
-          };
-      }),
+        systemInstruction: fullSystemInstruction
+    }).startChat({
+        history: history.map(h => {
+            const parts: any[] = [{ text: h.content }];
+            if (h.image) {
+                parts.push({ inlineData: { mimeType: 'image/jpeg', data: h.image.split(',')[1] } }); // Assuming stored as dataURI
+            }
+            return {
+              role: h.role,
+              parts: parts,
+            };
+        }),
     });
 
     const parts: any[] = [{ text: newMessage }];
@@ -289,12 +300,12 @@ export const streamGeminiResponse = async (
         parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } });
     }
 
-    const result = await chat.sendMessageStream({ message: parts }); // Send parts array
+    const result = await chat.sendMessageStream(parts); // Send parts array
     
-    for await (const chunk of result) {
+    for await (const chunk of result.stream) {
         const c = chunk as GenerateContentResponse;
         if (c.text) {
-            onChunk(c.text);
+            onChunk(c.text());
         }
 
         // @ts-ignore
@@ -302,19 +313,19 @@ export const streamGeminiResponse = async (
 
         if (functionCalls && functionCalls.length > 0) {
             const responses = await onToolCall(functionCalls);
-            const toolResponseResult = await chat.sendMessageStream({
-                message: responses.map(r => ({
-                    functionResponse: {
+            const toolResponseResult = await chat.sendMessageStream(
+                responses.map(r => ({
+                    toolResponse: {
                         name: r.name,
                         response: { result: r.result }
                     }
                 }))
-            });
+            );
 
-            for await (const toolChunk of toolResponseResult) {
+            for await (const toolChunk of toolResponseResult.stream) {
                 const tc = toolChunk as GenerateContentResponse;
                 if (tc.text) {
-                    onChunk(tc.text);
+                    onChunk(tc.text());
                 }
             }
         }
@@ -326,7 +337,11 @@ export const streamGeminiResponse = async (
 };
 
 export const parseTasksFromInput = async (input: string, imageBase64?: string, vehicleData?: VehicleData): Promise<{ tasks: Partial<Task>[], shoppingItems: Partial<ShoppingItem>[] }> => {
-  const ai = getClient();
+  const ai = await getClient();
+    if (!ai) {
+        // Return empty arrays as a fallback if the client is not available
+        return { tasks: [], shoppingItems: [] };
+    }
   const model = getModelName();
   const parts: any[] = [];
   
@@ -383,21 +398,21 @@ export const parseTasksFromInput = async (input: string, imageBase64?: string, v
   };
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: { parts },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: outputSchema,
-        systemInstruction: `Du är en expert på att strukturera projektdata.`,
-      }
+    const modelInstance = ai.getGenerativeModel({
+        model: model,
+        generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: outputSchema
+        },
+        systemInstruction: 'Du är en expert på att strukturera projektdata.',
     });
+    const result = await modelInstance.generateContent({ contents: [{ parts }] });
 
-    const jsonText = response.text;
+    const jsonText = result.response.text();
     if (!jsonText) return { tasks: [], shoppingItems: [] };
     
-    const result = JSON.parse(jsonText);
-    return { tasks: result.tasks || [], shoppingItems: result.shoppingItems || [] };
+    const resultData = JSON.parse(jsonText);
+    return { tasks: resultData.tasks || [], shoppingItems: resultData.shoppingItems || [] };
 
   } catch (error) {
     console.error("Gemini Parse Error:", error);
@@ -474,7 +489,12 @@ export const generateProjectProfile = async (
 
         // NOTE: Gemini has vision + search, Grok does not (yet)
         // So we try Gemini first for detective phase
-        const ai = getClient();
+        const ai = await getClient();
+
+        if (!ai) {
+            throw new Error("Gemini client could not be initialized.");
+        }
+
         const model = getModelName();
         const detectivePrompt = ACTIVE_PROMPTS.agents.detective.text(vehicleDescription, !!imageBase64);
 
@@ -484,13 +504,13 @@ export const generateProjectProfile = async (
         let detectiveData: any = {};
 
         try {
-            const detectiveResponse = await ai.models.generateContent({
-                model,
-                contents: { parts: detectiveParts },
-                config: { tools: [{ googleSearch: {} }] }
+            const modelInstance = ai.getGenerativeModel({ 
+                model: model,
+                tools: [{ googleSearch: {} }]
             });
-
-            let detectiveJson = detectiveResponse.text || "{}";
+            const detectiveResponse = await modelInstance.generateContent({ contents: [{ parts: detectiveParts }]});
+            
+            let detectiveJson = detectiveResponse.response.text() || "{}";
             if (detectiveJson.includes("```json")) detectiveJson = detectiveJson.split("```json")[1].split("```")[0].trim();
 
             detectiveData = JSON.parse(detectiveJson);

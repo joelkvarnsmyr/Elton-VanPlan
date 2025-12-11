@@ -1,15 +1,5 @@
-/**
- * Grok (xAI) Service
- *
- * Wrapper för Grok API som fallback när Gemini failar
- * Grok API är OpenAI-kompatibelt och stödjer:
- * - Text generation
- * - Structured JSON output
- * - Streaming
- * - Function calling
- *
- * Dokumentation: https://docs.x.ai/
- */
+
+import { getLoadedApiKeys } from './secretService'; // Importerar den nya funktionen
 
 export interface GrokConfig {
   model?: string;
@@ -45,22 +35,14 @@ export interface GrokResponse {
 export class GrokClient {
   private apiKey: string;
   private baseUrl: string = 'https://api.x.ai/v1';
-  private defaultModel: string = 'grok-4-fast-reasoning'; // 2M context, billigt
+  private defaultModel: string = 'grok-4-fast-reasoning';
 
-  constructor(apiKey?: string) {
-    // @ts-ignore - Handle both Vite env and process env
-    this.apiKey = apiKey ||
-                  import.meta.env?.VITE_GROK_API_KEY ||
-                  import.meta.env?.GROK_API_KEY ||
-                  process.env.VITE_GROK_API_KEY ||
-                  process.env.GROK_API_KEY ||
-                  '';
-
-    if (!this.apiKey) {
-      console.warn('⚠️ GROK_API_KEY saknas. Grok fallback kommer inte fungera.');
-    } else {
-      console.log(`✅ Grok initialized with key: ${this.apiKey.substring(0, 10)}...`);
+  constructor(apiKey: string) { // API-nyckeln är nu ett krav
+    if (!apiKey) {
+        throw new Error("GrokClient kräver en API-nyckel vid initiering.");
     }
+    this.apiKey = apiKey;
+    console.log(`✅ Grok initialized with key: ${this.apiKey.substring(0, 10)}...`);
   }
 
   /**
@@ -123,8 +105,6 @@ export class GrokClient {
 
   /**
    * Generate structured JSON output
-   *
-   * Grok stödjer native JSON mode vilket garanterar valid JSON
    */
   async generateJSON<T = any>(
     systemPrompt: string,
@@ -143,11 +123,9 @@ export class GrokClient {
     });
 
     try {
-      // Grok's json_object mode guarantees valid JSON
       const parsed = JSON.parse(responseText);
       return parsed as T;
     } catch (error) {
-      // Fallback: Try to extract JSON from markdown code blocks
       const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) ||
                        responseText.match(/\{[\s\S]*\}/);
 
@@ -177,32 +155,35 @@ export class GrokClient {
     }
   }
 
-  /**
-   * Get available models
-   */
   getAvailableModels(): string[] {
     return [
-      'grok-4-1-fast-reasoning',      // Senaste, 2M context
-      'grok-4-1-fast-non-reasoning',  // Snabbare, enklare uppgifter
-      'grok-4-fast-reasoning',        // Stabil version
+      'grok-4-1-fast-reasoning',      
+      'grok-4-1-fast-non-reasoning',  
+      'grok-4-fast-reasoning',        
       'grok-4-fast-non-reasoning',
-      'grok-3-mini',                  // Billigare för enkla tasks
-      'grok-3',                       // Äldre flagship
-      'grok-2-1212'                   // Legacy
+      'grok-3-mini',                  
+      'grok-3',                       
+      'grok-2-1212'                   
     ];
   }
 }
 
-/**
- * Singleton instance
- */
 let grokClient: GrokClient | null = null;
 
-export const getGrokClient = (): GrokClient => {
-  if (!grokClient) {
-    grokClient = new GrokClient();
+// Funktionen görs om till async för att hantera den asynkrona nyckelladdningen.
+export const getGrokClient = async (): Promise<GrokClient | null> => {
+  if (grokClient) {
+    return grokClient;
   }
-  return grokClient;
+
+  const { grokApiKey } = await getLoadedApiKeys();
+  if (grokApiKey) {
+    grokClient = new GrokClient(grokApiKey);
+    return grokClient;
+  }
+
+  console.warn('⚠️ GROK_API_KEY saknas. Grok fallback kommer inte fungera.');
+  return null;
 };
 
 /**
@@ -213,7 +194,10 @@ export const grokGenerate = async (
   userPrompt: string,
   config?: GrokConfig
 ): Promise<string> => {
-  const client = getGrokClient();
+  const client = await getGrokClient();
+  if (!client) {
+    throw new Error("Grok Client är inte tillgänglig.");
+  }
   return client.generateContent([
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt }
@@ -225,7 +209,10 @@ export const grokGenerateJSON = async <T = any>(
   userPrompt: string,
   config?: Omit<GrokConfig, 'responseFormat'>
 ): Promise<T> => {
-  const client = getGrokClient();
+  const client = await getGrokClient();
+  if (!client) {
+      throw new Error("Grok Client är inte tillgänglig för att generera JSON.");
+  }
   return client.generateJSON<T>(systemPrompt, userPrompt, config);
 };
 

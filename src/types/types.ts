@@ -125,6 +125,23 @@ export interface Task {
   blockers?: string[]; // IDs of tasks blocking this one
 }
 
+// --- SHOPPING INTELLIGENCE ---
+
+export interface VendorOption {
+  id: string;
+  store: string;          // 'Biltema', 'Autodoc', 'Jula'
+  articleNumber?: string;  // T.ex. '80-275' (Används för deep-links/sök)
+  
+  price: number;
+  currency: 'SEK' | 'EUR';
+  shippingCost: number;   // Avgörande för jämförelse (Tyskland vs Butik)
+  
+  deliveryTimeDays?: number; // 0 = Hämta direkt
+  inStock?: boolean;
+  shelfLocation?: string; // 'Gång 4, Hylla 12' (Endast fysisk butik)
+  url?: string;            // Direktlänk till produkt
+}
+
 export interface ShoppingItem {
   id: string;
   name: string;
@@ -138,6 +155,10 @@ export interface ShoppingItem {
   purchaseDate?: string;
   receiptUrl?: string; 
   linkedTaskId?: string;
+  
+  // Smart Shopping Features
+  options?: VendorOption[];
+  selectedOptionId?: string;
 }
 
 export interface ServiceItem {
