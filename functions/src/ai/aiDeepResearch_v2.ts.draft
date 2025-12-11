@@ -1,0 +1,619 @@
+/**
+ * AI DEEP RESEARCH - Version 2.0
+ *
+ * FÖRBÄTTRAD ARKITEKTUR:
+ *
+ * Gamla flödet:
+ *   User Input → AI (Google Search) → vehicleData + tasks
+ *   Problem: Opålitligt, dyrt, långsamt, kan hallucinera
+ *
+ * Nya flödet:
+ *   User Input → Scraper (car.info) → vehicleData (FAKTA)
+ *                                   ↓
+ *                                AI (Planner) → tasks + analys (KREATIVT)
+ *
+ *   Fördelar:
+ *   - Fordonsdata är 100% verifierad (från register)
+ *   - AI fokuserar på det den är bra på (analys, planering)
+ *   - Snabbare (scraping ~2s vs AI-sökning ~15s)
+ *   - Billigare (färre tokens)
+ *   - Cachebar (samma fordon = ingen ny förfrågan)
+ */
+
+import * as functions from 'firebase-functions';
+import * as admin from 'firebase-admin';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { scrapeVehicleData } from '../scraper/vehicleScraper';
+import { PROMPTS } from '../config/prompts';
+import { VehicleData, Task, Project, ExpertAnalysis } from '../types/types';
+
+// =============================================================================
+// CONFIGURATION
+// =============================================================================
+
+const CONFIG = {
+    // Gemini model
+    GEMINI_MODEL: 'gemini-2.0-flash-exp', // Snabb och billig
+
+    // Timeouts
+    AI_TIMEOUT_MS: 30000,
+
+    // Feature flags
+    USE_SCRAPER: true,          // Använd scraping för fordonsdata
+    FALLBACK_TO_AI_SEARCH: true // Om scraping misslyckas, använd AI-sökning
+};
+
+// =============================================================================
+// INTERFACES
+// =============================================================================
+
+interface DeepResearchRequest {
+    vehicleDescription: string;   // "Volvo 240 1990" eller "JSN398"
+    imageBase64?: string;         // Bild av fordonet (för regnr-avläsning)
+    projectType: 'renovation' | 'conversion' | 'maintenance';
+    userSkillLevel: 'beginner' | 'intermediate' | 'expert';
+}
+
+interface DeepResearchResponse {
+    success: boolean;
+    projectName: string;
+    projectType: string;
+    vehicleData: VehicleData;
+    initialTasks: Task[];
+    analysisReport: {
+        title: string;
+        summary: string;
+        content: string;
+    };
+    provider: 'scraper+gemini' | 'gemini-only' | 'error';
+    dataSource: string;
+    timing: {
+        totalMs: number;
+        scraperMs?: number;
+        aiMs?: number;
+    };
+    error?: string;
+}
+
+// =============================================================================
+// HELPER: EXTRACT REG NUMBER
+// =============================================================================
+
+/**
+ * Försöker extrahera ett svenskt registreringsnummer från text
+ * Returnerar null om inget hittas
+ */
+function extractRegNo(text: string): string | null {
+    // Svenska regnummer: ABC123 eller ABC12A (nya formatet)
+    const patterns = [
+        /\b([A-Z]{3}\s?\d{3})\b/i,      // ABC123 eller ABC 123
+        /\b([A-Z]{3}\s?\d{2}[A-Z])\b/i  // ABC12A (nya formatet)
+    ];
+
+    for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+            return match[1].replace(/\s/g, '').toUpperCase();
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Använder AI för att läsa av registreringsnummer från bild
+ */
+async function extractRegNoFromImage(
+    genAI: GoogleGenerativeAI,
+    imageBase64: string
+): Promise<string | null> {
+    try {
+        const model = genAI.getGenerativeModel({ model: CONFIG.GEMINI_MODEL });
+
+        const result = await model.generateContent([
+            {
+                inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: imageBase64
+                }
+            },
+            `Titta på denna bild av ett fordon.
+
+Din ENDA uppgift är att hitta och returnera registreringsnumret.
+Svenska registreringsnummer har formatet ABC123 eller ABC12A.
+
+Svara ENDAST med registreringsnumret, inget annat.
+Om du inte kan hitta något registreringsnummer, svara "INGET".
+
+Exempel på korrekta svar:
+- JSN398
+- ABC123
+- XYZ12A
+- INGET`
+        ]);
+
+        const text = result.response.text().trim().toUpperCase();
+
+        // Validera att det ser ut som ett regnr
+        if (/^[A-Z]{3}\d{2}[A-Z0-9]$/.test(text)) {
+            console.log(`[RegNo] Extracted from image: ${text}`);
+            return text;
+        }
+
+        return null;
+
+    } catch (error) {
+        console.error('[RegNo] Error extracting from image:', error);
+        return null;
+    }
+}
+
+// =============================================================================
+// HELPER: AI ANALYSIS (PLANNER)
+// =============================================================================
+
+/**
+ * Använder AI för att skapa projektplan baserat på fordonsdata
+ * Detta är vad AI är BRA på - kreativ analys och planering
+ */
+async function generateProjectPlan(
+    genAI: GoogleGenerativeAI,
+    vehicleData: VehicleData,
+    projectType: string,
+    userSkillLevel: string
+): Promise<{
+    tasks: Task[];
+    analysisReport: { title: string; summary: string; content: string };
+    expertAnalysis?: ExpertAnalysis;
+}> {
+    const model = genAI.getGenerativeModel({
+        model: CONFIG.GEMINI_MODEL,
+        generationConfig: {
+            temperature: 0.3, // Låg temperatur för konsekvent output
+            responseMimeType: 'application/json'
+        }
+    });
+
+    // Bygg prompt med Planner-agenten
+    const prompt = PROMPTS.AGENTS.PLANNER.text(
+        JSON.stringify(vehicleData, null, 2),
+        projectType,
+        userSkillLevel
+    );
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+
+    try {
+        const parsed = JSON.parse(responseText);
+
+        return {
+            tasks: parsed.initialTasks || [],
+            analysisReport: parsed.analysisReport || {
+                title: `Teknisk Analys: ${vehicleData.make} ${vehicleData.model}`,
+                summary: 'Analys genererad av AI',
+                content: ''
+            },
+            expertAnalysis: parsed.expertAnalysis
+        };
+
+    } catch (parseError) {
+        console.error('[Planner] Failed to parse response:', parseError);
+
+        // Returnera minimal plan om parsing misslyckas
+        return {
+            tasks: [
+                {
+                    id: 'fallback-1',
+                    title: 'Grundläggande genomgång',
+                    description: `Gå igenom ${vehicleData.make} ${vehicleData.model} och inventera vad som behöver göras.`,
+                    status: 'Att göra' as any,
+                    phase: 'Fas 1: Akut',
+                    estimatedCostMin: 0,
+                    estimatedCostMax: 0,
+                    actualCost: 0,
+                    weightKg: 0,
+                    costType: 'Drift' as any,
+                    tags: ['Start'],
+                    links: [],
+                    comments: [],
+                    attachments: [],
+                    subtasks: []
+                }
+            ],
+            analysisReport: {
+                title: `Teknisk Analys: ${vehicleData.make} ${vehicleData.model}`,
+                summary: 'Grundläggande projektstart',
+                content: `# ${vehicleData.make} ${vehicleData.model}\n\nProjektet har skapats. Börja med att inventera fordonets skick.`
+            }
+        };
+    }
+}
+
+// =============================================================================
+// HELPER: ENRICH VEHICLE DATA
+// =============================================================================
+
+/**
+ * Berikar scrapad fordonsdata med modellspecifik kunskap
+ * (t.ex. vanliga fel, underhållstips)
+ */
+function enrichVehicleData(vehicleData: VehicleData): VehicleData {
+    const enriched = { ...vehicleData };
+
+    // VW LT-specifik kunskap
+    if (vehicleData.model?.includes('LT') && vehicleData.make === 'Volkswagen') {
+        enriched.expertAnalysis = {
+            commonFaults: [
+                {
+                    title: 'Spindelbultar (Kingpins)',
+                    description: 'MÅSTE smörjas var 500:e mil! Om de skär fast krävs press och värme för byte.',
+                    urgency: 'High'
+                },
+                {
+                    title: 'Rost i balkar',
+                    description: 'Kontrollera tvärbalkar och domkraftsfästen noga. Vanligt rostställe.',
+                    urgency: 'Medium'
+                }
+            ],
+            modificationTips: [
+                {
+                    title: 'Motorbyte D24',
+                    description: 'Populärt att byta till Volvo D24 eller D24T för mer kraft. Passar relativt rakt av.'
+                }
+            ],
+            maintenanceNotes: 'OBS: Växellådan kräver GL-4 olja. GL-5 förstör synkroniseringarna!'
+        };
+
+        // Lägg till maintenance-data om det saknas
+        if (!enriched.maintenance) {
+            enriched.maintenance = {
+                fluids: {
+                    oilType: '10W-40 Mineral',
+                    oilCapacity: '6.0 liter',
+                    coolantType: 'Glykol blå (G11)',
+                    gearboxOil: 'API GL-4 (ALDRIG GL-5!)'
+                },
+                battery: {
+                    type: 'Startbatteri',
+                    capacity: '75-88Ah'
+                },
+                tires: {
+                    pressureFront: '3.5 bar',
+                    pressureRear: '4.5 bar'
+                }
+            };
+        }
+    }
+
+    // Volvo 240/740-specifik kunskap
+    if ((vehicleData.model?.includes('240') || vehicleData.model?.includes('740'))
+        && vehicleData.make === 'Volvo') {
+        enriched.expertAnalysis = {
+            commonFaults: [
+                {
+                    title: 'Rost i innervinkel',
+                    description: 'Kontrollera innervinkel bakskärm/tröskel. Klassiskt rostställe på 240.',
+                    urgency: 'Medium'
+                },
+                {
+                    title: 'Bärarmsbussningar',
+                    description: 'Slits och ger diffust vägkänsla. Relativt enkelt att byta.',
+                    urgency: 'Low'
+                }
+            ],
+            modificationTips: [
+                {
+                    title: 'Turbo-konvertering',
+                    description: 'B230FK-turbo passar med rätt grenrör. Populär uppgradering.'
+                }
+            ],
+            maintenanceNotes: 'B230-motorn är extremt pålitlig. Byt olja regelbundet så går den i evigheter.'
+        };
+    }
+
+    // VW T3/Caravelle-specifik kunskap
+    if ((vehicleData.model?.includes('T3') || vehicleData.model?.includes('Caravelle') || vehicleData.model?.includes('Transporter'))
+        && vehicleData.make === 'Volkswagen'
+        && vehicleData.year && vehicleData.year < 1992) {
+        enriched.expertAnalysis = {
+            commonFaults: [
+                {
+                    title: 'Motorlucka-tätning',
+                    description: 'Tätningarna till motorluckan läcker ofta. Byts enkelt.',
+                    urgency: 'Low'
+                },
+                {
+                    title: 'Oljekylare (luftkyld)',
+                    description: 'Kontrollera att oljekylaren fungerar. Kritisk för luftkylda motorer.',
+                    urgency: 'High'
+                }
+            ],
+            modificationTips: [],
+            maintenanceNotes: 'Luftkylda motorer gillar inte att stå still i trafik. Undvik att köra i rusningstrafik.'
+        };
+    }
+
+    return enriched;
+}
+
+// =============================================================================
+// MAIN CLOUD FUNCTION
+// =============================================================================
+
+export const aiDeepResearch = functions
+    .region('europe-west1')
+    .runWith({
+        timeoutSeconds: 60,
+        memory: '512MB',
+        secrets: ['GEMINI_API_KEY']
+    })
+    .https.onCall(async (data: DeepResearchRequest, context): Promise<DeepResearchResponse> => {
+        const startTime = Date.now();
+        let scraperTime = 0;
+        let aiTime = 0;
+
+        try {
+            // Initiera Gemini
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
+            // =================================================================
+            // STEG 1: Extrahera registreringsnummer
+            // =================================================================
+
+            let regNo: string | null = null;
+
+            // Försök extrahera från text
+            regNo = extractRegNo(data.vehicleDescription);
+
+            // Om ingen i text, försök från bild
+            if (!regNo && data.imageBase64) {
+                console.log('[Research] Trying to extract RegNo from image...');
+                regNo = await extractRegNoFromImage(genAI, data.imageBase64);
+            }
+
+            console.log(`[Research] RegNo: ${regNo || 'NOT FOUND'}`);
+
+            // =================================================================
+            // STEG 2: Hämta fordonsdata via scraping (om regnr finns)
+            // =================================================================
+
+            let vehicleData: VehicleData | null = null;
+            let dataSource = 'unknown';
+
+            if (regNo && CONFIG.USE_SCRAPER) {
+                console.log(`[Research] Scraping data for ${regNo}...`);
+                const scraperStart = Date.now();
+
+                try {
+                    // Anropa scraper-funktionen internt
+                    const scrapeResult = await scrapeVehicleDataInternal(regNo);
+
+                    if (scrapeResult.success && scrapeResult.vehicleData) {
+                        vehicleData = scrapeResult.vehicleData as VehicleData;
+                        dataSource = `scraper:${scrapeResult.source}${scrapeResult.cached ? ':cached' : ''}`;
+                        console.log(`[Research] Scraping successful: ${vehicleData.make} ${vehicleData.model}`);
+                    }
+                } catch (scrapeError) {
+                    console.error('[Research] Scraping failed:', scrapeError);
+                }
+
+                scraperTime = Date.now() - scraperStart;
+            }
+
+            // =================================================================
+            // STEG 3: Fallback till AI-sökning om scraping misslyckades
+            // =================================================================
+
+            if (!vehicleData && CONFIG.FALLBACK_TO_AI_SEARCH) {
+                console.log('[Research] Falling back to AI search...');
+                const aiSearchStart = Date.now();
+
+                // Använd Detective-agenten för att söka
+                const detectiveResult = await runDetectiveAgent(
+                    genAI,
+                    data.vehicleDescription,
+                    data.imageBase64
+                );
+
+                if (detectiveResult) {
+                    vehicleData = detectiveResult;
+                    dataSource = 'ai-search:gemini';
+                }
+
+                aiTime += Date.now() - aiSearchStart;
+            }
+
+            // =================================================================
+            // STEG 4: Om fortfarande ingen data, skapa minimal placeholder
+            // =================================================================
+
+            if (!vehicleData) {
+                console.log('[Research] Creating placeholder vehicle data');
+
+                vehicleData = createPlaceholderVehicleData(data.vehicleDescription);
+                dataSource = 'placeholder';
+            }
+
+            // Berika med modellspecifik kunskap
+            vehicleData = enrichVehicleData(vehicleData);
+
+            // =================================================================
+            // STEG 5: Generera projektplan med AI
+            // =================================================================
+
+            console.log('[Research] Generating project plan...');
+            const planStart = Date.now();
+
+            const { tasks, analysisReport, expertAnalysis } = await generateProjectPlan(
+                genAI,
+                vehicleData,
+                data.projectType,
+                data.userSkillLevel
+            );
+
+            aiTime += Date.now() - planStart;
+
+            // Lägg till expertanalys om den inte redan finns
+            if (expertAnalysis && !vehicleData.expertAnalysis) {
+                vehicleData.expertAnalysis = expertAnalysis;
+            }
+
+            // =================================================================
+            // STEG 6: Returnera resultat
+            // =================================================================
+
+            const totalTime = Date.now() - startTime;
+
+            return {
+                success: true,
+                projectName: `${vehicleData.make} ${vehicleData.model}${vehicleData.year ? ` ${vehicleData.year}` : ''}`,
+                projectType: data.projectType,
+                vehicleData,
+                initialTasks: tasks,
+                analysisReport,
+                provider: dataSource.startsWith('scraper') ? 'scraper+gemini' : 'gemini-only',
+                dataSource,
+                timing: {
+                    totalMs: totalTime,
+                    scraperMs: scraperTime || undefined,
+                    aiMs: aiTime
+                }
+            };
+
+        } catch (error: any) {
+            console.error('[Research] Fatal error:', error);
+
+            return {
+                success: false,
+                projectName: 'Okänt Projekt',
+                projectType: data.projectType,
+                vehicleData: createPlaceholderVehicleData(data.vehicleDescription),
+                initialTasks: [],
+                analysisReport: {
+                    title: 'Fel vid analys',
+                    summary: 'Kunde inte slutföra analysen',
+                    content: `Ett fel uppstod: ${error.message}`
+                },
+                provider: 'error',
+                dataSource: 'none',
+                timing: {
+                    totalMs: Date.now() - startTime
+                },
+                error: error.message
+            };
+        }
+    });
+
+// =============================================================================
+// INTERNAL HELPERS
+// =============================================================================
+
+/**
+ * Intern version av scrapeVehicleData för att anropa direkt
+ */
+async function scrapeVehicleDataInternal(regNo: string) {
+    // Importera och anropa scraper-logiken direkt
+    // (undviker overhead av HTTPS-anrop)
+    const { scrapeCarInfo, getCachedVehicleData, setCachedVehicleData, fillDefaultValues } = require('../scraper/vehicleScraper');
+
+    // Kolla cache
+    const cached = await getCachedVehicleData(regNo);
+    if (cached) {
+        return {
+            success: true,
+            source: cached.source,
+            vehicleData: cached.vehicleData,
+            cached: true
+        };
+    }
+
+    // Scrapa
+    const data = await scrapeCarInfo(regNo);
+    if (data) {
+        const complete = fillDefaultValues(data);
+        await setCachedVehicleData(regNo, complete, 'car.info');
+        return {
+            success: true,
+            source: 'car.info',
+            vehicleData: complete,
+            cached: false
+        };
+    }
+
+    return { success: false, source: 'none', vehicleData: null, cached: false };
+}
+
+/**
+ * Kör Detective-agenten för AI-baserad sökning
+ */
+async function runDetectiveAgent(
+    genAI: GoogleGenerativeAI,
+    vehicleDescription: string,
+    imageBase64?: string
+): Promise<VehicleData | null> {
+    const model = genAI.getGenerativeModel({
+        model: CONFIG.GEMINI_MODEL,
+        generationConfig: {
+            temperature: 0.1,
+            responseMimeType: 'application/json'
+        },
+        // Aktivera Google Search
+        tools: [{ googleSearch: {} } as any]
+    });
+
+    const prompt = PROMPTS.AGENTS.DETECTIVE.text(vehicleDescription, !!imageBase64);
+
+    const parts: any[] = [prompt];
+
+    if (imageBase64) {
+        parts.unshift({
+            inlineData: {
+                mimeType: 'image/jpeg',
+                data: imageBase64
+            }
+        });
+    }
+
+    try {
+        const result = await model.generateContent(parts);
+        const text = result.response.text();
+        const parsed = JSON.parse(text);
+
+        return parsed.vehicleData || null;
+
+    } catch (error) {
+        console.error('[Detective] Failed:', error);
+        return null;
+    }
+}
+
+/**
+ * Skapar placeholder-data när ingen annan källa fungerar
+ */
+function createPlaceholderVehicleData(description: string): VehicleData {
+    // Försök parsa märke, modell, år från beskrivningen
+    const words = description.split(/\s+/);
+    const yearMatch = description.match(/\b(19|20)\d{2}\b/);
+
+    return {
+        regNo: '',
+        make: words[0] || 'Okänt',
+        model: words.slice(1).filter(w => !w.match(/\d{4}/)).join(' ') || 'Okänt',
+        year: yearMatch ? parseInt(yearMatch[0]) : 0,
+        prodYear: yearMatch ? parseInt(yearMatch[0]) : 0,
+        regDate: 'Okänt',
+        status: 'Okänt',
+        bodyType: '',
+        passengers: 0,
+        inspection: { last: 'Okänt', next: 'Okänt', mileage: 'Okänt' },
+        engine: { fuel: '', power: '', volume: '' },
+        gearbox: '',
+        wheels: { drive: '', tiresFront: '', tiresRear: '', boltPattern: '' },
+        dimensions: { length: 0, width: 0, height: '', wheelbase: 0 },
+        weights: { curb: 0, total: 0, load: 0, trailer: 0, trailerB: 0 },
+        vin: '',
+        color: '',
+        history: { owners: 0, events: 0, lastOwnerChange: '' }
+    };
+}

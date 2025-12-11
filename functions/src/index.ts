@@ -12,5 +12,6 @@ import * as admin from 'firebase-admin';
 admin.initializeApp();
 
 // Export all function modules
-export * from './ai/proxy';
-export * from './ai/ocr';
+// export * from './ai/proxy'; // TODO: Fix Google AI SDK version mismatch
+// export * from './ai/ocr'; // TODO: Re-enable when OCR is implemented
+export * from './scraper/vehicleScraper';

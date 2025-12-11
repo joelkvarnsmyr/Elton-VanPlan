@@ -43,6 +43,7 @@ import {
   subscribeToTasks,
   subscribeToShoppingItems
 } from './services/db';
+import { CarLogo } from './components/CarLogo';
 
 const EltonLogo = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" id="Lager_1" data-name="Lager 1" viewBox="0 0 500 316.64" className={className}>
@@ -428,7 +429,10 @@ export const App = () => {
                  {activeProject.customIcon ? (
                      <img src={`data:image/png;base64,${activeProject.customIcon}`} alt="Project Icon" className="w-full h-full object-cover" />
                  ) : (
-                     <EltonLogo className="w-full h-full" />
+                     <CarLogo
+                       make={activeProject.vehicleData?.make || 'Unknown'}
+                       size={32}
+                     />
                  )}
               </div>
               <div>

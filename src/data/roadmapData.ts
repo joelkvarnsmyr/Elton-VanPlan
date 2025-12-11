@@ -197,6 +197,31 @@ export const ROADMAP_FEATURES: Feature[] = [
         ]
     },
     {
+        id: 29,
+        title: 'Vehicle Data Scraper (Playwright)',
+        category: 'Plattform',
+        description: 'Pålitlig fordonsdata-scraper som hämtar verifierad information från svenska register (car.info, biluppgifter.se) istället för att förlita sig på AI-sökning.',
+        detailedDescription: 'Cloud Function med Playwright som scrapar fordonsdata från car.info och biluppgifter.se. Ersätter opålitlig AI Google Search med strukturerad scraping. Inkluderar caching (30 dagar TTL), fallback-strategi, och felhantering. Hybrid-arkitektur där scraper ger FAKTA (RegNo → VehicleData) och AI ger KREATIVITET (VehicleData → Plan). Se docs/features/VEHICLE_SCRAPER.md för fullständig dokumentation.',
+        purpose: 'Ge 100% pålitlig fordonsdata vid onboarding. Eliminera 403-fel, CAPTCHA-problem och felaktig data från AI-sökning.',
+        status: 'planned',
+        tech: ['Playwright', 'Cloud Functions', 'Web Scraping', 'Firestore Cache', 'TypeScript'],
+        priority: 'high',
+        estimatedCompletion: 'Q1 2025',
+        tags: ['Scraping', 'Data', 'Reliability', 'Onboarding', 'Infrastructure'],
+        checklist: [
+            { label: 'Specad (VEHICLE_SCRAPER.md)', completed: true },
+            { label: 'Playwright CLI-inspektion av car.info', completed: false },
+            { label: 'Playwright CLI-inspektion av biluppgifter.se', completed: false },
+            { label: 'Scraper-funktion för car.info', completed: false },
+            { label: 'Scraper-funktion för biluppgifter.se', completed: false },
+            { label: 'Cache-lager (Firestore)', completed: false },
+            { label: 'Cloud Function implementation', completed: false },
+            { label: 'Integration med onboardingService', completed: false },
+            { label: 'Unit & E2E tester', completed: false },
+            { label: 'Lanserad', completed: false }
+        ]
+    },
+    {
         id: 17,
         title: 'Auto-genererad Historik & Expertanalys',
         category: 'Plattform',

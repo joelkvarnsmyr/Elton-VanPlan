@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ServiceItem, Task, FuelLogItem, VehicleData, Project, Contact } from '@/types/types';
-import { Scale, Settings, Activity, FileText, AlertTriangle, Fuel, Plus, Save, X, Edit2, Phone, MapPin, Search } from 'lucide-react';
+import { Scale, Settings, Activity, FileText, AlertTriangle, Fuel, Plus, Save, X, Edit2, Phone, MapPin, Search, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { Contacts } from './Contacts';
@@ -22,6 +22,20 @@ interface VehicleSpecsProps {
     onUpdateLocation?: (location: any) => void;
 }
 
+const Disclaimer = () => (
+    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-4 mb-6">
+        <div className="flex items-start gap-3">
+            <Info size={20} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div>
+                <h4 className="font-bold text-blue-800 dark:text-blue-300">Ett litet meddelande från verkstan:</h4>
+                <p className="text-sm text-blue-700 dark:text-blue-400/80 mt-1">
+                    Elton gör sitt bästa för att hämta korrekt data, men ibland kan det smyga sig in ett fel. Dubbelkolla alltid kritisk information! Om du hittar något som inte stämmer, blir vi superglada om du <a href="mailto:feedback@elton.se" className="font-bold underline hover:text-blue-600">rapporterar det till oss</a>. Tillsammans gör vi Elton smartare!
+                </p>
+            </div>
+        </div>
+    </div>
+);
+
 export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({
     vehicleData,
     tasks = [],
@@ -35,17 +49,17 @@ export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({
     onUpdateContacts,
     onUpdateLocation
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'service' | 'fuel' | 'contacts' | 'find-workshop'>('overview');
-  const [userLocation, setUserLocation] = useState<any>(projectLocation || null);
-  const [isRequestingLocation, setIsRequestingLocation] = useState(false);
-  const [isEditingSpecs, setIsEditingSpecs] = useState(false);
+  const [activeTab, setActiveTab] = React.useState<'overview' | 'service' | 'fuel' | 'contacts' | 'find-workshop'>('overview');
+  const [userLocation, setUserLocation] = React.useState<any>(projectLocation || null);
+  const [isRequestingLocation, setIsRequestingLocation] = React.useState(false);
+  const [isEditingSpecs, setIsEditingSpecs] = React.useState(false);
   
   // Forms State
-  const [newService, setNewService] = useState({ description: '', date: '', mileage: '', performer: '', type: 'Service' as const });
-  const [newFuel, setNewFuel] = useState({ date: '', mileage: '', liters: '', pricePerLiter: '', full: true });
+  const [newService, setNewService] = React.useState({ description: '', date: '', mileage: '', performer: '', type: 'Service' as const });
+  const [newFuel, setNewFuel] = React.useState({ date: '', mileage: '', liters: '', pricePerLiter: '', full: true });
   
   // Edit Specs State (Flat structure for simpler form)
-  const [editSpecs, setEditSpecs] = useState<any>({});
+  const [editSpecs, setEditSpecs] = React.useState<any>({});
 
   const startEditing = () => {
       setEditSpecs({
@@ -198,6 +212,8 @@ export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({
 
       {activeTab === 'overview' && (
       <>
+        <Disclaimer />
+
         {/* Weight Watcher */}
         <div className="bg-white dark:bg-nordic-dark-surface p-8 rounded-3xl border border-nordic-ice dark:border-nordic-dark-bg shadow-sm">
             <div className="flex items-center justify-between mb-6">
