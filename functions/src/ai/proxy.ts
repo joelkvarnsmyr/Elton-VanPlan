@@ -13,7 +13,9 @@ import { GoogleGenAI, Type, Schema, FunctionDeclaration, Tool } from '@google/ge
 const geminiApiKey = defineSecret('GEMINI_API_KEY');
 
 // Model configuration
-const DEFAULT_MODEL = 'gemini-2.5-flash-preview-05-20';
+// Using Gemini 3 Pro Preview for critical tasks (best reasoning model)
+const DEFAULT_MODEL = 'gemini-3-pro-preview';
+const FAST_MODEL = 'gemini-2.5-flash'; // For quick, less critical tasks
 
 // Tool declarations for the AI assistant
 const functionDeclarations: FunctionDeclaration[] = [
@@ -525,7 +527,7 @@ export const aiToolResponse = onCall(
 
     try {
       const ai = new GoogleGenAI({ apiKey });
-      const modelName = model || DEFAULT_MODEL;
+      const modelName = model || FAST_MODEL; // Tool responses use fast model
 
       const historyContents = history.map(h => ({
         role: h.role,

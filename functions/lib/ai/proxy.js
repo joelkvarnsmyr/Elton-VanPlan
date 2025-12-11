@@ -13,7 +13,9 @@ const genai_1 = require("@google/genai");
 // Definiera secrets som hämtas från Secret Manager vid deploy
 const geminiApiKey = (0, params_1.defineSecret)('GEMINI_API_KEY');
 // Model configuration
-const DEFAULT_MODEL = 'gemini-2.5-flash-preview-05-20';
+// Using Gemini 3 Pro Preview for critical tasks (best reasoning model)
+const DEFAULT_MODEL = 'gemini-3-pro-preview';
+const FAST_MODEL = 'gemini-2.5-flash'; // For quick, less critical tasks
 // Tool declarations for the AI assistant
 const functionDeclarations = [
     {
@@ -429,7 +431,7 @@ exports.aiToolResponse = (0, https_1.onCall)({
     }
     try {
         const ai = new genai_1.GoogleGenAI({ apiKey });
-        const modelName = model || DEFAULT_MODEL;
+        const modelName = model || FAST_MODEL; // Tool responses use fast model
         const historyContents = history.map(h => ({
             role: h.role,
             parts: [{ text: h.content }]

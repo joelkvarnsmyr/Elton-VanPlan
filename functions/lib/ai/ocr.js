@@ -14,7 +14,8 @@ const https_1 = require("firebase-functions/v2/https");
 const params_1 = require("firebase-functions/params");
 const genai_1 = require("@google/genai");
 const geminiApiKey = (0, params_1.defineSecret)('GEMINI_API_KEY');
-const DEFAULT_MODEL = 'gemini-2.0-flash-exp';
+// Using Gemini 2.5 Flash for vision tasks (best for image understanding)
+const DEFAULT_MODEL = 'gemini-2.5-flash';
 // --- CLOUD FUNCTIONS ---
 /**
  * Extract registration number from license plate image

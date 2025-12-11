@@ -81,7 +81,9 @@ export const Toast: React.FC<ToastProps> = ({
 
   return (
     <div
-      className={`fixed top-4 right-4 z-50 max-w-md ${styles.bg} border rounded-2xl p-4 shadow-xl transition-all duration-300 ${
+      role="status"
+      aria-live="polite"
+      className={`fixed top-4 right-4 z-[1000] max-w-md ${styles.bg} border rounded-2xl p-4 shadow-xl transition-all duration-300 ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
       }`}
     >
@@ -115,7 +117,7 @@ export const ToastContainer: React.FC<{ toasts: ToastItem[]; onRemove: (id: stri
   onRemove
 }) => {
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-3 pointer-events-none">
+    <div className="fixed top-4 right-4 z-[1000] flex flex-col gap-3 pointer-events-none">
       {toasts.map((toast, index) => (
         <div key={toast.id} className="pointer-events-auto" style={{ animationDelay: `${index * 100}ms` }}>
           <Toast

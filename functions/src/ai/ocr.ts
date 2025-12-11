@@ -14,7 +14,8 @@ import { GoogleGenAI } from '@google/genai';
 
 const geminiApiKey = defineSecret('GEMINI_API_KEY');
 
-const DEFAULT_MODEL = 'gemini-2.0-flash-exp';
+// Using Gemini 2.5 Flash for vision tasks (best for image understanding)
+const DEFAULT_MODEL = 'gemini-2.5-flash';
 
 // --- TYPES ---
 
