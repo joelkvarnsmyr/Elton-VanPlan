@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse, Type, Schema, FunctionDeclaration, Tool } from "@google/genai";
-import { KNOWLEDGE_ARTICLES } from '@/constants/constants';
+import { KNOWLEDGE_ARTICLES, CRITICAL_WARNINGS } from '@/constants/constants';
 import { ACTIVE_PROMPTS } from '@/config/prompts';
 import { getAIModelVersion } from './featureFlagService';
 import { buildPersonalizedPrompt, buildSoundDoctorPrompt, type DialectId } from './promptBuilder';
@@ -186,6 +186,18 @@ const createTaskContext = (tasks: Task[], shoppingList: ShoppingItem[]): string 
 
 const createKnowledgeContext = (vehicleData?: VehicleData): string => {
     let context = "\n\n=== 2. KUNSKAPSBANK & RAPPORTER (FAKTA) ===\n";
+    
+    // Inject dynamic warnings based on vehicle data
+    if (vehicleData) {
+        CRITICAL_WARNINGS.forEach(warning => {
+            if (warning.condition(vehicleData)) {
+                context += `>>> KRITISK VARNING (BASERAT PÅ DIN BIL): ${warning.title} <<<\n`;
+                context += `${warning.content}\n`;
+                context += `--------------------------------------------------\n`;
+            }
+        });
+    }
+
     KNOWLEDGE_ARTICLES.forEach(article => {
         context += `>>> ARTIKEL: ${article.title} (ID: ${article.id}) <<<\n`;
         context += `Sammanfattning: ${article.summary}\n`;

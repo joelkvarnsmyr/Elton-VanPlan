@@ -45,6 +45,25 @@ export const ROADMAP_FEATURES: Feature[] = [
         ]
     },
     {
+        id: 27,
+        title: 'Databas-migrering: Sub-collections',
+        category: 'Infrastruktur',
+        description: 'Omstrukturering av databasen för att stödja stora projekt genom att använda Firestore sub-collections istället för stora dokument.',
+        detailedDescription: 'Migrering från monolitisk dokumentstruktur till hierarkisk struktur (projects/{id}/tasks). Löser 1MB-begränsningen i Firestore och möjliggör avancerade frågor och bättre prestanda. Se docs/architecture/DATA_MODEL_MIGRATION.md för detaljer.',
+        purpose: 'Skalbarhet och prestanda för stora projekt.',
+        status: 'planned',
+        tech: ['Firestore Sub-collections', 'Data Migration', 'Scalability'],
+        priority: 'high',
+        tags: ['Database', 'Architecture', 'Scalability', 'Performance'],
+        checklist: [
+            { label: 'Specad (DATA_MODEL_MIGRATION.md)', completed: true },
+            { label: 'Utvecklad (DB Service Layer)', completed: false },
+            { label: 'Migrerings-script', completed: false },
+            { label: 'Testad', completed: false },
+            { label: 'Lanserad', completed: false }
+        ]
+    },
+    {
         id: 24,
         title: 'Co-working & Teams',
         category: 'Infrastruktur',
