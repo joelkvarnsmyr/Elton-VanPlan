@@ -6,6 +6,7 @@ import { generateProjectProfile, generateVehicleIcon } from '@/services/geminiSe
 import { EMPTY_PROJECT_TEMPLATE } from '@/constants/constants';
 import { acceptProjectInvite, cancelInvite } from '@/services/db';
 import { OnboardingWizard, OnboardingData } from './OnboardingWizard';
+import { CarLogo } from './CarLogo';
 
 interface ProjectSelectorProps {
     user: UserProfile;
@@ -232,7 +233,11 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ user, projects
                                             <img src={`data:image/png;base64,${project.customIcon}`} alt="Icon" className="w-full h-full object-contain" />
                                         )
                                     ) : (
-                                        <Car size={32} />
+                                        <CarLogo
+                                            make={project.vehicleData?.make || 'Unknown'}
+                                            size={32}
+                                            className="text-white"
+                                        />
                                     )}
                                 </div>
                                 <h3 className="font-serif font-bold text-2xl text-nordic-charcoal mb-1 line-clamp-2">{project.name}</h3>

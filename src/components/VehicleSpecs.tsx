@@ -1,5 +1,5 @@
 
-import React, 'react';
+import React from 'react';
 import { ServiceItem, Task, FuelLogItem, VehicleData, Project, Contact } from '@/types/types';
 import { Scale, Settings, Activity, FileText, AlertTriangle, Fuel, Plus, Save, X, Edit2, Phone, MapPin, Search, Info } from 'lucide-react';
 import { format } from 'date-fns';

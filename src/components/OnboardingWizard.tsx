@@ -5,6 +5,7 @@ import { Sparkles, Wrench, Hammer, Leaf, Award, User, Zap, CheckCircle2, Loader2
 import { generateProjectProfile, generateVehicleIcon } from '@/services/geminiService';
 import { useToasts, ToastContainer } from './Toast';
 import type { AIProvider } from '@/services/aiService';
+import { CarLogo } from './CarLogo';
 
 interface OnboardingWizardProps {
     onComplete: (data: OnboardingData) => void;
@@ -380,6 +381,30 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
 
                         <div className="space-y-6">
                             <Disclaimer />
+
+                            {/* Vehicle Preview Card */}
+                            {aiSuggestions && (aiSuggestions.detectedMake || aiSuggestions.detectedModel) && (
+                                <div className="bg-gradient-to-br from-teal-50 to-blue-50 dark:from-teal-900/20 dark:to-blue-900/20 rounded-2xl p-6 border-2 border-teal-200 dark:border-teal-800">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-16 h-16 bg-white dark:bg-nordic-charcoal rounded-2xl flex items-center justify-center shadow-lg">
+                                            <CarLogo
+                                                make={aiSuggestions.detectedMake || 'Unknown'}
+                                                size={40}
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="font-serif font-bold text-xl text-nordic-charcoal dark:text-white">
+                                                {aiSuggestions.detectedMake || '?'} {aiSuggestions.detectedModel || '?'}
+                                            </h3>
+                                            {aiSuggestions.detectedYear && (
+                                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                    Årsmodell: {aiSuggestions.detectedYear}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Projektnamn */}
                             <div>
