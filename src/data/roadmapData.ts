@@ -640,6 +640,28 @@ export const ROADMAP_FEATURES: Feature[] = [
     // FAS 4: LÅNGSIKTIGT - Framtida utveckling
     // ============================================
     {
+        id: 109,
+        title: 'Genkit Migration (AI Framework)',
+        category: 'AI Core',
+        phase: 4,
+        description: 'Utvärdera och eventuellt migrera från @google/genai till Genkit för bättre AI-flödeshantering.',
+        detailedDescription: 'Genkit är Googles ramverk för AI-applikationer med features som: Dotprompt (prompt-filer med versioning), Developer UI för debugging, multi-model support (Gemini/OpenAI/Anthropic), och inbyggd observability. Nuvarande implementation med @google/genai fungerar väl - migrering är nice-to-have, inte need-to-have. Utvärdera om/när: (1) behov av modellbyte uppstår, (2) debugging blir ett problem, (3) prompt-versioning blir kritiskt.',
+        purpose: 'Potentiellt förbättrad AI-utveckling och debugging.',
+        status: 'planned',
+        tech: ['Genkit', '@genkit-ai/googleai', 'Dotprompt', 'Zod'],
+        priority: 'low',
+        tags: ['AI', 'Framework', 'DevEx', 'Optional'],
+        checklist: [
+            { label: 'Utvärdera behov (modellbyte, debugging)', completed: false },
+            { label: 'Proof-of-concept med en flow', completed: false },
+            { label: 'Migrera aiChat → defineFlow', completed: false },
+            { label: 'Migrera aiParse → defineFlow', completed: false },
+            { label: 'Migrera aiDeepResearch → defineFlow', completed: false },
+            { label: 'Konvertera prompts till Dotprompt', completed: false },
+            { label: 'Testa och deploy', completed: false }
+        ]
+    },
+    {
         id: 18,
         title: 'Partner-integration (Auto-korg)',
         category: 'Ekonomi',
