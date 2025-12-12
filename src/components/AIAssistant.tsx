@@ -1,12 +1,12 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { streamChatMessage } from '@/services/firebaseAI';
+import { streamChatMessage, analyzeInspectionEvidence } from '@/services/firebaseAI';
 import { getChatHistory, saveChatHistory, clearChatHistory, ChatMessage } from '@/services/db';
-import { uploadChatImage } from '@/services/storage';
+import { uploadChatImage, uploadInspectionImage, uploadInspectionAudio } from '@/services/storage';
 import { buildAIContext, getProjectStats } from '@/services/projectExportService';
-import { Send, User, Trash2, Car, Video, ArrowLeft, Image as ImageIcon, X, AlertCircle } from 'lucide-react';
-import { Task, ShoppingItem, VehicleData, Project, Contact } from '@/types/types';
+import { Send, User, Trash2, Car, Video, ArrowLeft, Image as ImageIcon, X, AlertCircle, Camera, Mic, Scan } from 'lucide-react';
+import { Task, ShoppingItem, VehicleData, Project, Contact, InspectionFinding, TaskStatus, Priority, TaskType, MechanicalPhase, CostType } from '@/types/types';
 import { LiveElton } from './LiveElton';
 
 // Helper: Calculate string similarity (Levenshtein distance normalized to 0-1)
@@ -75,8 +75,18 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Inspector modal state
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [inspectorZone, setInspectorZone] = useState<'EXTERIOR' | 'ENGINE' | 'UNDERCARRIAGE' | 'INTERIOR'>('EXTERIOR');
+  const [inspectorImageBase64, setInspectorImageBase64] = useState<string | null>(null);
+  const [inspectorAudioFile, setInspectorAudioFile] = useState<File | null>(null);
+  const [inspectorFinding, setInspectorFinding] = useState<InspectionFinding | null>(null);
+  const [isInspectorLoading, setIsInspectorLoading] = useState(false);
+  const [inspectorError, setInspectorError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inspectorImageInputRef = useRef<HTMLInputElement>(null);
+  const inspectorAudioInputRef = useRef<HTMLInputElement>(null);
 
   // Build comprehensive AI context including ALL project data
   const projectContext = useMemo(() => buildAIContext(project, contacts), [project, contacts]);
@@ -153,6 +163,141 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         };
         reader.readAsDataURL(file);
     }
+  };
+
+  const handleInspectorImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => setInspectorImageBase64(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleInspectorAudioSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setInspectorAudioFile(file);
+  };
+
+  const resetInspector = () => {
+    setInspectorZone('EXTERIOR');
+    setInspectorImageBase64(null);
+    setInspectorAudioFile(null);
+    setInspectorFinding(null);
+    setIsInspectorLoading(false);
+    setInspectorError(null);
+  };
+
+  const closeInspector = () => {
+    setIsInspectorOpen(false);
+    resetInspector();
+  };
+
+  const analyzeInspector = async () => {
+    try {
+      setIsInspectorLoading(true);
+      setInspectorError(null);
+
+      if (!inspectorImageBase64 && !inspectorAudioFile) {
+        setInspectorError('Lägg till en bild eller en ljudfil för att analysera.');
+        setIsInspectorLoading(false);
+        return;
+      }
+
+      let imageUrl: string | undefined;
+      let audioUrl: string | undefined;
+
+      if (inspectorImageBase64) {
+        imageUrl = await uploadInspectionImage(inspectorImageBase64, project.id);
+      }
+      if (inspectorAudioFile) {
+        audioUrl = await uploadInspectionAudio(inspectorAudioFile, project.id);
+      }
+
+      const finding = await analyzeInspectionEvidence(project.id, inspectorZone, { imageUrl, audioUrl });
+      setInspectorFinding(finding);
+
+      // Post summary into chat as assistant message
+      const summaryLines = [
+        `Elton Inspector – resultat`,
+        `Zon: ${finding.category}`,
+        `Allvarlighet: ${finding.severity} (${finding.confidence}%)`,
+        `Diagnos: ${finding.aiDiagnosis}`,
+        imageUrl ? `Bild: ${imageUrl}` : undefined,
+        audioUrl ? `Ljud: ${audioUrl}` : undefined,
+      ].filter(Boolean);
+
+      const assistantMessage: ChatMessage = {
+        role: 'model',
+        content: summaryLines.join('\n'),
+        timestamp: new Date().toISOString()
+      } as any;
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (e: any) {
+      console.error('Inspector analysis failed:', e);
+      setInspectorError(e.message || 'Kunde inte analysera media');
+    } finally {
+      setIsInspectorLoading(false);
+    }
+  };
+
+  const convertFindingToTask = (finding: InspectionFinding): Task => {
+    // Map severity to priority
+    const priority: Priority = finding.severity === 'CRITICAL' ? Priority.HIGH
+      : finding.severity === 'WARNING' ? Priority.MEDIUM
+      : Priority.LOW;
+
+    // Map zone to mechanical phase
+    let mechanicalPhase: MechanicalPhase | undefined;
+    if (finding.category === 'ENGINE') mechanicalPhase = MechanicalPhase.P1_ENGINE;
+    else if (finding.category === 'UNDERCARRIAGE' || finding.category === 'EXTERIOR') mechanicalPhase = MechanicalPhase.P2_RUST;
+    else mechanicalPhase = MechanicalPhase.P3_FUTURE;
+
+    const now = new Date().toISOString();
+    const title = finding.severity === 'CRITICAL'
+      ? `AKUT: ${finding.aiDiagnosis}`
+      : finding.severity === 'WARNING'
+        ? `Åtgärd: ${finding.aiDiagnosis}`
+        : `Notera: ${finding.aiDiagnosis}`;
+
+    const newTask: Task = {
+      id: Math.random().toString(36).slice(2),
+      title: title.slice(0, 120),
+      description: `Skapat via Elton Inspector (${finding.category}).\n\nAllvarlighet: ${finding.severity} (${finding.confidence}%).\n\nDiagnos:\n${finding.aiDiagnosis}`,
+      status: TaskStatus.TODO,
+      phase: mechanicalPhase || '3. Löpande Underhåll',
+      priority,
+      sprint: undefined,
+      estimatedCostMin: 0,
+      estimatedCostMax: 0,
+      actualCost: 0,
+      weightKg: 0,
+      costType: CostType.OPERATION,
+      tags: ['Inspector', finding.category],
+      links: [],
+      comments: [],
+      attachments: [],
+      subtasks: [],
+      type: TaskType.MAINTENANCE,
+      mechanicalPhase,
+      created: now,
+      lastModified: now,
+    };
+
+    return newTask;
+  };
+
+  const handleCreateTaskFromFinding = () => {
+    if (!inspectorFinding || !onAddTask) return;
+    const task = convertFindingToTask(inspectorFinding);
+    onAddTask([task]);
+
+    // Also append message about created task
+    const assistantMessage: ChatMessage = {
+      role: 'model',
+      content: `Skapade uppgift från Elton Inspector:\n- ${task.title}`,
+      timestamp: new Date().toISOString()
+    } as any;
+    setMessages(prev => [...prev, assistantMessage]);
   };
 
   const handleToolCalls = async (toolCalls: any[]) => {
@@ -457,6 +602,14 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         </div>
         <div className="flex gap-2">
             <button
+                onClick={() => setIsInspectorOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors shadow-sm"
+                title="Elton Inspector"
+            >
+                <Scan size={18} />
+                <span className="text-xs font-bold hidden sm:inline">Inspector</span>
+            </button>
+            <button
                 data-testid="ring-upp-button"
                 onClick={() => setIsLiveMode(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-xl hover:bg-rose-600 transition-colors shadow-sm animate-pulse"
@@ -571,6 +724,83 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
           </button>
         </div>
       </div>
+
+      {isInspectorOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-xl bg-white dark:bg-nordic-dark-surface rounded-2xl shadow-xl border border-slate-200 dark:border-nordic-charcoal p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-teal-50 dark:bg-nordic-charcoal rounded-lg"><Scan size={18} className="text-teal-600" /></div>
+                <h3 className="font-semibold text-nordic-charcoal dark:text-nordic-ice">Elton Inspector</h3>
+              </div>
+              <button onClick={closeInspector} className="p-2 hover:bg-slate-100 dark:hover:bg-nordic-charcoal rounded-lg"><X size={16} /></button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-slate-500 dark:text-slate-300">Zon</label>
+                <div className="mt-1 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(['EXTERIOR','ENGINE','UNDERCARRIAGE','INTERIOR'] as const).map(z => (
+                    <button
+                      key={z}
+                      onClick={() => setInspectorZone(z)}
+                      className={`px-3 py-2 rounded-xl border text-sm ${inspectorZone===z ? 'bg-teal-600 text-white border-teal-600' : 'bg-white dark:bg-nordic-charcoal text-slate-700 dark:text-slate-200 border-slate-200 dark:border-nordic-charcoal'}`}
+                    >
+                      {z === 'EXTERIOR' && 'EXTERIOR'}
+                      {z === 'ENGINE' && 'ENGINE'}
+                      {z === 'UNDERCARRIAGE' && 'UNDERCARRIAGE'}
+                      {z === 'INTERIOR' && 'INTERIOR'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-nordic-charcoal">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Bild</span>
+                    <button onClick={() => inspectorImageInputRef.current?.click()} className="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-nordic-charcoal hover:bg-slate-200 dark:hover:bg-nordic-dark-bg flex items-center gap-1"><Camera size={14}/>Välj</button>
+                    <input ref={inspectorImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleInspectorImageSelect} />
+                  </div>
+                  {inspectorImageBase64 ? (
+                    <img src={inspectorImageBase64} alt="Vald bild" className="mt-2 rounded-lg border border-white/10" />
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-500">Ingen bild vald</p>
+                  )}
+                </div>
+                <div className="p-3 rounded-xl border border-slate-200 dark:border-nordic-charcoal">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Ljud</span>
+                    <button onClick={() => inspectorAudioInputRef.current?.click()} className="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-nordic-charcoal hover:bg-slate-200 dark:hover:bg-nordic-dark-bg flex items-center gap-1"><Mic size={14}/>Välj</button>
+                    <input ref={inspectorAudioInputRef} type="file" accept="audio/*" className="hidden" onChange={handleInspectorAudioSelect} />
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">{inspectorAudioFile ? inspectorAudioFile.name : 'Ingen ljudfil vald'}</p>
+                </div>
+              </div>
+
+              {inspectorError && (
+                <div className="p-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm flex items-center gap-2"><AlertCircle size={16}/><span>{inspectorError}</span></div>
+              )}
+
+              <div className="flex items-center justify-end gap-2">
+                <button onClick={closeInspector} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-nordic-charcoal hover:bg-slate-200 dark:hover:bg-nordic-dark-bg">Stäng</button>
+                <button onClick={analyzeInspector} disabled={isInspectorLoading} className="px-4 py-2 rounded-xl bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-60">{isInspectorLoading ? 'Analyserar...' : 'Analysera'}</button>
+              </div>
+
+              {inspectorFinding && (
+                <div className="mt-3 p-3 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-900/20">
+                  <p className="text-sm text-slate-700 dark:text-slate-200"><strong>Zon:</strong> {inspectorFinding.category}</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-200"><strong>Allvarlighet:</strong> {inspectorFinding.severity} ({inspectorFinding.confidence}%)</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap mt-1">{inspectorFinding.aiDiagnosis}</p>
+                  <div className="mt-2 flex items-center justify-end">
+                    <button onClick={handleCreateTaskFromFinding} className="px-4 py-2 rounded-xl bg-nordic-charcoal dark:bg-teal-600 text-white hover:bg-slate-800 dark:hover:bg-teal-700">Konvertera till uppgift</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

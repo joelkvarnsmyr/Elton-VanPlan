@@ -59,3 +59,37 @@ export const base64ToBlob = (base64Data: string): { blob: Blob; mimeType: string
 
     return { blob: new Blob([ab], { type: mimeType }), mimeType };
 };
+
+// --- INSPECTOR UPLOAD HELPERS ---
+
+export const uploadInspectionImage = async (base64Data: string, projectId: string): Promise<string> => {
+    // Convert base64 to Blob
+    const parts = base64Data.split(',');
+    const mimeMatch = parts[0]?.match(/:(.*?);/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const byteString = atob(parts[1] || parts[0]);
+
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([ab], { type: mimeType });
+
+    const fileName = `${uuidv4()}.${mimeType.split('/')[1] || 'jpg'}`;
+    const storageRef = ref(storage, `inspections/images/${projectId}/${fileName}`);
+
+    const snapshot = await uploadBytes(storageRef, blob);
+    return await getDownloadURL(snapshot.ref);
+};
+
+export const uploadInspectionAudio = async (file: File, projectId: string): Promise<string> => {
+    if (!file) throw new Error('No audio file provided');
+
+    const fileExtension = file.name.split('.').pop() || 'wav';
+    const fileName = `${uuidv4()}.${fileExtension}`;
+    const storageRef = ref(storage, `inspections/audio/${projectId}/${fileName}`);
+
+    const snapshot = await uploadBytes(storageRef, file);
+    return await getDownloadURL(snapshot.ref);
+};

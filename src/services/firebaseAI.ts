@@ -18,7 +18,8 @@
 
 import { app } from './firebase';
 import { getAI, getGenerativeModel, GoogleAIBackend, Schema } from 'firebase/ai';
-import type { Task, ShoppingItem, VehicleData, ProjectType } from '@/types/types';
+import type { Task, ShoppingItem, VehicleData, ProjectType, InspectionFinding } from '@/types/types';
+import { v4 as uuidv4 } from 'uuid';
 
 // Initialize Firebase AI Logic with Google AI backend
 const ai = getAI(app, { backend: new GoogleAIBackend() });
@@ -172,6 +173,48 @@ export const getChatModel = () => {
       maxOutputTokens: 8192,
     }
   });
+};
+
+/**
+ * Inspector MVP: analyze inspection evidence (stubbed heuristic)
+ * Returns an InspectionFinding based on provided zone and media.
+ * This is a placeholder until full multimodal analysis is wired.
+ */
+export const analyzeInspectionEvidence = async (
+  projectId: string,
+  zone: 'EXTERIOR' | 'ENGINE' | 'UNDERCARRIAGE' | 'INTERIOR',
+  opts: { imageUrl?: string; audioUrl?: string }
+): Promise<InspectionFinding> => {
+  // Simple heuristic for MVP
+  let aiDiagnosis = 'Visuell kontroll utförd. Inga tydliga avvikelser upptäckta.';
+  let severity: InspectionFinding['severity'] = 'COSMETIC';
+  let confidence = 75;
+
+  if (zone === 'UNDERCARRIAGE' && opts.imageUrl) {
+    aiDiagnosis = 'Möjlig rostangrepp på bärande balk. Manuell kontroll rekommenderas.';
+    severity = 'CRITICAL';
+    confidence = 88;
+  } else if (zone === 'ENGINE' && opts.audioUrl) {
+    aiDiagnosis = 'Tickande ljud registrerat, verkar följa varvtal. Ventiljustering kan behövas.';
+    severity = 'WARNING';
+    confidence = 82;
+  } else if (zone === 'EXTERIOR' && opts.imageUrl) {
+    aiDiagnosis = 'Ytrost/bubblor i lack identifierade. Rekommenderad åtgärd: slipa, rostskydd, omlack.';
+    severity = 'WARNING';
+    confidence = 78;
+  }
+
+  return {
+    id: uuidv4(),
+    projectId,
+    imageUrl: opts.imageUrl,
+    audioUrl: opts.audioUrl,
+    date: new Date().toISOString(),
+    category: zone,
+    aiDiagnosis,
+    severity,
+    confidence,
+  };
 };
 
 /**

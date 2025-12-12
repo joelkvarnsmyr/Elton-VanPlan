@@ -11,7 +11,7 @@
 Users shouldn't write long reports.
 1.  **Capture:** Take photo of rust or record engine sound.
 2.  **Upload:** File to Firebase Storage.
-3.  **Analyze:** AI (Gemini 1.5 Pro) analyzes visual/audio data.
+3.  **Analyze:** AI (Gemini 2.5 Flash) analyzes visual/audio data.
 4.  **Result:** Diagnosis, Severity (1-10), Suggested Task.
 
 ## 2. Data Model
