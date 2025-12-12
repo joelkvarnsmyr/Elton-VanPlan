@@ -207,7 +207,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
                                     {task.priority}
                                 </span>
                               )}
-                              {task.tags.includes('Kritisk') && (
+                              {task.tags && task.tags.includes('Kritisk') && (
                                 <span className="text-rose-500 animate-pulse">
                                   <AlertCircle size={16} />
                                 </span>

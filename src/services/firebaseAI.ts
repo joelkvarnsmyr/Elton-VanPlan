@@ -272,10 +272,16 @@ export const streamChatMessage = async (
   if (functionCalls.length > 0) {
     const toolResults = await onToolCall(functionCalls);
 
+    // Convert tool results to Firebase AI format: { functionResponse: { name, response: { content } } }
+    const functionResponses = toolResults.map(tr => ({
+      functionResponse: {
+        name: tr.name,
+        response: { content: tr.result }
+      }
+    }));
+
     // Send tool responses back
-    const followUpResult = await chat.sendMessageStream([
-      { functionResponse: toolResults[0] }
-    ]);
+    const followUpResult = await chat.sendMessageStream(functionResponses);
 
     // Stream follow-up response
     for await (const chunk of followUpResult.stream) {

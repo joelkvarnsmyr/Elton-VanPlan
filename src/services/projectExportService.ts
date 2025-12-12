@@ -250,7 +250,7 @@ export const buildAIContext = (project: Project, contacts: Contact[] = []): stri
     context += `## KUNSKAPSBAS (${exported.knowledgeBase.length} artiklar)\n\n`;
     exported.knowledgeBase.forEach(kb => {
       context += `### ${kb.title}\n`;
-      context += `**Tags:** ${kb.tags.join(', ')}\n`;
+      context += `**Tags:** ${kb.tags ? kb.tags.join(', ') : 'Inga'}\n`;
       context += `**Sammanfattning:** ${kb.summary}\n\n`;
       context += `${kb.content}\n\n`;
       context += `---\n\n`;
