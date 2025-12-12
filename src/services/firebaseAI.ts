@@ -101,6 +101,19 @@ const tools = [{
         }
       })
     },
+    {
+      name: 'updateProjectMetadata',
+      description: 'Uppdatera projektets metadata som namn, smeknamn (nickname), beskrivning, eller projekttyp. Använd detta när användaren vill ändra grundläggande projektinformation.',
+      parameters: Schema.object({
+        properties: {
+          field: Schema.enumString({
+            enum: ['name', 'nickname', 'description', 'type'],
+            description: 'Field to update: name (projektnamn), nickname (smeknamn för bilen), description (projektbeskrivning), type (renovation/conversion/maintenance)'
+          }),
+          value: Schema.string({ description: 'New value for the field' }),
+        }
+      })
+    },
   ]
 }];
 
