@@ -35,7 +35,8 @@
       "Bash(firebase functions:secrets:destroy:*)",
       "Bash(firebase help:*)",
       "Bash(git pull:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(git push:*)"
     ]
   }
 }

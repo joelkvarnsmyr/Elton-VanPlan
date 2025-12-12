@@ -633,10 +633,10 @@ ${diagnosis.severity === 'CRITICAL' ? `⚠️ **KRITISKT** - ${taskCreated ? 'Up
             project.tasks,
             project.shoppingItems,
             (chunk) => {
-                fullResponse += chunk;
+                // chunk is already the full text from firebaseAI.ts, don't add
                 setMessages(prev => {
                     const newHistory = [...prev];
-                    newHistory[newHistory.length - 1].content = fullResponse;
+                    newHistory[newHistory.length - 1].content = chunk;
                     return newHistory;
                 });
             },

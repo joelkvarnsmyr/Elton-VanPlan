@@ -26,7 +26,8 @@ import {
   ServiceItem,
   FuelLogItem,
   KnowledgeArticle,
-  Contact
+  Contact,
+  InspectionFinding
 } from '@/types/types';
 import { 
   DEMO_PROJECT 
@@ -43,6 +44,7 @@ const getShoppingRef = (projectId: string) => collection(db, 'projects', project
 const getServiceLogRef = (projectId: string) => collection(db, 'projects', projectId, 'serviceLog');
 const getFuelLogRef = (projectId: string) => collection(db, 'projects', projectId, 'fuelLog');
 const getKnowledgeBaseRef = (projectId: string) => collection(db, 'projects', projectId, 'knowledgeBase');
+const getInspectionsRef = (projectId: string) => collection(db, 'projects', projectId, 'inspections');
 
 
 // --- SEEDING ---
