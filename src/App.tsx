@@ -411,6 +411,62 @@ export const App = () => {
     }
   };
 
+  const handleAddKnowledgeArticle = async (article: any) => {
+    if (!activeProject) return;
+    const updatedArticles = [...(activeProject.knowledgeArticles || []), article];
+    setActiveProject({ ...activeProject, knowledgeArticles: updatedArticles });
+    try {
+      await updateProject(activeProject.id, { knowledgeArticles: updatedArticles });
+      showToast("Kunskapsartikel tillagd!");
+    } catch (error) {
+      console.error("Error adding knowledge article:", error);
+      setActiveProject(activeProject);
+      showToast("Kunde inte lägga till artikel", "error");
+    }
+  };
+
+  const handleAddServiceLog = async (log: any) => {
+    if (!activeProject) return;
+    const updatedLogs = [...(activeProject.serviceLog || []), log];
+    setActiveProject({ ...activeProject, serviceLog: updatedLogs });
+    try {
+      await updateProject(activeProject.id, { serviceLog: updatedLogs });
+      showToast("Service loggad!");
+    } catch (error) {
+      console.error("Error adding service log:", error);
+      setActiveProject(activeProject);
+      showToast("Kunde inte logga service", "error");
+    }
+  };
+
+  const handleAddHistoryEvent = async (event: any) => {
+    if (!activeProject) return;
+    const updatedHistory = [...(activeProject.historyEvents || []), event];
+    setActiveProject({ ...activeProject, historyEvents: updatedHistory });
+    try {
+      await updateProject(activeProject.id, { historyEvents: updatedHistory });
+      showToast("Händelse tillagd!");
+    } catch (error) {
+      console.error("Error adding history event:", error);
+      setActiveProject(activeProject);
+      showToast("Kunde inte lägga till händelse", "error");
+    }
+  };
+
+  const handleUpdateProjectMetadata = async (field: string, value: string) => {
+    if (!activeProject) return;
+    const updates: any = { [field]: value };
+    setActiveProject({ ...activeProject, ...updates });
+    try {
+      await updateProject(activeProject.id, updates);
+      showToast(`${field === 'nickname' ? 'Smeknamn' : 'Projektnamn'} uppdaterat!`);
+    } catch (error) {
+      console.error("Error updating project metadata:", error);
+      setActiveProject(activeProject);
+      showToast("Kunde inte uppdatera projekt", "error");
+    }
+  };
+
   if (isLoading && !activeProject) {
       return (
           <div className="min-h-screen bg-nordic-ice dark:bg-nordic-dark-bg flex items-center justify-center">
@@ -568,7 +624,7 @@ export const App = () => {
         <div className="pb-28 sm:pb-0">
            {currentView === 'dashboard' && <Dashboard project={activeProject} onPhaseClick={(p) => { setActivePhaseFilter(p); setCurrentView('tasks'); }} />}
            {currentView === 'tasks' && <TaskBoard tasks={activeProject.tasks} shoppingItems={activeProject.shoppingItems} vehicleData={activeProject.vehicleData} onUpdateTask={handleUpdateTask} initialFilter={activePhaseFilter as any} />}
-           {currentView === 'ai' && <AIAssistant project={activeProject} contacts={activeProject.contacts} userSkillLevel={currentUser?.skillLevel} onAddTask={(t) => handleAddTasks(t as any)} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} onUpdateShoppingItem={handleUpdateShoppingItem} onDeleteShoppingItem={handleDeleteShoppingItem} onUpdateVehicleData={handleUpdateVehicleData} onClose={() => setCurrentView('dashboard')} />}
+           {currentView === 'ai' && <AIAssistant project={activeProject} contacts={activeProject.contacts} userSkillLevel={currentUser?.skillLevel} onAddTask={(t) => handleAddTasks(t as any)} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} onUpdateShoppingItem={handleUpdateShoppingItem} onDeleteShoppingItem={handleDeleteShoppingItem} onUpdateVehicleData={handleUpdateVehicleData} onAddKnowledgeArticle={handleAddKnowledgeArticle} onAddServiceLog={handleAddServiceLog} onAddHistoryEvent={handleAddHistoryEvent} onUpdateProjectMetadata={handleUpdateProjectMetadata} onClose={() => setCurrentView('dashboard')} />}
            {currentView === 'specs' && <VehicleSpecs
                vehicleData={activeProject.vehicleData}
                tasks={activeProject.tasks}

@@ -106,6 +106,55 @@ const tools = [{
         }
       })
     },
+    {
+      name: 'addKnowledgeArticle',
+      description: 'Add a knowledge base article with technical information, tips, or documentation about the vehicle',
+      parameters: Schema.object({
+        properties: {
+          title: Schema.string({ description: 'Article title' }),
+          summary: Schema.string({ description: 'Brief summary' }),
+          content: Schema.string({ description: 'Full article content in markdown format' }),
+          tags: Schema.string({ description: 'Comma-separated tags (e.g., "Motor,Bromsar,Elinstallation")' }),
+        },
+        optionalProperties: ['tags']
+      })
+    },
+    {
+      name: 'addServiceLog',
+      description: 'Log a service or maintenance event for the vehicle history',
+      parameters: Schema.object({
+        properties: {
+          date: Schema.string({ description: 'Date of service (YYYY-MM-DD)' }),
+          description: Schema.string({ description: 'What was done' }),
+          mileage: Schema.string({ description: 'Mileage at service' }),
+          performer: Schema.string({ description: 'Who performed the service' }),
+          type: Schema.string({ description: 'Service, Reparation, Besiktning, or Övrigt' }),
+        }
+      })
+    },
+    {
+      name: 'addHistoryEvent',
+      description: 'Add a general history event (modification, upgrade, incident, etc.)',
+      parameters: Schema.object({
+        properties: {
+          date: Schema.string({ description: 'Date (YYYY-MM-DD)' }),
+          description: Schema.string({ description: 'Event description' }),
+          cost: Schema.number({ description: 'Cost in SEK if applicable' }),
+          mileage: Schema.string({ description: 'Mileage if known' }),
+        },
+        optionalProperties: ['cost', 'mileage']
+      })
+    },
+    {
+      name: 'updateProjectMetadata',
+      description: 'Update project name or nickname (vehicle personality name)',
+      parameters: Schema.object({
+        properties: {
+          field: Schema.string({ description: '"name" or "nickname"' }),
+          value: Schema.string({ description: 'New value' }),
+        }
+      })
+    },
   ]
 }];
 

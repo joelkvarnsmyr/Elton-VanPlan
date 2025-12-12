@@ -45,6 +45,10 @@ interface AIAssistantProps {
     onUpdateShoppingItem?: (item: ShoppingItem) => void;
     onDeleteShoppingItem?: (itemId: string) => void;
     onUpdateVehicleData?: (vehicleData: Partial<VehicleData>) => void;
+    onAddKnowledgeArticle?: (article: any) => void;
+    onAddServiceLog?: (log: any) => void;
+    onAddHistoryEvent?: (event: any) => void;
+    onUpdateProjectMetadata?: (field: string, value: string) => void;
     onClose?: () => void;
 }
 
@@ -59,6 +63,10 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
     onUpdateShoppingItem,
     onDeleteShoppingItem,
     onUpdateVehicleData,
+    onAddKnowledgeArticle,
+    onAddServiceLog,
+    onAddHistoryEvent,
+    onUpdateProjectMetadata,
     onClose
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -305,6 +313,32 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                           result: 'No similar shopping items found. Safe to add new item.'
                       });
                   }
+              } else if (call.name === 'addKnowledgeArticle' && onAddKnowledgeArticle) {
+                  const { title, summary, content, tags } = call.args;
+                  const article = {
+                      id: Math.random().toString(36).substr(2, 9),
+                      title,
+                      summary,
+                      content,
+                      tags: tags ? tags.split(',').map((t: string) => t.trim()) : []
+                  };
+                  onAddKnowledgeArticle(article);
+                  results.push({ name: call.name, result: `Added knowledge article: "${title}"` });
+              } else if (call.name === 'addServiceLog' && onAddServiceLog) {
+                  const log = {
+                      id: Math.random().toString(36).substr(2, 9),
+                      ...call.args
+                  };
+                  onAddServiceLog(log);
+                  results.push({ name: call.name, result: `Logged service: ${call.args.description}` });
+              } else if (call.name === 'addHistoryEvent' && onAddHistoryEvent) {
+                  const event = { ...call.args };
+                  onAddHistoryEvent(event);
+                  results.push({ name: call.name, result: `Added history event: ${call.args.description}` });
+              } else if (call.name === 'updateProjectMetadata' && onUpdateProjectMetadata) {
+                  const { field, value } = call.args;
+                  onUpdateProjectMetadata(field, value);
+                  results.push({ name: call.name, result: `Updated ${field} to "${value}"` });
               } else {
                   results.push({ name: call.name, result: "Tool executed successfully." });
               }
