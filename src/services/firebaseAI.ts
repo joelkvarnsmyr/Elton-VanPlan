@@ -176,7 +176,18 @@ ${currentTasks.map(t => `- ${t.title} (${t.status})`).join('\n')}
 === INKÖPSLISTA ===
 ${currentShoppingList.map(i => `- ${i.name} (${i.checked ? 'köpt' : 'att köpa'})`).join('\n')}
 
-Svara hjälpsamt och personligt. Du kan använda verktyg för att uppdatera projektet.`;
+VIKTIGT - VERKTYGSANVÄNDNING:
+- När användaren ger dig uppgifter, inköp, eller data: ANVÄND ALLTID verktygen (addTask, addToShoppingList, etc.)
+- ALDRIG bara "prata om" att ha sparat något - GÖR DET faktiskt!
+- Om användaren säger "här är en lista" eller "lägg till dessa" - ANVÄND verktyg direkt
+- Bekräfta först vad du kommer göra, ANVÄND sedan verktygen, bekräfta EFTER att de körts
+
+Exempel:
+Användare: "Lägg till uppgift: Byt kamrem"
+Fel: "Jag har sparat uppgiften om kamrem" (gjorde ingenting!)
+Rätt: *använder addTask-verktyget* "Jag har nu lagt till uppgiften i din projektplan!"
+
+Svara hjälpsamt och personligt.`;
 
   // Firebase AI Logic SDK requires Content format for systemInstruction
   return {
