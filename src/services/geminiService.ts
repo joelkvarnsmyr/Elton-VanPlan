@@ -222,6 +222,29 @@ export const parseTasksFromInput = async (
   }
 };
 
+/**
+ * Parse enhanced project data from text/image (LEGACY STUB)
+ * This function is deprecated - use parseTasksFromInput instead
+ */
+export const parseEnhancedProjectData = async (
+  text: string,
+  imageBase64?: string
+): Promise<{
+  vehicleData?: any;
+  historyEvents?: any[];
+  tasks?: any[];
+  shoppingItems?: any[];
+}> => {
+  console.warn('⚠️ parseEnhancedProjectData is deprecated and not implemented in Firebase AI Logic SDK');
+  console.warn('   Returning empty result. Consider using parseTasksFromInput instead.');
+  return {
+    vehicleData: {},
+    historyEvents: [],
+    tasks: [],
+    shoppingItems: []
+  };
+};
+
 // --- ICON GENERATION (DISABLED) ---
 
 /**
