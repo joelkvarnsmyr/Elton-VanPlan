@@ -484,6 +484,54 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                   const { field, value } = call.args;
                   onUpdateProjectMetadata(field, value);
                   results.push({ name: call.name, result: `Updated ${field} to "${value}"` });
+              } else if (call.name === 'inspectImage') {
+                  const { zone, userDescription } = call.args;
+
+                  // Find the most recent image in chat history
+                  const recentImageMsg = [...messages].reverse().find(m => m.imageUrl);
+
+                  if (!recentImageMsg?.imageUrl) {
+                      results.push({
+                          name: call.name,
+                          result: 'Ingen bild hittades i chatten. Be användaren ladda upp en bild först.'
+                      });
+                  } else {
+                      // Convert imageUrl to base64 if needed
+                      let imageBase64 = recentImageMsg.imageUrl;
+                      if (imageBase64.startsWith('data:')) {
+                          imageBase64 = imageBase64.split(',')[1];
+                      }
+
+                      const diagnosis = await analyzeInspectionEvidence(
+                          zone,
+                          userDescription,
+                          imageBase64,
+                          undefined
+                      );
+
+                      const resultText = `### Elton Inspector - Analys Resultat
+
+**Zon:** ${diagnosis.category}
+**Allvarlighet:** ${diagnosis.severity}
+**Säkerhet:** ${diagnosis.confidence}%
+
+**Diagnos:**
+${diagnosis.aiDiagnosis}
+
+${diagnosis.severity === 'CRITICAL' ? '⚠️ **KRITISKT** - Överväg att skapa en uppgift omedelbart!' : diagnosis.severity === 'WARNING' ? '⚡ **Varning** - Bör åtgärdas snart.' : '✓ Kosmetiskt problem.'}`;
+
+                      results.push({
+                          name: call.name,
+                          result: resultText
+                      });
+                  }
+              } else if (call.name === 'inspectAudio') {
+                  const { zone, userDescription } = call.args;
+
+                  results.push({
+                      name: call.name,
+                      result: 'Audio-inspektion är ännu inte implementerad. För närvarande kan endast bilder analyseras.'
+                  });
               } else {
                   results.push({ name: call.name, result: "Tool executed successfully." });
               }

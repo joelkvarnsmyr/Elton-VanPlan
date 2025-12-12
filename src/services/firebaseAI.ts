@@ -75,6 +75,32 @@ const tools = [{
         optionalProperties: ['category', 'estimatedCost', 'quantity']
       })
     },
+    {
+      name: 'inspectImage',
+      description: 'Du är en expertmekaniker specialiserad på veteranbilar. Analysera bild från användaren för att identifiera komponenter, bedöma skick (rost, sprickor, slitage), och bedöm allvarlighetsgrad. Var pessimistisk gällande rost på bärande delar. Om osäker, föreslå manuell inspektion.',
+      parameters: Schema.object({
+        properties: {
+          zone: Schema.enumString({
+            enum: ['EXTERIOR', 'ENGINE', 'UNDERCARRIAGE', 'INTERIOR'],
+            description: 'Inspection zone: EXTERIOR (karosseri, lack, glas), ENGINE (motor, vätskor, remmar), UNDERCARRIAGE (balkar, avgassystem, bromsrör), INTERIOR (instrument, golv, dörrar)'
+          }),
+          userDescription: Schema.string({ description: 'What the user said about the image/area being inspected' }),
+        }
+      })
+    },
+    {
+      name: 'inspectAudio',
+      description: 'Analysera ljudfil från fordonet (motorljud, klickande, gnisslande). Identifiera avvikelser och bedöm allvarlighetsgrad.',
+      parameters: Schema.object({
+        properties: {
+          zone: Schema.enumString({
+            enum: ['ENGINE', 'UNDERCARRIAGE', 'INTERIOR'],
+            description: 'Sound source zone'
+          }),
+          userDescription: Schema.string({ description: 'What the user said about the sound' }),
+        }
+      })
+    },
   ]
 }];
 
@@ -239,5 +265,107 @@ export const streamChatMessage = async (
   return {
     text: fullText,
     functionCalls
+  };
+};
+
+/**
+ * Analyze an image or audio for vehicle inspection using Gemini 2.5 Flash
+ * This is called when the AI uses inspectImage or inspectAudio tools
+ */
+export const analyzeInspectionEvidence = async (
+  zone: 'EXTERIOR' | 'ENGINE' | 'UNDERCARRIAGE' | 'INTERIOR',
+  userDescription: string,
+  imageBase64?: string,
+  audioBase64?: string
+): Promise<{
+  aiDiagnosis: string;
+  severity: 'COSMETIC' | 'WARNING' | 'CRITICAL';
+  confidence: number;
+  category: typeof zone;
+}> => {
+  const model = getGenerativeModel(ai, {
+    model: 'gemini-2.5-flash',
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 2048,
+    }
+  });
+
+  const inspectorPrompt = `Du är en expertmekaniker specialiserad på veteranbilar.
+
+INSPEKTIONSZON: ${zone}
+
+ANVÄNDARENS BESKRIVNING: ${userDescription}
+
+Analysera ${imageBase64 ? 'bilden' : 'ljudet'} och ge en detaljerad diagnos.
+
+Bedöm:
+1. Vad du ser/hör (identifiera komponenter)
+2. Skick (rost, sprickor, slitage, oljud)
+3. Allvarlighetsgrad (COSMETIC, WARNING, eller CRITICAL)
+4. Hur säker du är (0-100%)
+
+Regler:
+- Var pessimistisk gällande rost på bärande delar (balkar, ramar)
+- CRITICAL = omedelbar säkerhetsrisk eller risk för strukturell skada
+- WARNING = behöver åtgärdas inom närmaste tiden
+- COSMETIC = estetiskt eller mindre problem
+- Om osäker, föreslå manuell inspektion av mekaniker
+
+Svara i JSON-format:
+{
+  "diagnosis": "Detaljerad beskrivning av vad du hittat...",
+  "severity": "COSMETIC|WARNING|CRITICAL",
+  "confidence": 85
+}`;
+
+  const parts: any[] = [{ text: inspectorPrompt }];
+
+  if (imageBase64) {
+    parts.push({
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: imageBase64
+      }
+    });
+  }
+
+  if (audioBase64) {
+    parts.push({
+      inlineData: {
+        mimeType: 'audio/mp3',
+        data: audioBase64
+      }
+    });
+  }
+
+  const result = await model.generateContent(parts);
+  const responseText = result.response.text();
+
+  // Parse JSON response
+  try {
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        aiDiagnosis: parsed.diagnosis || responseText,
+        severity: parsed.severity || 'WARNING',
+        confidence: parsed.confidence || 75,
+        category: zone
+      };
+    }
+  } catch (e) {
+    console.warn('Failed to parse JSON from inspector, using raw text');
+  }
+
+  // Fallback: extract info from text
+  const hasCriticalKeywords = /kritisk|akut|farlig|omedelbar|strukturell|bärande/i.test(responseText);
+  const hasWarningKeywords = /varning|åtgärd|bör|rekommend/i.test(responseText);
+
+  return {
+    aiDiagnosis: responseText,
+    severity: hasCriticalKeywords ? 'CRITICAL' : hasWarningKeywords ? 'WARNING' : 'COSMETIC',
+    confidence: 75,
+    category: zone
   };
 };
