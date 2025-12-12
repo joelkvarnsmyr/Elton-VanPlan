@@ -420,6 +420,184 @@ export const parseTasksFromInput = async (input: string, imageBase64?: string, v
   }
 };
 
+/**
+ * ENHANCED: Parse complete project data from unstructured text/image
+ * Extracts: vehicle data, history events, tasks, shopping items
+ *
+ * This is the "magic import" that can understand natural language like:
+ * "Hittade en Volvo 240 från 1985, VIN YV1..., bytte kamrem igår för 4500 kr,
+ *  behöver fixa rostig schweller och köpa bromsskivor"
+ */
+export const parseEnhancedProjectData = async (
+  input: string,
+  imageBase64?: string
+): Promise<{
+  vehicleData?: Partial<VehicleData>;
+  historyEvents?: Array<{ date?: string; description: string; cost?: number; mileage?: number }>;
+  tasks?: Partial<Task>[];
+  shoppingItems?: Partial<ShoppingItem>[];
+}> => {
+  const ai = await getClient();
+  if (!ai) {
+    return { tasks: [], shoppingItems: [] };
+  }
+
+  const model = getModelName();
+  const parts: any[] = [];
+
+  if (imageBase64) {
+    parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } });
+    parts.push({
+      text: `Analysera denna bild och text. Extrahera:
+1. Fordonsdata (märke, modell, år, VIN, regnr, färg, mätarställning, etc.)
+2. Historik (händelser, service, reparationer, köp/försäljning)
+3. Uppgifter som behöver göras
+4. Inköpsbehov
+
+Text: ${input || 'Ingen text angiven, analysera bara bilden'}`
+    });
+  } else {
+    parts.push({
+      text: `Analysera följande text och extrahera:
+1. Fordonsdata (märke, modell, år, VIN, regnr, färg, mätarställning, etc.)
+2. Historik (händelser, service, reparationer, köp/försäljning, modifieringar)
+3. Uppgifter som behöver göras
+4. Inköpsbehov
+
+Text:
+${input}`
+    });
+  }
+
+  // Enhanced schema with vehicle data and history
+  const outputSchema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+      vehicleData: {
+        type: Type.OBJECT,
+        description: 'Fordonsdata som nämns i texten',
+        properties: {
+          make: { type: Type.STRING, description: 'Märke (t.ex. Volvo, BMW)' },
+          model: { type: Type.STRING, description: 'Modell (t.ex. 240, E30)' },
+          year: { type: Type.NUMBER, description: 'Årsmodell' },
+          vin: { type: Type.STRING, description: 'Chassinummer (VIN)' },
+          regNo: { type: Type.STRING, description: 'Registreringsnummer' },
+          color: { type: Type.STRING, description: 'Färg' },
+          bodyType: { type: Type.STRING, description: 'Karosstyp (Sedan, Kombi, etc.)' },
+          mileage: { type: Type.NUMBER, description: 'Mätarställning i km' },
+          prodYear: { type: Type.NUMBER, description: 'Tillverkningsår' },
+          regDate: { type: Type.STRING, description: 'Första registrering (YYYY-MM-DD)' }
+        }
+      },
+      historyEvents: {
+        type: Type.ARRAY,
+        description: 'Historiska händelser (service, reparationer, köp, modifieringar)',
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            date: { type: Type.STRING, description: 'Datum (YYYY-MM-DD) eller relativ tid (igår, förra veckan)' },
+            description: { type: Type.STRING, description: 'Vad som hände' },
+            cost: { type: Type.NUMBER, description: 'Kostnad i SEK (om nämnt)' },
+            mileage: { type: Type.NUMBER, description: 'Mätarställning vid händelse (om nämnt)' }
+          },
+          required: ['description']
+        }
+      },
+      tasks: {
+        type: Type.ARRAY,
+        description: 'Uppgifter som behöver göras',
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            description: { type: Type.STRING },
+            estimatedCostMin: { type: Type.NUMBER },
+            estimatedCostMax: { type: Type.NUMBER },
+            weightKg: { type: Type.NUMBER },
+            costType: { type: Type.STRING, enum: [CostType.INVESTMENT, CostType.OPERATION] },
+            phase: { type: Type.STRING, enum: ALL_PHASES },
+            priority: { type: Type.STRING, enum: Object.values(Priority) },
+            subtasks: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: { title: { type: Type.STRING } }
+              }
+            },
+            tags: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["title", "description", "estimatedCostMin", "phase"]
+        }
+      },
+      shoppingItems: {
+        type: Type.ARRAY,
+        description: 'Inköpsbehov',
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            category: { type: Type.STRING, enum: ['Reservdelar', 'Kemi & Färg', 'Verktyg', 'Inredning', 'Övrigt'] },
+            estimatedCost: { type: Type.NUMBER },
+            quantity: { type: Type.STRING }
+          },
+          required: ["name", "estimatedCost"]
+        }
+      }
+    }
+  };
+
+  try {
+    const modelInstance = ai.getGenerativeModel({
+      model: model,
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: outputSchema
+      },
+      systemInstruction: `Du är en expert på att extrahera strukturerad projektdata från naturlig text.
+
+VIKTIGT:
+- Extrahera ENDAST information som FAKTISKT nämns i texten
+- Gissa INTE eller hitta på data
+- Lämna fält tomma om information saknas
+- För datum: använd YYYY-MM-DD format om exakt datum finns, annars beskriv relativt (t.ex. "igår", "förra veckan")
+- För historik: inkludera allt som har hänt (service, reparationer, köp, modifieringar, etc.)
+- För uppgifter: inkludera allt som behöver göras i framtiden
+- För inköp: inkludera allt som behöver köpas
+
+Exempel historik:
+- "Bytte kamrem igår för 4500 kr" → { date: "igår", description: "Bytte kamrem", cost: 4500 }
+- "Köpt bilen för 3 år sedan" → { date: "3 år sedan", description: "Köpte bilen" }
+- "Senaste service vid 120000 km" → { description: "Service", mileage: 120000 }`,
+    });
+
+    const result = await modelInstance.generateContent({ contents: [{ parts }] });
+    const jsonText = result.response.text();
+
+    if (!jsonText) {
+      return { tasks: [], shoppingItems: [] };
+    }
+
+    const resultData = JSON.parse(jsonText);
+
+    // Clean up vehicle data (remove empty values)
+    const vehicleData = resultData.vehicleData ?
+      Object.fromEntries(
+        Object.entries(resultData.vehicleData).filter(([_, v]) => v != null && v !== '')
+      ) : undefined;
+
+    return {
+      vehicleData: Object.keys(vehicleData || {}).length > 0 ? vehicleData as Partial<VehicleData> : undefined,
+      historyEvents: resultData.historyEvents || [],
+      tasks: resultData.tasks || [],
+      shoppingItems: resultData.shoppingItems || []
+    };
+
+  } catch (error) {
+    console.error("Enhanced Project Data Parse Error:", error);
+    return { tasks: [], shoppingItems: [] };
+  }
+};
+
 // --- NANO BANANA (ICON GENERATION) ---
 
 /**
