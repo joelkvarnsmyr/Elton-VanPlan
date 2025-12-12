@@ -9,6 +9,31 @@ import { Send, User, Trash2, Car, Video, ArrowLeft, Image as ImageIcon, X, Alert
 import { Task, ShoppingItem, VehicleData, Project, Contact } from '@/types/types';
 import { LiveElton } from './LiveElton';
 
+// Helper: Calculate string similarity (Levenshtein distance normalized to 0-1)
+function levenshteinSimilarity(str1: string, str2: string): number {
+    const len1 = str1.length;
+    const len2 = str2.length;
+    const matrix: number[][] = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(0));
+
+    for (let i = 0; i <= len1; i++) matrix[i][0] = i;
+    for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= len1; i++) {
+        for (let j = 1; j <= len2; j++) {
+            const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,      // deletion
+                matrix[i][j - 1] + 1,      // insertion
+                matrix[i - 1][j - 1] + cost // substitution
+            );
+        }
+    }
+
+    const distance = matrix[len1][len2];
+    const maxLen = Math.max(len1, len2);
+    return maxLen === 0 ? 1 : 1 - (distance / maxLen);
+}
+
 interface AIAssistantProps {
     project: Project; // Changed: Now takes full project for complete context
     contacts?: Contact[]; // Optional contacts for local recommendations
@@ -227,6 +252,59 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                       name: call.name,
                       result: `Updated vehicle data: ${field} = "${value}". Reason: ${reason}`
                   });
+              } else if (call.name === 'searchSimilarTasks') {
+                  const { proposedTitle, proposedDescription } = call.args;
+                  const searchTerms = `${proposedTitle} ${proposedDescription}`.toLowerCase();
+
+                  // Find similar tasks
+                  const similarTasks = project.tasks.filter(t => {
+                      const taskText = `${t.title} ${t.description || ''}`.toLowerCase();
+                      // Simple similarity: check if any significant words overlap
+                      const proposedWords = searchTerms.split(/\s+/).filter(w => w.length > 3);
+                      const matches = proposedWords.filter(word => taskText.includes(word));
+                      return matches.length >= 2; // At least 2 significant word matches
+                  });
+
+                  if (similarTasks.length > 0) {
+                      const taskList = similarTasks.map(t => `- "${t.title}" (Status: ${t.status})`).join('\n');
+                      results.push({
+                          name: call.name,
+                          result: `Found ${similarTasks.length} similar task(s):\n${taskList}\n\nConsider updating existing task instead of creating duplicate.`
+                      });
+                  } else {
+                      results.push({
+                          name: call.name,
+                          result: 'No similar tasks found. Safe to add new task.'
+                      });
+                  }
+              } else if (call.name === 'searchSimilarShoppingItems') {
+                  const { proposedName, proposedCategory } = call.args;
+                  const searchText = proposedName.toLowerCase();
+
+                  // Find similar shopping items
+                  const similarItems = project.shoppingItems.filter(item => {
+                      const itemName = item.name.toLowerCase();
+                      const categoryMatch = item.category === proposedCategory;
+                      // Check for partial name match or very similar names
+                      const nameMatch = itemName.includes(searchText) || searchText.includes(itemName) ||
+                                       levenshteinSimilarity(itemName, searchText) > 0.6;
+                      return categoryMatch && nameMatch;
+                  });
+
+                  if (similarItems.length > 0) {
+                      const itemList = similarItems.map(i =>
+                          `- "${i.name}" (${i.checked ? 'Köpt' : 'Att köpa'}${i.store ? ` från ${i.store}` : ''})`
+                      ).join('\n');
+                      results.push({
+                          name: call.name,
+                          result: `Found ${similarItems.length} similar item(s):\n${itemList}\n\nConsider updating existing item or adding as vendor option instead.`
+                      });
+                  } else {
+                      results.push({
+                          name: call.name,
+                          result: 'No similar shopping items found. Safe to add new item.'
+                      });
+                  }
               } else {
                   results.push({ name: call.name, result: "Tool executed successfully." });
               }

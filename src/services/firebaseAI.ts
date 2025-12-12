@@ -86,6 +86,26 @@ const tools = [{
         }
       })
     },
+    {
+      name: 'searchSimilarTasks',
+      description: 'Search for existing tasks similar to a proposed new task to avoid duplicates. ALWAYS use this before adding a new task.',
+      parameters: Schema.object({
+        properties: {
+          proposedTitle: Schema.string({ description: 'Title of the task you want to add' }),
+          proposedDescription: Schema.string({ description: 'Description of the task you want to add' }),
+        }
+      })
+    },
+    {
+      name: 'searchSimilarShoppingItems',
+      description: 'Search for existing shopping items similar to a proposed new item to avoid duplicates. ALWAYS use this before adding to shopping list.',
+      parameters: Schema.object({
+        properties: {
+          proposedName: Schema.string({ description: 'Name of the item you want to add' }),
+          proposedCategory: Schema.string({ description: 'Category of the item' }),
+        }
+      })
+    },
   ]
 }];
 
