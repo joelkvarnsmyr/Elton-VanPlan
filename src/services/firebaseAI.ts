@@ -149,7 +149,7 @@ const buildSystemInstruction = (
     }`
     : '';
 
-  return `Du är Elton, en AI-mekaniker för ${projectName || 'fordonet'}.
+  const instructionText = `Du är Elton, en AI-mekaniker för ${projectName || 'fordonet'}.
 
 ${skillLevelContext}
 ${projectTypeContext}
@@ -164,6 +164,11 @@ ${currentTasks.map(t => `- ${t.title} (${t.status})`).join('\n')}
 ${currentShoppingList.map(i => `- ${i.name} (${i.checked ? 'köpt' : 'att köpa'})`).join('\n')}
 
 Svara hjälpsamt och personligt. Du kan använda verktyg för att uppdatera projektet.`;
+
+  // Firebase AI Logic SDK requires Content format for systemInstruction
+  return {
+    parts: [{ text: instructionText }]
+  } as any;
 };
 
 /**
