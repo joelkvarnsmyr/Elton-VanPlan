@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { streamChatMessage, analyzeInspectionEvidence } from '@/services/firebaseAI';
-import { getChatHistory, saveChatHistory, clearChatHistory, ChatMessage } from '@/services/db';
+import { getChatHistory, saveChatHistory, clearChatHistory, ChatMessage, addInspectionFinding, updateInspectionFinding } from '@/services/db';
 import { uploadChatImage, uploadInspectionImage, uploadInspectionAudio } from '@/services/storage';
 import { buildAIContext, getProjectStats } from '@/services/projectExportService';
 import { Send, User, Trash2, Car, Video, ArrowLeft, Image as ImageIcon, X, AlertCircle, Camera, Mic, Scan } from 'lucide-react';
@@ -509,6 +509,21 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                           undefined
                       );
 
+                      // Save inspection finding to database
+                      let savedFinding: InspectionFinding | null = null;
+                      try {
+                          savedFinding = await addInspectionFinding(project.id, {
+                              imageUrl: recentImageMsg.imageUrl,
+                              date: new Date().toISOString(),
+                              category: zone,
+                              aiDiagnosis: diagnosis.aiDiagnosis,
+                              severity: diagnosis.severity,
+                              confidence: diagnosis.confidence
+                          });
+                      } catch (error) {
+                          console.error('Failed to save inspection finding:', error);
+                      }
+
                       // Auto-create task for CRITICAL findings
                       let taskCreated = false;
                       if (diagnosis.severity === 'CRITICAL' && onAddTask) {
@@ -532,6 +547,17 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                           };
                           onAddTask([criticalTask]);
                           taskCreated = true;
+
+                          // Link inspection finding to created task
+                          if (savedFinding) {
+                              try {
+                                  await updateInspectionFinding(project.id, savedFinding.id, {
+                                      convertedToTaskId: criticalTask.id
+                                  });
+                              } catch (error) {
+                                  console.error('Failed to link finding to task:', error);
+                              }
+                          }
                       }
 
                       const resultText = `### Elton Inspector - Analys Resultat

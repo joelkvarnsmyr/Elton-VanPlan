@@ -538,6 +538,33 @@ export const updateVehicleData = async (projectId: string, data: Partial<Vehicle
   }
 };
 
+// --- INSPECTION FINDINGS ---
+
+export const addInspectionFinding = async (projectId: string, finding: Omit<InspectionFinding, 'id'>) => {
+    const docRef = await addDoc(getInspectionsRef(projectId), {
+        ...finding,
+        projectId,
+        date: finding.date || new Date().toISOString()
+    });
+    await updateDoc(docRef, { id: docRef.id });
+    return { ...finding, id: docRef.id, projectId } as InspectionFinding;
+};
+
+export const getInspectionFindings = async (projectId: string): Promise<InspectionFinding[]> => {
+    const snapshot = await getDocs(getInspectionsRef(projectId));
+    return snapshot.docs.map(doc => doc.data() as InspectionFinding);
+};
+
+export const updateInspectionFinding = async (projectId: string, findingId: string, updates: Partial<InspectionFinding>) => {
+    const findingRef = doc(getInspectionsRef(projectId), findingId);
+    await updateDoc(findingRef, updates);
+};
+
+export const deleteInspectionFinding = async (projectId: string, findingId: string) => {
+    const findingRef = doc(getInspectionsRef(projectId), findingId);
+    await deleteDoc(findingRef);
+};
+
 // --- CO-WORKING ---
 
 export const inviteUserToProject = async (projectId: string, email: string) => {
