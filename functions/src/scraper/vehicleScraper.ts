@@ -678,7 +678,8 @@ export const scrapeVehicleData = onCall(
     {
         region: 'europe-west1',
         timeoutSeconds: 30,
-        memory: '256MiB'
+        memory: '256MiB',
+        cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
     },
     async (request): Promise<ScrapeResult> => {
 

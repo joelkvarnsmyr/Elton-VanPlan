@@ -149,7 +149,8 @@ exports.aiChat = (0, https_1.onCall)({
     region: 'europe-west1',
     maxInstances: 10,
     timeoutSeconds: 120,
-    memory: '512MiB'
+    memory: '512MiB',
+    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
 }, async (request) => {
     // Verify authentication
     if (!request.auth) {
@@ -222,7 +223,8 @@ exports.aiParse = (0, https_1.onCall)({
     region: 'europe-west1',
     maxInstances: 10,
     timeoutSeconds: 60,
-    memory: '256MiB'
+    memory: '256MiB',
+    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be authenticated');
@@ -316,7 +318,8 @@ exports.aiDeepResearch = (0, https_1.onCall)({
     region: 'europe-west1',
     maxInstances: 5,
     timeoutSeconds: 180,
-    memory: '1GiB'
+    memory: '1GiB',
+    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be authenticated');
@@ -460,7 +463,8 @@ exports.aiToolResponse = (0, https_1.onCall)({
     region: 'europe-west1',
     maxInstances: 10,
     timeoutSeconds: 60,
-    memory: '256MiB'
+    memory: '256MiB',
+    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be authenticated');

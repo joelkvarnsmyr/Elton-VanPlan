@@ -611,7 +611,8 @@ async function setCachedVehicleData(regNo, vehicleData, source) {
 exports.scrapeVehicleData = (0, https_1.onCall)({
     region: 'europe-west1',
     timeoutSeconds: 30,
-    memory: '256MiB'
+    memory: '256MiB',
+    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
 }, async (request) => {
     // Validera input
     const regNo = request.data?.regNo;

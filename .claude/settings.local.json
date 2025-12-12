@@ -36,7 +36,8 @@
       "Bash(firebase help:*)",
       "Bash(git pull:*)",
       "Bash(git checkout:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(firebase firestore:indexes:*)"
     ]
   }
 }

@@ -186,7 +186,8 @@ export const aiChat = onCall(
     region: 'europe-west1',
     maxInstances: 10,
     timeoutSeconds: 120,
-    memory: '512MiB'
+    memory: '512MiB',
+    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
   },
   async (request: CallableRequest<ChatRequest>) => {
     // Verify authentication
@@ -273,7 +274,8 @@ export const aiParse = onCall(
     region: 'europe-west1',
     maxInstances: 10,
     timeoutSeconds: 60,
-    memory: '256MiB'
+    memory: '256MiB',
+    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
   },
   async (request: CallableRequest<ParseRequest>) => {
     if (!request.auth) {
@@ -380,7 +382,8 @@ export const aiDeepResearch = onCall(
     region: 'europe-west1',
     maxInstances: 5,
     timeoutSeconds: 180,
-    memory: '1GiB'
+    memory: '1GiB',
+    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
   },
   async (request: CallableRequest<DeepResearchRequest>) => {
     if (!request.auth) {
@@ -554,7 +557,8 @@ export const aiToolResponse = onCall(
     region: 'europe-west1',
     maxInstances: 10,
     timeoutSeconds: 60,
-    memory: '256MiB'
+    memory: '256MiB',
+    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
   },
   async (request: CallableRequest<{
     history: ChatMessage[];
