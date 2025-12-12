@@ -509,6 +509,31 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                           undefined
                       );
 
+                      // Auto-create task for CRITICAL findings
+                      let taskCreated = false;
+                      if (diagnosis.severity === 'CRITICAL' && onAddTask) {
+                          const criticalTask: Task = {
+                              id: `insp-${Date.now()}`,
+                              title: `🚨 KRITISKT: ${zone} - ${userDescription.slice(0, 50)}`,
+                              description: `**Elton Inspector Fynd**\n\n${diagnosis.aiDiagnosis}\n\n**Zon:** ${diagnosis.category}\n**Confidence:** ${diagnosis.confidence}%\n**Inspektionsbild:** Se chatthistorik`,
+                              status: TaskStatus.TODO,
+                              phase: zone === 'ENGINE' ? MechanicalPhase.P1_ENGINE :
+                                     zone === 'UNDERCARRIAGE' ? MechanicalPhase.P2_RUST :
+                                     zone === 'EXTERIOR' ? MechanicalPhase.P2_RUST :
+                                     MechanicalPhase.P3_FUTURE,
+                              priority: Priority.HIGH,
+                              type: TaskType.REPAIR,
+                              costType: CostType.VARIABLE,
+                              estimatedHoursMin: 2,
+                              estimatedHoursMax: 8,
+                              estimatedCostMin: 1000,
+                              estimatedCostMax: 5000,
+                              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 week from now
+                          };
+                          onAddTask([criticalTask]);
+                          taskCreated = true;
+                      }
+
                       const resultText = `### Elton Inspector - Analys Resultat
 
 **Zon:** ${diagnosis.category}
@@ -518,7 +543,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
 **Diagnos:**
 ${diagnosis.aiDiagnosis}
 
-${diagnosis.severity === 'CRITICAL' ? '⚠️ **KRITISKT** - Överväg att skapa en uppgift omedelbart!' : diagnosis.severity === 'WARNING' ? '⚡ **Varning** - Bör åtgärdas snart.' : '✓ Kosmetiskt problem.'}`;
+${diagnosis.severity === 'CRITICAL' ? `⚠️ **KRITISKT** - ${taskCreated ? 'Uppgift skapad automatiskt!' : 'Överväg att skapa en uppgift omedelbart!'}` : diagnosis.severity === 'WARNING' ? '⚡ **Varning** - Bör åtgärdas snart. Vill du att jag ska skapa en uppgift?' : '✓ Kosmetiskt problem.'}`;
 
                       results.push({
                           name: call.name,

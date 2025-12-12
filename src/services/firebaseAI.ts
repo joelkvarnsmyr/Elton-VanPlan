@@ -298,30 +298,132 @@ export const analyzeInspectionEvidence = async (
     }
   });
 
-  const inspectorPrompt = `Du är en expertmekaniker specialiserad på veteranbilar.
+  // Zone-specific checklists
+  const zoneChecklists = {
+    EXTERIOR: `
+ELTON INSPECTOR - ZONE 1: EXTERIOR ("Skalet")
+==============================================
 
-INSPEKTIONSZON: ${zone}
+CHECKLIST:
+□ Glas (vindrutor, sidorutor, bakruta - sprickor, repor)
+□ Gummilister (dörrar, fönster - spruckna, hårdnade)
+□ Lack (färgskikt - flagning, blåsor, nedbrytning)
+□ Rostfällor:
+  - Hjulhus (framsida, baksida)
+  - Fotsteg/trösklar (bärande del!)
+  - Dörrkanter (underkant)
+  - Motorhuv/baklucka (kanter)
+
+ESKALERINGSLOGIK:
+- Level 1 (Look): Syns bubblor eller missfärgning? → Gå till Level 2
+- Level 2 (Poke): "Poka försiktigt med skruvmejsel" → Går det igenom? → CRITICAL
+- Level 3 (Disassemble): "Ta bort lista/panel för djupare inspektion"`,
+
+    ENGINE: `
+ELTON INSPECTOR - ZONE 2: ENGINE ("Hjärtat")
+==============================================
+
+CHECKLIST:
+□ Vätskor:
+  - Motorolja (nivå, färg, konsistens)
+  - Kylvätska (nivå, färg, läckage)
+  - "Majonnäs-koll" (vit sörja = vatten i olja = packning!)
+□ Mekanisk hälsa:
+  - Kamremmar/V-remmar (sprickor, slitage)
+  - Slangar (sprickor, svullnad, läckage)
+  - Tändstift/kablar
+□ Elmotorer:
+  - Torkarmotorer (funktion)
+  - Fläktar (funktion, oljud)
+
+ESKALERINGSLOGIK:
+- Level 1 (Listen): Hör du tickande/gnisslande vid olika varvtal?
+- Level 2 (Measure): "Följer ljudet motorvarvtal?" → Ja = ventiljustering
+- Level 3 (Disassemble): "Ta av ventilkåpan för visuell inspektion"`,
+
+    UNDERCARRIAGE: `
+ELTON INSPECTOR - ZONE 3: UNDERCARRIAGE ("Skelettet")
+=======================================================
+
+CHECKLIST:
+□ Balkar (längsgående, tvärbalkar - ROST = KRITISKT!)
+□ Avgassystem:
+  - Grenrör (sprickor, läckage)
+  - Katalysator (bulor, läckage)
+  - Dämpare/ljuddämpare (rostangrepp, hål)
+□ Bromsrör (rost, läckage)
+□ Fjädring (bussningar, stötdämpare)
+
+ESKALERINGSLOGIK:
+- Level 1 (Look): Syns rost på balk? → Gå till Level 2
+- Level 2 (Poke): "Poka med mejsel" → Knastar/går igenom? → CRITICAL
+- Level 3 (Professional): "Detta kräver lyft och professionell bedömning"`,
+
+    INTERIOR: `
+ELTON INSPECTOR - ZONE 4: INTERIOR ("Kontoret")
+================================================
+
+CHECKLIST:
+□ Instrument:
+  - Mätare (fungerar alla?)
+  - Varningslampor (tänds/släcks korrekt?)
+  - Reglage (värme, ventilation)
+□ Golv:
+  - Mattor/golvbrunnар (fukt = läckage eller rost!)
+  - Pedalgummі (slitage)
+□ Dörrar:
+  - Tätningslister (spruckna?)
+  - Lås/handtag (funktion)
+  - Högtalare (funktion)
+
+ESKALERINGSLOGIK:
+- Level 1 (Look): Ser du fläckar eller fukt?
+- Level 2 (Touch): "Känn på golvet under mattor" → Blött? → Hitta läckage!
+- Level 3 (Trace): "Spåra läckaget (gummilister, tätningar, rostangrepр)"`
+  };
+
+  const zoneChecklist = zoneChecklists[zone];
+
+  const inspectorPrompt = `Du är en expertmekaniker specialiserad på veteranbilar, särskilt från 60-80-talet.
+
+${zoneChecklist}
 
 ANVÄNDARENS BESKRIVNING: ${userDescription}
 
-Analysera ${imageBase64 ? 'bilden' : 'ljudet'} och ge en detaljerad diagnos.
+Analysera ${imageBase64 ? 'bilden' : 'ljudet'} med hjälp av checklistorna ovan.
 
-Bedöm:
-1. Vad du ser/hör (identifiera komponenter)
-2. Skick (rost, sprickor, slitage, oljud)
-3. Allvarlighetsgrad (COSMETIC, WARNING, eller CRITICAL)
-4. Hur säker du är (0-100%)
+ANALYSPROCESS:
+1. Identifiera vad användaren visar (komponent, område)
+2. Jämför mot checklist - vad ser/hörs du?
+3. Bedöm allvarlighetsgrad (se regler nedan)
+4. Föreslå eskalering om nödvändigt (Level 1→2→3)
+5. Rekommendera åtgärd
 
-Regler:
-- Var pessimistisk gällande rost på bärande delar (balkar, ramar)
-- CRITICAL = omedelbar säkerhetsrisk eller risk för strukturell skada
-- WARNING = behöver åtgärdas inom närmaste tiden
-- COSMETIC = estetiskt eller mindre problem
-- Om osäker, föreslå manuell inspektion av mekaniker
+ALLVARLIGHETSGRADER:
+- CRITICAL = Säkerhetsrisk ELLER bärande del ELLER riskerar stopp
+  * Rost på balkar, ramar, fästen
+  * Broms-/styrningsfel
+  * Allvarligt motorproblem
+
+- WARNING = Behöver åtgärdas snart, blir värre med tiden
+  * Mindre rostangrepp (ej bärande)
+  * Slitage som påverkar funktion
+  * Läckage (olja, kylvätska)
+
+- COSMETIC = Estetiskt eller mycket mindre problem
+  * Ytlig lackskada
+  * Mindre repor
+  * Slitagemärken som ej påverkar funktion
+
+REGLER:
+- Var PESSIMISTISK gällande rost på bärande delar
+- Vid osäkerhet → föreslå nästa nivå (Level 2 eller 3)
+- Referera till årsmodellspecifika problem om möjligt
+- Ge konkreta nästa-steg åtgärder
 
 Svara i JSON-format:
 {
-  "diagnosis": "Detaljerad beskrivning av vad du hittat...",
+  "diagnosis": "Detaljerad beskrivning...\n\n**Nästa steg:** [konkret åtgärd eller uppföljningsfråga]",
   "severity": "COSMETIC|WARNING|CRITICAL",
   "confidence": 85
 }`;
