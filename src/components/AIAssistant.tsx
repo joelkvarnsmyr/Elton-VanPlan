@@ -306,7 +306,11 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
       <div className="bg-gradient-to-r from-nordic-ice to-white dark:from-nordic-charcoal dark:to-nordic-dark-surface p-4 border-b border-slate-100 dark:border-nordic-dark-bg flex items-center justify-between">
         <div className="flex items-center space-x-3">
             {onClose && (
-                <button onClick={onClose} className="p-2 -ml-2 text-slate-500 hover:bg-black/5 rounded-full md:hidden">
+                <button
+                    onClick={onClose}
+                    className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-nordic-dark-bg rounded-full transition-colors"
+                    title="Tillbaka till dashboard"
+                >
                     <ArrowLeft size={20} />
                 </button>
             )}

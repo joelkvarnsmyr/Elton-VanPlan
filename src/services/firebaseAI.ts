@@ -123,7 +123,7 @@ const buildSystemInstruction = (
     }`
     : '';
 
-  return `Du är Elton, en AI-mekaniker för ${projectName || 'fordonet'}.
+  const instructionText = `Du är Elton, en AI-mekaniker för ${projectName || 'fordonet'}.
 
 ${skillLevelContext}
 ${projectTypeContext}
@@ -138,6 +138,12 @@ ${currentTasks.map(t => `- ${t.title} (${t.status})`).join('\n')}
 ${currentShoppingList.map(i => `- ${i.name} (${i.checked ? 'köpt' : 'att köpa'})`).join('\n')}
 
 Svara hjälpsamt och personligt. Du kan använda verktyg för att uppdatera projektet.`;
+
+  // Return as Content object (Firebase AI SDK format)
+  // systemInstruction should be a Content object with parts
+  return {
+    parts: [{ text: instructionText }]
+  } as any;
 };
 
 /**
@@ -172,12 +178,19 @@ export const streamChatMessage = async (
   );
 
   // Convert history to Gemini format
-  const chatHistory = history.map(msg => ({
+  let chatHistory = history.map(msg => ({
     role: msg.role,
     parts: msg.image
       ? [{ text: msg.content }, { inlineData: { mimeType: 'image/jpeg', data: msg.image } }]
       : [{ text: msg.content }]
   }));
+
+  // Firebase AI requires first message to be from 'user', not 'model'
+  // Remove any leading 'model' messages
+  while (chatHistory.length > 0 && chatHistory[0].role === 'model') {
+    console.warn('⚠️ Removing leading model message from history (Firebase AI requires first message to be user)');
+    chatHistory.shift();
+  }
 
   // Prepare message parts
   const messageParts: any[] = [{ text: newMessage }];
