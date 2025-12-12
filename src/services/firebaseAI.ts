@@ -18,8 +18,7 @@
 
 import { app } from './firebase';
 import { getAI, getGenerativeModel, GoogleAIBackend, Schema } from 'firebase/ai';
-import type { Task, ShoppingItem, VehicleData, ProjectType, InspectionFinding } from '@/types/types';
-import { v4 as uuidv4 } from 'uuid';
+import type { Task, ShoppingItem, VehicleData, ProjectType } from '@/types/types';
 
 // Initialize Firebase AI Logic with Google AI backend
 const ai = getAI(app, { backend: new GoogleAIBackend() });
@@ -76,86 +75,6 @@ const tools = [{
         optionalProperties: ['category', 'estimatedCost', 'quantity']
       })
     },
-    {
-      name: 'updateVehicleData',
-      description: 'Update vehicle specifications and technical data when learning new information about the vehicle',
-      parameters: Schema.object({
-        properties: {
-          field: Schema.string({ description: 'The field to update (e.g., "make", "model", "year", "engine.power", "maintenance.oilType")' }),
-          value: Schema.string({ description: 'The new value for the field' }),
-          reason: Schema.string({ description: 'Why this update is being made' }),
-        }
-      })
-    },
-    {
-      name: 'searchSimilarTasks',
-      description: 'Search for existing tasks similar to a proposed new task to avoid duplicates. ALWAYS use this before adding a new task.',
-      parameters: Schema.object({
-        properties: {
-          proposedTitle: Schema.string({ description: 'Title of the task you want to add' }),
-          proposedDescription: Schema.string({ description: 'Description of the task you want to add' }),
-        }
-      })
-    },
-    {
-      name: 'searchSimilarShoppingItems',
-      description: 'Search for existing shopping items similar to a proposed new item to avoid duplicates. ALWAYS use this before adding to shopping list.',
-      parameters: Schema.object({
-        properties: {
-          proposedName: Schema.string({ description: 'Name of the item you want to add' }),
-          proposedCategory: Schema.string({ description: 'Category of the item' }),
-        }
-      })
-    },
-    {
-      name: 'addKnowledgeArticle',
-      description: 'Add a knowledge base article with technical information, tips, or documentation about the vehicle',
-      parameters: Schema.object({
-        properties: {
-          title: Schema.string({ description: 'Article title' }),
-          summary: Schema.string({ description: 'Brief summary' }),
-          content: Schema.string({ description: 'Full article content in markdown format' }),
-          tags: Schema.string({ description: 'Comma-separated tags (e.g., "Motor,Bromsar,Elinstallation")' }),
-        },
-        optionalProperties: ['tags']
-      })
-    },
-    {
-      name: 'addServiceLog',
-      description: 'Log a service or maintenance event for the vehicle history',
-      parameters: Schema.object({
-        properties: {
-          date: Schema.string({ description: 'Date of service (YYYY-MM-DD)' }),
-          description: Schema.string({ description: 'What was done' }),
-          mileage: Schema.string({ description: 'Mileage at service' }),
-          performer: Schema.string({ description: 'Who performed the service' }),
-          type: Schema.string({ description: 'Service, Reparation, Besiktning, or Övrigt' }),
-        }
-      })
-    },
-    {
-      name: 'addHistoryEvent',
-      description: 'Add a general history event (modification, upgrade, incident, etc.)',
-      parameters: Schema.object({
-        properties: {
-          date: Schema.string({ description: 'Date (YYYY-MM-DD)' }),
-          description: Schema.string({ description: 'Event description' }),
-          cost: Schema.number({ description: 'Cost in SEK if applicable' }),
-          mileage: Schema.string({ description: 'Mileage if known' }),
-        },
-        optionalProperties: ['cost', 'mileage']
-      })
-    },
-    {
-      name: 'updateProjectMetadata',
-      description: 'Update project name or nickname (vehicle personality name)',
-      parameters: Schema.object({
-        properties: {
-          field: Schema.string({ description: '"name" or "nickname"' }),
-          value: Schema.string({ description: 'New value' }),
-        }
-      })
-    },
   ]
 }];
 
@@ -173,48 +92,6 @@ export const getChatModel = () => {
       maxOutputTokens: 8192,
     }
   });
-};
-
-/**
- * Inspector MVP: analyze inspection evidence (stubbed heuristic)
- * Returns an InspectionFinding based on provided zone and media.
- * This is a placeholder until full multimodal analysis is wired.
- */
-export const analyzeInspectionEvidence = async (
-  projectId: string,
-  zone: 'EXTERIOR' | 'ENGINE' | 'UNDERCARRIAGE' | 'INTERIOR',
-  opts: { imageUrl?: string; audioUrl?: string }
-): Promise<InspectionFinding> => {
-  // Simple heuristic for MVP
-  let aiDiagnosis = 'Visuell kontroll utförd. Inga tydliga avvikelser upptäckta.';
-  let severity: InspectionFinding['severity'] = 'COSMETIC';
-  let confidence = 75;
-
-  if (zone === 'UNDERCARRIAGE' && opts.imageUrl) {
-    aiDiagnosis = 'Möjlig rostangrepp på bärande balk. Manuell kontroll rekommenderas.';
-    severity = 'CRITICAL';
-    confidence = 88;
-  } else if (zone === 'ENGINE' && opts.audioUrl) {
-    aiDiagnosis = 'Tickande ljud registrerat, verkar följa varvtal. Ventiljustering kan behövas.';
-    severity = 'WARNING';
-    confidence = 82;
-  } else if (zone === 'EXTERIOR' && opts.imageUrl) {
-    aiDiagnosis = 'Ytrost/bubblor i lack identifierade. Rekommenderad åtgärd: slipa, rostskydd, omlack.';
-    severity = 'WARNING';
-    confidence = 78;
-  }
-
-  return {
-    id: uuidv4(),
-    projectId,
-    imageUrl: opts.imageUrl,
-    audioUrl: opts.audioUrl,
-    date: new Date().toISOString(),
-    category: zone,
-    aiDiagnosis,
-    severity,
-    confidence,
-  };
 };
 
 /**
@@ -246,7 +123,7 @@ const buildSystemInstruction = (
     }`
     : '';
 
-  const instructionText = `Du är Elton, en AI-mekaniker för ${projectName || 'fordonet'}.
+  return `Du är Elton, en AI-mekaniker för ${projectName || 'fordonet'}.
 
 ${skillLevelContext}
 ${projectTypeContext}
@@ -261,12 +138,6 @@ ${currentTasks.map(t => `- ${t.title} (${t.status})`).join('\n')}
 ${currentShoppingList.map(i => `- ${i.name} (${i.checked ? 'köpt' : 'att köpa'})`).join('\n')}
 
 Svara hjälpsamt och personligt. Du kan använda verktyg för att uppdatera projektet.`;
-
-  // Return as Content object (Firebase AI SDK format)
-  // systemInstruction should be a Content object with parts
-  return {
-    parts: [{ text: instructionText }]
-  } as any;
 };
 
 /**
@@ -301,19 +172,12 @@ export const streamChatMessage = async (
   );
 
   // Convert history to Gemini format
-  let chatHistory = history.map(msg => ({
+  const chatHistory = history.map(msg => ({
     role: msg.role,
     parts: msg.image
       ? [{ text: msg.content }, { inlineData: { mimeType: 'image/jpeg', data: msg.image } }]
       : [{ text: msg.content }]
   }));
-
-  // Firebase AI requires first message to be from 'user', not 'model'
-  // Remove any leading 'model' messages
-  while (chatHistory.length > 0 && chatHistory[0].role === 'model') {
-    console.warn('⚠️ Removing leading model message from history (Firebase AI requires first message to be user)');
-    chatHistory.shift();
-  }
 
   // Prepare message parts
   const messageParts: any[] = [{ text: newMessage }];
@@ -357,19 +221,10 @@ export const streamChatMessage = async (
   if (functionCalls.length > 0) {
     const toolResults = await onToolCall(functionCalls);
 
-    // Convert tool results to Firebase AI format
-    // Firebase expects { name, response: {...} } not { name, result }
-    const functionResponses = toolResults.map(tr => ({
-      functionResponse: {
-        name: tr.name,
-        response: {
-          content: tr.result  // Wrap the result string in an object
-        }
-      }
-    }));
-
     // Send tool responses back
-    const followUpResult = await chat.sendMessageStream(functionResponses);
+    const followUpResult = await chat.sendMessageStream([
+      { functionResponse: toolResults[0] }
+    ]);
 
     // Stream follow-up response
     for await (const chunk of followUpResult.stream) {
