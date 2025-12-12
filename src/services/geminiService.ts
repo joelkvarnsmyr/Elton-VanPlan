@@ -13,11 +13,11 @@ import { Task, TaskStatus, ProjectType, PROJECT_PHASES, CostType, Priority, Shop
 import {
   sendChatMessage,
   parseInput,
-  performDeepResearch,
   sendToolResponse,
   type ChatMessage,
   type ChatResponse
 } from './aiProxyService';
+import { performDeepResearch } from './firebaseAIService';
 
 // Flatten all phases for context
 const ALL_PHASES = [
@@ -213,8 +213,8 @@ export const parseTasksFromInput = async (
     );
 
     return {
-      tasks: result.tasks || [],
-      shoppingItems: result.shoppingItems || []
+      tasks: (result.tasks || []) as Partial<Task>[],
+      shoppingItems: (result.shoppingItems || []) as Partial<ShoppingItem>[]
     };
   } catch (error) {
     console.error("Gemini Parse Error:", error);

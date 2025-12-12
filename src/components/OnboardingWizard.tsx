@@ -100,7 +100,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
             // Pass projectType and userSkillLevel to AI for personalized task generation
             const [aiDataResult, iconResult] = await Promise.allSettled([
                 generateProjectProfile(vehicleDesc, base64Data, projectType, userSkillLevel),
-                base64Data ? generateVehicleIcon(base64Data, 2) : Promise.resolve(null)
+                base64Data ? generateVehicleIcon({ imageBase64: base64Data }, 2) : Promise.resolve(null)
             ]);
 
             clearInterval(stepInterval);

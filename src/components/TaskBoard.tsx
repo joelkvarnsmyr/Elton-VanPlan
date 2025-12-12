@@ -18,8 +18,11 @@ const isTaskBlocked = (task: Task, allTasks: Task[]): { blocked: boolean; blocke
     return { blocked: false, blockedBy: [] };
   }
 
+  // Extract taskIds from blockers (supports both new TaskBlocker[] and legacy string[] format)
+  const blockerIds = task.blockers.map(b => typeof b === 'string' ? b : b.taskId);
+
   const blockedBy = allTasks.filter(t =>
-    task.blockers!.includes(t.id) && t.status !== TaskStatus.DONE
+    blockerIds.includes(t.id) && t.status !== TaskStatus.DONE
   );
 
   return {

@@ -712,8 +712,11 @@ export const getTaskBlockers = async (
     return { blocked: false, blockedBy: [] };
   }
 
+  // Extract taskIds from blockers (supports both new TaskBlocker[] and legacy string[] format)
+  const blockerIds = currentTask.blockers.map(b => typeof b === 'string' ? b : b.taskId);
+
   const blockedBy = allTasks.filter(t =>
-    currentTask.blockers!.includes(t.id) && t.status !== 'Klart'
+    blockerIds.includes(t.id) && t.status !== 'Klart'
   );
 
   return {
