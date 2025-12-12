@@ -689,7 +689,19 @@ export const getChatHistory = async (projectId: string): Promise<ChatMessage[]> 
 
 export const saveChatHistory = async (projectId: string, messages: ChatMessage[]) => {
   const chatRef = getChatRef(projectId);
-  await setDoc(chatRef, { messages, lastModified: new Date().toISOString() });
+  // Remove undefined fields (Firestore doesn't accept them)
+  const cleanMessages = messages.map(msg => {
+    const clean: any = {
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.timestamp
+    };
+    if (msg.imageUrl !== undefined) {
+      clean.imageUrl = msg.imageUrl;
+    }
+    return clean;
+  });
+  await setDoc(chatRef, { messages: cleanMessages, lastModified: new Date().toISOString() });
 };
 
 export const clearChatHistory = async (projectId: string) => {
