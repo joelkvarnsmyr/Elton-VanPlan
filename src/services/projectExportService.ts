@@ -162,7 +162,7 @@ export const exportProject = (project: Project, contacts: Contact[] = []): Proje
         undefined,
       phase: task.phase,
       description: task.description || undefined,
-      checklist: task.subtasks.length > 0 ? task.subtasks.map(st => st.title) : undefined,
+      checklist: task.subtasks && task.subtasks.length > 0 ? task.subtasks.map(st => st.title) : undefined,
       priority: task.priority || undefined
     })),
     shoppingList: project.shoppingItems.map(item => ({
