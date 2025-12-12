@@ -19,6 +19,7 @@ interface AIAssistantProps {
     onAddShoppingItem?: (item: ShoppingItem) => void;
     onUpdateShoppingItem?: (item: ShoppingItem) => void;
     onDeleteShoppingItem?: (itemId: string) => void;
+    onUpdateVehicleData?: (vehicleData: Partial<VehicleData>) => void;
     onClose?: () => void;
 }
 
@@ -32,6 +33,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
     onAddShoppingItem,
     onUpdateShoppingItem,
     onDeleteShoppingItem,
+    onUpdateVehicleData,
     onClose
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -206,6 +208,25 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                   } else {
                       results.push({ name: call.name, result: `Shopping item not found: "${call.args.itemNameKeywords}"` });
                   }
+              } else if (call.name === 'updateVehicleData' && onUpdateVehicleData) {
+                  // Parse nested field paths (e.g., "engine.power" -> { engine: { power: value }})
+                  const { field, value, reason } = call.args;
+                  const fieldParts = field.split('.');
+
+                  // Build nested update object
+                  let update: any = {};
+                  let current = update;
+                  for (let i = 0; i < fieldParts.length - 1; i++) {
+                      current[fieldParts[i]] = {};
+                      current = current[fieldParts[i]];
+                  }
+                  current[fieldParts[fieldParts.length - 1]] = value;
+
+                  onUpdateVehicleData(update);
+                  results.push({
+                      name: call.name,
+                      result: `Updated vehicle data: ${field} = "${value}". Reason: ${reason}`
+                  });
               } else {
                   results.push({ name: call.name, result: "Tool executed successfully." });
               }

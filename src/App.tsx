@@ -388,6 +388,29 @@ export const App = () => {
     }
   };
 
+  const handleUpdateVehicleData = async (updates: Partial<VehicleData>) => {
+    if (!activeProject) return;
+    const mergedVehicleData = { ...activeProject.vehicleData, ...updates };
+    // Deep merge for nested objects
+    for (const key in updates) {
+      if (typeof updates[key as keyof VehicleData] === 'object' && updates[key as keyof VehicleData] !== null) {
+        mergedVehicleData[key as keyof VehicleData] = {
+          ...(activeProject.vehicleData[key as keyof VehicleData] as any),
+          ...(updates[key as keyof VehicleData] as any)
+        };
+      }
+    }
+    setActiveProject({ ...activeProject, vehicleData: mergedVehicleData });
+    try {
+      await updateProject(activeProject.id, { vehicleData: mergedVehicleData });
+      showToast("Fordonsdata uppdaterad!");
+    } catch (error) {
+      console.error("Error updating vehicle data:", error);
+      setActiveProject(activeProject); // Revert
+      showToast("Kunde inte uppdatera fordonsdata", "error");
+    }
+  };
+
   if (isLoading && !activeProject) {
       return (
           <div className="min-h-screen bg-nordic-ice dark:bg-nordic-dark-bg flex items-center justify-center">
@@ -545,7 +568,7 @@ export const App = () => {
         <div className="pb-28 sm:pb-0">
            {currentView === 'dashboard' && <Dashboard project={activeProject} onPhaseClick={(p) => { setActivePhaseFilter(p); setCurrentView('tasks'); }} />}
            {currentView === 'tasks' && <TaskBoard tasks={activeProject.tasks} shoppingItems={activeProject.shoppingItems} vehicleData={activeProject.vehicleData} onUpdateTask={handleUpdateTask} initialFilter={activePhaseFilter as any} />}
-           {currentView === 'ai' && <AIAssistant project={activeProject} contacts={activeProject.contacts} userSkillLevel={currentUser?.skillLevel} onAddTask={(t) => handleAddTasks(t as any)} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} onUpdateShoppingItem={handleUpdateShoppingItem} onDeleteShoppingItem={handleDeleteShoppingItem} onClose={() => setCurrentView('dashboard')} />}
+           {currentView === 'ai' && <AIAssistant project={activeProject} contacts={activeProject.contacts} userSkillLevel={currentUser?.skillLevel} onAddTask={(t) => handleAddTasks(t as any)} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} onUpdateShoppingItem={handleUpdateShoppingItem} onDeleteShoppingItem={handleDeleteShoppingItem} onUpdateVehicleData={handleUpdateVehicleData} onClose={() => setCurrentView('dashboard')} />}
            {currentView === 'specs' && <VehicleSpecs
                vehicleData={activeProject.vehicleData}
                tasks={activeProject.tasks}

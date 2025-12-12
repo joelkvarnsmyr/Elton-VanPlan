@@ -75,6 +75,17 @@ const tools = [{
         optionalProperties: ['category', 'estimatedCost', 'quantity']
       })
     },
+    {
+      name: 'updateVehicleData',
+      description: 'Update vehicle specifications and technical data when learning new information about the vehicle',
+      parameters: Schema.object({
+        properties: {
+          field: Schema.string({ description: 'The field to update (e.g., "make", "model", "year", "engine.power", "maintenance.oilType")' }),
+          value: Schema.string({ description: 'The new value for the field' }),
+          reason: Schema.string({ description: 'Why this update is being made' }),
+        }
+      })
+    },
   ]
 }];
 
@@ -234,10 +245,19 @@ export const streamChatMessage = async (
   if (functionCalls.length > 0) {
     const toolResults = await onToolCall(functionCalls);
 
+    // Convert tool results to Firebase AI format
+    // Firebase expects { name, response: {...} } not { name, result }
+    const functionResponses = toolResults.map(tr => ({
+      functionResponse: {
+        name: tr.name,
+        response: {
+          content: tr.result  // Wrap the result string in an object
+        }
+      }
+    }));
+
     // Send tool responses back
-    const followUpResult = await chat.sendMessageStream([
-      { functionResponse: toolResults[0] }
-    ]);
+    const followUpResult = await chat.sendMessageStream(functionResponses);
 
     // Stream follow-up response
     for await (const chunk of followUpResult.stream) {
