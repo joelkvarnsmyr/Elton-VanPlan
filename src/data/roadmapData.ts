@@ -1,6 +1,6 @@
 /**
  * ROADMAP DATA
- * Uppdaterad: 2025-12-11 (Data Model Migration komplett)
+ * Uppdaterad: 2025-12-12 (Firebase AI Logic Migration komplett)
  *
  * Strukturerad i faser:
  * - Fas 1: Akut (Kritiska buggar och säkerhetsproblem)
@@ -52,17 +52,18 @@ export const ROADMAP_FEATURES: Feature[] = [
         title: 'Säkerhet: Flytta API-nycklar till Backend',
         category: 'Säkerhet',
         phase: 1,
-        description: 'KRITISKT: Gemini API-nyckel exponeras i frontend. Måste flyttas till Cloud Functions.',
-        detailedDescription: 'Arbete pågår. De flesta anrop har flyttats till Cloud Functions, men komponenten LiveElton.tsx använder fortfarande nyckeln direkt och måste åtgärdas.',
+        description: 'KRITISKT: Gemini API-nyckel exponeras i frontend. Delvis löst med Firebase AI Logic.',
+        detailedDescription: 'Firebase AI Logic (firebase/ai) används nu för frontend AI-anrop - ingen separat API-nyckel behövs. Cloud Functions används för avancerade operationer. Återstår: LiveElton.tsx behöver migreras till Firebase AI Logic eller Cloud Function.',
         purpose: 'Förhindra obehörig användning av API-nycklar och potentiella kostnader.',
         status: 'in-progress',
-        tech: ['Firebase Cloud Functions', 'Secret Manager', 'API Gateway'],
+        tech: ['Firebase AI Logic', 'Firebase Cloud Functions', 'Secret Manager'],
         priority: 'critical',
         tags: ['Security', 'Backend', 'Critical'],
         checklist: [
             { label: 'Skapa Cloud Function för AI-proxy', completed: true },
             { label: 'Flytta API-nyckel till Secret Manager', completed: true },
             { label: 'Uppdatera frontend att anropa Cloud Function', completed: true },
+            { label: 'Migrera till Firebase AI Logic (frontend)', completed: true, completedAt: '2025-12-12' },
             { label: 'Åtgärda LiveElton.tsx', completed: false, inProgress: true },
             { label: 'Ta bort VITE_GEMINI_API_KEY helt', completed: false },
             { label: 'Testa i produktion', completed: false }
@@ -190,17 +191,18 @@ export const ROADMAP_FEATURES: Feature[] = [
         title: 'AI Onboarding "Deep Research"',
         category: 'Plattform',
         description: 'Multi-Agent system (Detektiven & Verkmästaren) som söker upp fakta och skapar en plan baserat på RegNr.',
-        detailedDescription: 'Avancerat AI-system med två agenter: Detektiven söker teknisk data och kända problem via Google Search och svenska register, medan Verkmästaren skapar en detaljerad projektplan baserat på denna research.',
+        detailedDescription: 'Avancerat AI-system med två agenter: Detektiven söker teknisk data och kända problem via Google Search och svenska register, medan Verkmästaren skapar en detaljerad projektplan baserat på denna research. UPDATE 2025-12-12: Nu med Firebase AI Logic (Gemini 2.5 Pro) för bättre prestanda.',
         purpose: 'Hög precision och slut på gissningar. Hämtar data från svenska register.',
         status: 'done',
-        tech: ['Gemini 2.0 Flash', 'Google Search', 'Multi-Agent System', 'Prompt Engineering'],
+        tech: ['Firebase AI Logic', 'Gemini 2.5 Pro', 'Google Search', 'Multi-Agent System', 'Prompt Engineering'],
         priority: 'high',
         tags: ['AI', 'Onboarding', 'Multi-Agent', 'Automation'],
         checklist: [
             { label: 'Specad', completed: true },
             { label: 'Utvecklad (Agents & Prompts)', completed: true },
             { label: 'Testad (Live Search)', completed: true },
-            { label: 'Lanserad', completed: true }
+            { label: 'Lanserad', completed: true },
+            { label: 'Migrerad till Firebase AI Logic', completed: true, completedAt: '2025-12-12' }
         ]
     },
     {
@@ -428,6 +430,28 @@ export const ROADMAP_FEATURES: Feature[] = [
         ]
     },
     {
+        id: 110,
+        title: 'Firebase AI Logic Migration',
+        category: 'AI Core',
+        phase: 2,
+        description: 'Migrering från @google/genai till Firebase AI Logic SDK (firebase/ai) för direktintegrering med Gemini Developer API.',
+        detailedDescription: 'Komplett migrering av AI-systemet till Firebase AI Logic. Fördelar: (1) Ingen separat API-nyckel behövs - hanteras av Firebase, (2) Enklare autentisering via Firebase Auth, (3) Bättre integration med Firebase-ekosystemet. Implementerat: firebaseAIService.ts med createModel(), createChat(), generateText(), generateTextStream(), sendChatMessage(), analyzeImage(), generateJSON(), och performDeepResearch() med multi-agent pattern (Detective + Planner).',
+        purpose: 'Förenklad AI-integration med bättre säkerhet och Firebase-native upplevelse.',
+        status: 'done',
+        tech: ['Firebase AI Logic', 'firebase/ai', 'Gemini Developer API', 'GoogleAIBackend'],
+        priority: 'high',
+        tags: ['AI', 'Firebase', 'Migration', 'Security'],
+        checklist: [
+            { label: 'Skapa firebaseAIService.ts med Firebase AI SDK', completed: true, completedAt: '2025-12-12' },
+            { label: 'Implementera createModel() och createChat()', completed: true, completedAt: '2025-12-12' },
+            { label: 'Implementera streaming (generateTextStream, sendChatMessageStream)', completed: true, completedAt: '2025-12-12' },
+            { label: 'Migrera performDeepResearch() (multi-agent)', completed: true, completedAt: '2025-12-12' },
+            { label: 'Uppdatera geminiService.ts imports', completed: true, completedAt: '2025-12-12' },
+            { label: 'Fixa OnboardingWizard generateVehicleIcon', completed: true, completedAt: '2025-12-12' },
+            { label: 'TaskBlocker legacy-support', completed: true, completedAt: '2025-12-12' }
+        ]
+    },
+    {
         id: 107,
         title: 'Transfer Project Ownership',
         category: 'UX/Teams',
@@ -644,21 +668,19 @@ export const ROADMAP_FEATURES: Feature[] = [
         title: 'Genkit Migration (AI Framework)',
         category: 'AI Core',
         phase: 4,
-        description: 'Utvärdera och eventuellt migrera från @google/genai till Genkit för bättre AI-flödeshantering.',
-        detailedDescription: 'Genkit är Googles ramverk för AI-applikationer med features som: Dotprompt (prompt-filer med versioning), Developer UI för debugging, multi-model support (Gemini/OpenAI/Anthropic), och inbyggd observability. Nuvarande implementation med @google/genai fungerar väl - migrering är nice-to-have, inte need-to-have. Utvärdera om/när: (1) behov av modellbyte uppstår, (2) debugging blir ett problem, (3) prompt-versioning blir kritiskt.',
-        purpose: 'Potentiellt förbättrad AI-utveckling och debugging.',
+        description: 'Utvärdering: Vi valde Firebase AI Logic istället. Genkit kan övervägas för backend-flows i framtiden.',
+        detailedDescription: 'UPDATE 2025-12-12: Vi migrerade till Firebase AI Logic (firebase/ai SDK) istället för Genkit. Firebase AI Logic ger: (1) Direkt Gemini-access utan API-nyckel, (2) Enklare integration med Firebase Auth, (3) Mindre overhead. Genkit kan fortfarande övervägas för backend Cloud Functions om vi behöver: Dotprompt (prompt-versioning), multi-model support (OpenAI/Anthropic), eller Developer UI för debugging. Låg prioritet - nuvarande lösning fungerar väl.',
+        purpose: 'Potentiellt förbättrad AI-utveckling och debugging på backend.',
         status: 'planned',
         tech: ['Genkit', '@genkit-ai/googleai', 'Dotprompt', 'Zod'],
         priority: 'low',
-        tags: ['AI', 'Framework', 'DevEx', 'Optional'],
+        tags: ['AI', 'Framework', 'DevEx', 'Optional', 'Backend'],
         checklist: [
-            { label: 'Utvärdera behov (modellbyte, debugging)', completed: false },
-            { label: 'Proof-of-concept med en flow', completed: false },
-            { label: 'Migrera aiChat → defineFlow', completed: false },
-            { label: 'Migrera aiParse → defineFlow', completed: false },
-            { label: 'Migrera aiDeepResearch → defineFlow', completed: false },
-            { label: 'Konvertera prompts till Dotprompt', completed: false },
-            { label: 'Testa och deploy', completed: false }
+            { label: 'Utvärdera behov (modellbyte, debugging)', completed: true, completedAt: '2025-12-12' },
+            { label: 'Beslut: Firebase AI Logic för frontend', completed: true, completedAt: '2025-12-12' },
+            { label: 'Om behov: Proof-of-concept med en Cloud Function flow', completed: false },
+            { label: 'Om behov: Migrera aiDeepResearch CF → Genkit defineFlow', completed: false },
+            { label: 'Om behov: Konvertera prompts till Dotprompt', completed: false }
         ]
     },
     {
