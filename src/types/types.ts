@@ -383,6 +383,7 @@ export interface UserProfile {
     name: string;
     email: string;
     avatar?: string;
+    skillLevel?: UserSkillLevel; // Mechanical skill level for personalized AI guidance
 }
 
 /**
@@ -454,8 +455,7 @@ export interface Project {
     lastModified: string;
     isDemo?: boolean;
 
-    // === USER PREFERENCES ===
-    userSkillLevel?: UserSkillLevel;
+    // === PROJECT PREFERENCES ===
     nickname?: string; // Fordonets smeknamn (påverkar Eltons personlighet)
 
     // === LOCATION ===

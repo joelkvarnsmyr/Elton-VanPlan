@@ -48,14 +48,16 @@ const getKnowledgeBaseRef = (projectId: string) => collection(db, 'projects', pr
 // --- SEEDING ---
 
 export const forceSeedProject = async (userEmail: string, userId: string) => {
-  const projectId = DEMO_PROJECT.id;
+  // Create unique demo project ID for this user
+  const projectId = `demo-elton-${userId}`;
   console.log(`Seeding database for project ${projectId} and owner: ${userEmail} (${userId})...`);
-  
+
   const batch = writeBatch(db);
 
   const projectRef = doc(db, 'projects', projectId);
   const projectData: Project = {
     ...DEMO_PROJECT,
+    id: projectId, // Use unique project ID for this user
     // NEW ownership model
     ownerIds: [userId],
     primaryOwnerId: userId,

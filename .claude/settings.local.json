@@ -24,7 +24,16 @@
       "WebSearch",
       "Bash(node:*)",
       "Bash(git reset:*)",
-      "Bash(firebase functions:delete:*)"
+      "Bash(firebase functions:delete:*)",
+      "Bash(firebase functions:list:*)",
+      "Bash(firebase functions:secrets:access:*)",
+      "WebFetch(domain:firebase.google.com)",
+      "Bash(npm info:*)",
+      "Bash(git stash:*)",
+      "Bash(firebase functions:secrets:list:*)",
+      "Bash(gcloud secrets list:*)",
+      "Bash(firebase functions:secrets:destroy:*)",
+      "Bash(firebase help:*)"
     ]
   }
 }

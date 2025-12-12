@@ -65,7 +65,8 @@ export const App = () => {
   const [showFuelLog, setShowFuelLog] = useState(false);
   const [showServiceBook, setShowServiceBook] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
-  const [editName, setEditName] = useState(''); 
+  const [editName, setEditName] = useState('');
+  const [editSkillLevel, setEditSkillLevel] = useState<'beginner' | 'intermediate' | 'expert'>('intermediate'); 
 
   const loadUserProjects = async (user: UserProfile) => {    console.log('🔍 Loading projects for user:', user.uid, user.email);
     setIsLoading(true);
@@ -94,7 +95,8 @@ export const App = () => {
         if (user) {
             const profile = await getUserProfile(user.uid, user.email!);
             setCurrentUser(profile);
-            setEditName(profile.name); 
+            setEditName(profile.name);
+            setEditSkillLevel(profile.skillLevel || 'intermediate');
             await loadUserProjects(profile);
         } else {
             setCurrentUser(null);
@@ -160,6 +162,17 @@ export const App = () => {
           showToast("Namn uppdaterat!");
       } catch (e) {
           showToast("Kunde inte spara namn", "error");
+      }
+  };
+
+  const handleUpdateSkillLevel = async () => {
+      if (!currentUser) return;
+      try {
+          await updateUserProfile(currentUser.uid, { skillLevel: editSkillLevel });
+          setCurrentUser({ ...currentUser, skillLevel: editSkillLevel });
+          showToast("Erfarenhetsnivå uppdaterad!");
+      } catch (e) {
+          showToast("Kunde inte spara erfarenhetsnivå", "error");
       }
   };
 
@@ -468,12 +481,30 @@ export const App = () => {
                           <div className="mb-4">
                               <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Ditt namn</label>
                               <div className="flex gap-2">
-                                  <input 
+                                  <input
                                     className="flex-1 p-2 bg-slate-50 dark:bg-nordic-dark-bg border border-slate-200 dark:border-nordic-charcoal rounded-lg text-sm dark:text-white"
                                     value={editName}
                                     onChange={(e) => setEditName(e.target.value)}
                                   />
                                   <button onClick={handleUpdateName} className="p-2 bg-nordic-charcoal text-white rounded-lg hover:bg-slate-800">
+                                      <Save size={14} />
+                                  </button>
+                              </div>
+                          </div>
+
+                          <div className="mb-4">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Mekanisk erfarenhet</label>
+                              <div className="flex gap-2">
+                                  <select
+                                      value={editSkillLevel}
+                                      onChange={(e) => setEditSkillLevel(e.target.value as 'beginner' | 'intermediate' | 'expert')}
+                                      className="flex-1 p-2 bg-slate-50 dark:bg-nordic-dark-bg border border-slate-200 dark:border-nordic-charcoal rounded-lg text-sm dark:text-white"
+                                  >
+                                      <option value="beginner">Nybörjare</option>
+                                      <option value="intermediate">Mellanhand</option>
+                                      <option value="expert">Expert</option>
+                                  </select>
+                                  <button onClick={handleUpdateSkillLevel} className="p-2 bg-nordic-charcoal text-white rounded-lg hover:bg-slate-800">
                                       <Save size={14} />
                                   </button>
                               </div>
@@ -514,7 +545,7 @@ export const App = () => {
         <div className="pb-28 sm:pb-0">
            {currentView === 'dashboard' && <Dashboard project={activeProject} onPhaseClick={(p) => { setActivePhaseFilter(p); setCurrentView('tasks'); }} />}
            {currentView === 'tasks' && <TaskBoard tasks={activeProject.tasks} shoppingItems={activeProject.shoppingItems} vehicleData={activeProject.vehicleData} onUpdateTask={handleUpdateTask} initialFilter={activePhaseFilter as any} />}
-           {currentView === 'ai' && <AIAssistant project={activeProject} contacts={activeProject.contacts} onAddTask={(t) => handleAddTasks(t as any)} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} onUpdateShoppingItem={handleUpdateShoppingItem} onDeleteShoppingItem={handleDeleteShoppingItem} onClose={() => setCurrentView('dashboard')} />}
+           {currentView === 'ai' && <AIAssistant project={activeProject} contacts={activeProject.contacts} userSkillLevel={currentUser?.skillLevel} onAddTask={(t) => handleAddTasks(t as any)} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} onUpdateShoppingItem={handleUpdateShoppingItem} onDeleteShoppingItem={handleDeleteShoppingItem} onClose={() => setCurrentView('dashboard')} />}
            {currentView === 'specs' && <VehicleSpecs
                vehicleData={activeProject.vehicleData}
                tasks={activeProject.tasks}

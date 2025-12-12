@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { streamGeminiResponse } from '@/services/geminiService';
+import { streamChatMessage } from '@/services/firebaseAI';
 import { getChatHistory, saveChatHistory, clearChatHistory, ChatMessage } from '@/services/db';
 import { uploadChatImage } from '@/services/storage';
 import { buildAIContext, getProjectStats } from '@/services/projectExportService';
@@ -12,6 +12,7 @@ import { LiveElton } from './LiveElton';
 interface AIAssistantProps {
     project: Project; // Changed: Now takes full project for complete context
     contacts?: Contact[]; // Optional contacts for local recommendations
+    userSkillLevel?: 'beginner' | 'intermediate' | 'expert'; // User's mechanical skill level from profile
     onAddTask?: (tasks: Task[]) => void;
     onUpdateTask?: (task: Task) => void;
     onDeleteTask?: (taskId: string) => void;
@@ -24,6 +25,7 @@ interface AIAssistantProps {
 export const AIAssistant: React.FC<AIAssistantProps> = ({
     project,
     contacts = [],
+    userSkillLevel,
     onAddTask,
     onUpdateTask,
     onDeleteTask,
@@ -259,19 +261,16 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         };
         setMessages(prev => [...prev, assistantMessage]);
 
-        // Inject full project context into the first message
-        const contextualUserMsg = `${userMsg}\n\n---\n\n${projectContext}`;
-
-        // Convert ChatMessage format to old format for streamGeminiResponse
-        const historyForGemini = messages.map(m => ({
+        // Convert ChatMessage format for Firebase AI Logic SDK
+        const historyForAI = messages.map(m => ({
             role: m.role,
             content: m.content,
             image: m.imageUrl
         }));
 
-        await streamGeminiResponse(
-            historyForGemini,
-            contextualUserMsg,  // Use contextualized message
+        await streamChatMessage(
+            historyForAI,
+            userMsg,  // Send message directly (system instruction handles context)
             project.vehicleData,
             project.tasks,
             project.shoppingItems,
@@ -286,7 +285,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
             handleToolCalls,
             userImageBase64 ? userImageBase64.split(',')[1] : undefined,
             project.nickname || project.name,  // Pass nickname (or fallback to name) for vehicle personality
-            project.userSkillLevel,  // Pass user skill level for personalized responses
+            userSkillLevel,  // Pass user skill level from profile for personalized responses
             project.type  // Pass project type for contextual advice
         );
 

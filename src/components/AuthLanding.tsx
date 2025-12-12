@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { Mail, Check, Eye, Loader2, Lock, ArrowRight, User } from 'lucide-react';
+import { Mail, Check, Eye, Loader2, Lock, ArrowRight, User, Wrench } from 'lucide-react';
 import { sendLoginLink, loginWithPassword, registerWithPassword } from '@/services/auth';
 import { updateUserProfile } from '@/services/db'; // Import this to save name
+import { UserSkillLevel } from '@/types/types';
 import clsx from 'clsx'; 
 
 interface AuthLandingProps {
@@ -16,7 +17,8 @@ export const AuthLanding: React.FC<AuthLandingProps> = ({ onDemo }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState(''); // New state for name
-    
+    const [skillLevel, setSkillLevel] = useState<UserSkillLevel>('intermediate'); // Default to intermediate
+
     const [isSending, setIsSending] = useState(false);
     const [emailSent, setEmailSent] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -44,8 +46,12 @@ export const AuthLanding: React.FC<AuthLandingProps> = ({ onDemo }) => {
                 }
                 const result = await registerWithPassword(email, password);
                 if (result.success && result.user) {
-                    // Save the name to Firestore immediately
-                    await updateUserProfile(result.user.uid, { name: name, email: email });
+                    // Save the name and skill level to Firestore immediately
+                    await updateUserProfile(result.user.uid, {
+                        name: name,
+                        email: email,
+                        skillLevel: skillLevel
+                    });
                 } else {
                     setError(result.error || 'Registrering misslyckades.');
                 }
@@ -104,16 +110,30 @@ export const AuthLanding: React.FC<AuthLandingProps> = ({ onDemo }) => {
 
                         <div className="space-y-3">
                             {mode === 'register' && (
-                                <div className="relative animate-fade-in">
-                                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                    <input 
-                                        type="text" 
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        placeholder="Ditt namn"
-                                        className="w-full p-4 pl-12 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 text-nordic-charcoal transition-all"
-                                    />
-                                </div>
+                                <>
+                                    <div className="relative animate-fade-in">
+                                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input
+                                            type="text"
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            placeholder="Ditt namn"
+                                            className="w-full p-4 pl-12 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 text-nordic-charcoal transition-all"
+                                        />
+                                    </div>
+                                    <div className="relative animate-fade-in">
+                                        <Wrench className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <select
+                                            value={skillLevel}
+                                            onChange={(e) => setSkillLevel(e.target.value as UserSkillLevel)}
+                                            className="w-full p-4 pl-12 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 text-nordic-charcoal transition-all appearance-none"
+                                        >
+                                            <option value="beginner">Nybörjare - Jag har ingen erfarenhet</option>
+                                            <option value="intermediate">Mellanhand - Jag kan enklare reparationer</option>
+                                            <option value="expert">Expert - Jag är en erfaren mekaniker</option>
+                                        </select>
+                                    </div>
+                                </>
                             )}
 
                             <div className="relative">

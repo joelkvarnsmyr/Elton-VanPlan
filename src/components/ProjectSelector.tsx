@@ -84,7 +84,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ user, projects
             const newProjectTemplate: Partial<Project> = {
                 name: cleanName,
                 type: data.projectType,
-                userSkillLevel: data.userSkillLevel,
                 nickname: data.nickname,
                 customIcon: customIcon,
                 vehicleData: {

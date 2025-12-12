@@ -97,7 +97,7 @@ export const streamGeminiResponse = async (
   onToolCall: (toolCalls: any[]) => Promise<any[]>,
   imageBase64?: string,
   projectName?: string,
-  userSkillLevel?: string,
+  userSkillLevel?: string, // User's mechanical skill level from their profile (not project)
   projectType?: ProjectType
 ) => {
   const model = getModelName();
@@ -240,6 +240,9 @@ export const generateVehicleIcon = async (
 
 /**
  * Perform deep research on a vehicle using multi-agent system
+ *
+ * @param userSkillLevel - Optional. User's mechanical skill level from their profile.
+ *                         Defaults to 'intermediate' if not provided (e.g., during onboarding).
  */
 export const generateProjectProfile = async (
   vehicleDescription: string,

@@ -14,7 +14,6 @@ interface OnboardingWizardProps {
 
 export interface OnboardingData {
     projectType: ProjectType;
-    userSkillLevel: UserSkillLevel;
     vehicleDescription: string;
     imageBase64?: string;
     nickname?: string;
@@ -45,7 +44,6 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
 
     // Form data
     const [projectType, setProjectType] = useState<ProjectType | null>(null);
-    const [userSkillLevel, setUserSkillLevel] = useState<UserSkillLevel | null>(null);
     const [vehicleDesc, setVehicleDesc] = useState('');
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [nickname, setNickname] = useState('');
@@ -77,7 +75,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
     };
 
     const handleStep1Continue = () => {
-        if (projectType && userSkillLevel) {
+        if (projectType) {
             setStep(2);
             // STEG 2 startar automatiskt research om vehicleDesc finns
             if (vehicleDesc.trim() || selectedImage) {
@@ -97,9 +95,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
             const base64Data = selectedImage ? selectedImage.split(',')[1] : undefined;
 
             // Run AI analysis and icon generation in parallel
-            // Pass projectType and userSkillLevel to AI for personalized task generation
+            // Pass projectType to AI for personalized task generation
             const [aiDataResult, iconResult] = await Promise.allSettled([
-                generateProjectProfile(vehicleDesc, base64Data, projectType, userSkillLevel),
+                generateProjectProfile(vehicleDesc, base64Data, projectType),
                 base64Data ? generateVehicleIcon({ imageBase64: base64Data }, 2) : Promise.resolve(null)
             ]);
 
@@ -152,11 +150,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
     };
 
     const handleComplete = () => {
-        if (!projectType || !userSkillLevel) return;
+        if (!projectType) return;
 
         const completionData: any = {
             projectType,
-            userSkillLevel,
             vehicleDescription: vehicleDesc,
             imageBase64: selectedImage?.split(',')[1],
             aiData: aiSuggestions?.fullAiData,
@@ -240,55 +237,6 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                                 </div>
                             </div>
 
-                            {/* Kunskapsnivå */}
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase mb-4 ml-1">Din erfarenhet av bilmekanik</label>
-                                <div className="grid grid-cols-3 gap-4">
-                                    <button
-                                        onClick={() => setUserSkillLevel('beginner')}
-                                        className={`p-6 rounded-2xl border-2 transition-all ${userSkillLevel === 'beginner' ? 'border-teal-500 bg-teal-50' : 'border-slate-200 hover:border-teal-200'}`}
-                                    >
-                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto mb-3 shadow-sm">
-                                            <User size={24} className={userSkillLevel === 'beginner' ? 'text-teal-600' : 'text-slate-400'} />
-                                        </div>
-                                        <h3 className="font-bold text-sm text-nordic-charcoal mb-1">Nybörjare</h3>
-                                        <p className="text-xs text-slate-500">"Aldrig fixat"</p>
-                                    </button>
-
-                                    <button
-                                        onClick={() => setUserSkillLevel('intermediate')}
-                                        className={`p-6 rounded-2xl border-2 transition-all ${userSkillLevel === 'intermediate' ? 'border-teal-500 bg-teal-50' : 'border-slate-200 hover:border-teal-200'}`}
-                                    >
-                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto mb-3 shadow-sm">
-                                            <Zap size={24} className={userSkillLevel === 'intermediate' ? 'text-teal-600' : 'text-slate-400'} />
-                                        </div>
-                                        <h3 className="font-bold text-sm text-nordic-charcoal mb-1">Hemmameck</h3>
-                                        <p className="text-xs text-slate-500">"Gör själv"</p>
-                                    </button>
-
-                                    <button
-                                        onClick={() => setUserSkillLevel('expert')}
-                                        className={`p-6 rounded-2xl border-2 transition-all ${userSkillLevel === 'expert' ? 'border-teal-500 bg-teal-50' : 'border-slate-200 hover:border-teal-200'}`}
-                                    >
-                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto mb-3 shadow-sm">
-                                            <Award size={24} className={userSkillLevel === 'expert' ? 'text-teal-600' : 'text-slate-400'} />
-                                        </div>
-                                        <h3 className="font-bold text-sm text-nordic-charcoal mb-1">Certifierad</h3>
-                                        <p className="text-xs text-slate-500">"Proffsig"</p>
-                                    </button>
-                                </div>
-                                {userSkillLevel && (
-                                    <div className="mt-4 p-4 bg-blue-50 rounded-2xl border border-blue-100">
-                                        <p className="text-sm text-blue-800">
-                                            <strong>💬 Detta påverkar:</strong>
-                                            {userSkillLevel === 'beginner' && " Elton ger detaljerade guider, förklarar termer, och rekommenderar verkstad för svåra uppgifter."}
-                                            {userSkillLevel === 'intermediate' && " Elton ger balanserade tips och föreslår både DIY och verkstad beroende på svårighet."}
-                                            {userSkillLevel === 'expert' && " Elton ger kortfattad teknisk info och antar att du vet vad du gör."}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
                             {/* Fordonsbeskrivning */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-400 uppercase mb-2 ml-1">Fordonsbeskrivning, Länk eller RegNr</label>
@@ -337,7 +285,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                                 </button>
                                 <button
                                     onClick={handleStep1Continue}
-                                    disabled={!projectType || !userSkillLevel || (!vehicleDesc.trim() && !selectedImage)}
+                                    disabled={!projectType || (!vehicleDesc.trim() && !selectedImage)}
                                     className="flex-[2] py-4 bg-nordic-charcoal text-white font-bold rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
                                 >
                                     <Search size={20} /> Starta Research
@@ -460,7 +408,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                                     </li>
                                     <li className="flex gap-2">
                                         <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
-                                        <span>Anpassa kommunikation efter din erfarenhet (<strong>{userSkillLevel === 'beginner' ? 'Nybörjare' : userSkillLevel === 'intermediate' ? 'Hemmameck' : 'Certifierad'}</strong>)</span>
+                                        <span>Anpassa kommunikation efter din mekaniska erfarenhet</span>
                                     </li>
                                     <li className="flex gap-2">
                                         <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
