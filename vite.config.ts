@@ -20,7 +20,13 @@ export default defineConfig(({ mode }) => {
         }
       },
       optimizeDeps: {
-        include: ['react', 'react-dom']
+        include: ['react', 'react-dom'],
+        exclude: ['node-fetch']
+      },
+      build: {
+        rollupOptions: {
+          external: ['node-fetch']
+        }
       }
     };
 });

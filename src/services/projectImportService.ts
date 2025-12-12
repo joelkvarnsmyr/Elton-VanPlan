@@ -1,6 +1,6 @@
-import { parseTasksFromInput } from './geminiService';
+import { parseTasksFromInput, parseEnhancedProjectData } from './geminiService';
 import { ProjectExport } from './projectExportService';
-import { Task, ShoppingItem, KnowledgeArticle, Project, VehicleData } from '@/types/types';
+import { Task, ShoppingItem, KnowledgeArticle, Project, VehicleData, ServiceItem } from '@/types/types';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export const parseProjectData = async (input: string, imageBase64?: string): Promise<{
     vehicleData?: Partial<VehicleData>;
+    historyEvents?: Array<{ date?: string; description: string; cost?: number; mileage?: number }>;
     knowledgeArticles?: KnowledgeArticle[];
     tasks?: Task[];
     shoppingItems?: ShoppingItem[];
@@ -42,6 +43,7 @@ export const parseProjectData = async (input: string, imageBase64?: string): Pro
  */
 const convertProjectExport = (data: ProjectExport): {
     vehicleData?: Partial<VehicleData>;
+    historyEvents?: Array<{ date?: string; description: string; cost?: number; mileage?: number }>;
     knowledgeArticles?: KnowledgeArticle[];
     tasks?: Task[];
     shoppingItems?: ShoppingItem[];
@@ -183,16 +185,22 @@ const convertProjectExport = (data: ProjectExport): {
 
 /**
  * Use AI to parse unstructured text/image
+ * ENHANCED: Now extracts vehicle data, history events, tasks, and shopping items
  */
 const parseUnstructuredData = async (text: string, imageBase64?: string): Promise<{
+    vehicleData?: Partial<VehicleData>;
+    historyEvents?: Array<{ date?: string; description: string; cost?: number; mileage?: number }>;
     tasks?: Task[];
     shoppingItems?: ShoppingItem[];
 }> => {
-    // Use existing parseTasksFromInput for unstructured data
-    const result = await parseTasksFromInput(text, imageBase64);
+    // Use enhanced parser for complete project data extraction
+    const result = await parseEnhancedProjectData(text, imageBase64);
+
     return {
-        tasks: result.tasks,
-        shoppingItems: result.shoppingItems
+        vehicleData: result.vehicleData,
+        historyEvents: result.historyEvents,
+        tasks: result.tasks as Task[],
+        shoppingItems: result.shoppingItems as ShoppingItem[]
     };
 };
 
@@ -234,6 +242,75 @@ export const mergeProjectData = (
         updates.shoppingItems = [
             ...existingProject.shoppingItems,
             ...importedData.shoppingItems
+        ];
+    }
+
+    // Add history events to service log (append, don't replace)
+    if (importedData.historyEvents && importedData.historyEvents.length > 0) {
+        const serviceItems: ServiceItem[] = importedData.historyEvents.map(event => {
+            // Convert relative dates to actual dates
+            let date = new Date().toISOString().split('T')[0]; // Default to today
+
+            if (event.date) {
+                if (event.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    // Already in YYYY-MM-DD format
+                    date = event.date;
+                } else if (event.date.toLowerCase().includes('igår')) {
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    date = yesterday.toISOString().split('T')[0];
+                } else if (event.date.toLowerCase().includes('förra veckan')) {
+                    const lastWeek = new Date();
+                    lastWeek.setDate(lastWeek.getDate() - 7);
+                    date = lastWeek.toISOString().split('T')[0];
+                } else if (event.date.match(/(\d+)\s*(år|månad|dag)/)) {
+                    // Parse "3 år sedan", "2 månader sedan", etc.
+                    const match = event.date.match(/(\d+)\s*(år|månad|dag)/);
+                    if (match) {
+                        const amount = parseInt(match[1]);
+                        const unit = match[2];
+                        const pastDate = new Date();
+
+                        if (unit === 'år') {
+                            pastDate.setFullYear(pastDate.getFullYear() - amount);
+                        } else if (unit === 'månad') {
+                            pastDate.setMonth(pastDate.getMonth() - amount);
+                        } else if (unit === 'dag') {
+                            pastDate.setDate(pastDate.getDate() - amount);
+                        }
+
+                        date = pastDate.toISOString().split('T')[0];
+                    }
+                }
+            }
+
+            // Determine service type based on description
+            let type: ServiceItem['type'] = 'Övrigt';
+            const desc = event.description.toLowerCase();
+
+            if (desc.includes('service') || desc.includes('oljebyte') || desc.includes('filter')) {
+                type = 'Service';
+            } else if (desc.includes('reparation') || desc.includes('bytt') || desc.includes('fixat') || desc.includes('lagat')) {
+                type = 'Reparation';
+            } else if (desc.includes('besiktning') || desc.includes('kontroll')) {
+                type = 'Besiktning';
+            } else if (desc.includes('köpt') || desc.includes('köpte') || desc.includes('såld') || desc.includes('sålde')) {
+                type = 'Övrigt';
+            }
+
+            return {
+                id: uuidv4(),
+                date,
+                description: event.description + (event.cost ? ` (${event.cost} kr)` : ''),
+                mileage: event.mileage?.toString() || '',
+                performer: 'Importerad från magic import',
+                type
+            };
+        });
+
+        updates.serviceLog = [
+            ...existingProject.serviceLog,
+            ...serviceItems
         ];
     }
 
