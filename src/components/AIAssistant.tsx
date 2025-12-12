@@ -588,11 +588,18 @@ ${diagnosis.severity === 'CRITICAL' ? '⚠️ **KRITISKT** - Överväg att skapa
         setMessages(prev => [...prev, assistantMessage]);
 
         // Convert ChatMessage format for Firebase AI Logic SDK
-        const historyForAI = messages.map(m => ({
+        // Filter out initial greeting message if it starts with 'model' role
+        let historyForAI = messages.map(m => ({
             role: m.role,
             content: m.content,
             image: m.imageUrl
         }));
+
+        // Remove leading 'model' messages (Firebase AI requires first message to be 'user')
+        while (historyForAI.length > 0 && historyForAI[0].role === 'model') {
+            console.warn('⚠️ Filtering out initial model message from chat history');
+            historyForAI = historyForAI.slice(1);
+        }
 
         await streamChatMessage(
             historyForAI,

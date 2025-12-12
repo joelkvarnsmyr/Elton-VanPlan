@@ -34,7 +34,8 @@
       "Bash(gcloud secrets list:*)",
       "Bash(firebase functions:secrets:destroy:*)",
       "Bash(firebase help:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

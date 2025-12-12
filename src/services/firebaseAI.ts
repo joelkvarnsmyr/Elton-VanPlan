@@ -198,12 +198,19 @@ export const streamChatMessage = async (
   );
 
   // Convert history to Gemini format
-  const chatHistory = history.map(msg => ({
+  let chatHistory = history.map(msg => ({
     role: msg.role,
     parts: msg.image
       ? [{ text: msg.content }, { inlineData: { mimeType: 'image/jpeg', data: msg.image } }]
       : [{ text: msg.content }]
   }));
+
+  // Firebase AI SDK requires first message to be from 'user', not 'model'
+  // Remove any leading 'model' messages from history
+  while (chatHistory.length > 0 && chatHistory[0].role === 'model') {
+    console.warn('⚠️ Removing leading model message from chat history');
+    chatHistory.shift();
+  }
 
   // Prepare message parts
   const messageParts: any[] = [{ text: newMessage }];
