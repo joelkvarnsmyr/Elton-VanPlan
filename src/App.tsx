@@ -514,7 +514,7 @@ export const App = () => {
         <div className="pb-28 sm:pb-0">
            {currentView === 'dashboard' && <Dashboard project={activeProject} onPhaseClick={(p) => { setActivePhaseFilter(p); setCurrentView('tasks'); }} />}
            {currentView === 'tasks' && <TaskBoard tasks={activeProject.tasks} shoppingItems={activeProject.shoppingItems} vehicleData={activeProject.vehicleData} onUpdateTask={handleUpdateTask} initialFilter={activePhaseFilter as any} />}
-           {currentView === 'ai' && <AIAssistant vehicleData={activeProject.vehicleData} tasks={activeProject.tasks} shoppingItems={activeProject.shoppingItems} onAddTask={(t) => handleAddTasks(t as any)} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} onUpdateShoppingItem={handleUpdateShoppingItem} onDeleteShoppingItem={handleDeleteShoppingItem} onClose={() => setCurrentView('dashboard')} />}
+           {currentView === 'ai' && <AIAssistant project={activeProject} contacts={activeProject.contacts} onAddTask={(t) => handleAddTasks(t as any)} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} onUpdateShoppingItem={handleUpdateShoppingItem} onDeleteShoppingItem={handleDeleteShoppingItem} onClose={() => setCurrentView('dashboard')} />}
            {currentView === 'specs' && <VehicleSpecs
                vehicleData={activeProject.vehicleData}
                tasks={activeProject.tasks}

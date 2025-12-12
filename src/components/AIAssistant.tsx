@@ -368,22 +368,23 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                  {msg.role === 'user' ? (
                      <p>{msg.content}</p>
                  ) : (
-                     <ReactMarkdown
-                        className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0"
-                        components={{
-                            h1: ({node, ...props}) => <h1 className="text-base font-bold text-nordic-charcoal dark:text-nordic-ice mt-2" {...props} />,
-                            h2: ({node, ...props}) => <h2 className="text-sm font-bold text-teal-600 dark:text-teal-400 mt-2 uppercase tracking-wide" {...props} />,
-                            h3: ({node, ...props}) => <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 mt-2" {...props} />,
-                            ul: ({node, ...props}) => <ul className="list-disc list-outside ml-4 space-y-1 my-2" {...props} />,
-                            ol: ({node, ...props}) => <ol className="list-decimal list-outside ml-4 space-y-1 my-2" {...props} />,
-                            li: ({node, ...props}) => <li className="pl-1 marker:text-teal-500" {...props} />,
-                            strong: ({node, ...props}) => <strong className="font-bold text-nordic-charcoal dark:text-white" {...props} />,
-                            a: ({node, ...props}) => <a className="text-teal-600 hover:underline cursor-pointer font-medium" target="_blank" {...props} />,
-                            blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-teal-200 pl-3 italic text-slate-500 my-2" {...props} />,
-                        }}
-                     >
-                        {msg.content}
-                     </ReactMarkdown>
+                     <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0">
+                      <ReactMarkdown
+                          components={{
+                              h1: ({node, ...props}) => <h1 className="text-base font-bold text-nordic-charcoal dark:text-nordic-ice mt-2" {...props} />,
+                              h2: ({node, ...props}) => <h2 className="text-sm font-bold text-teal-600 dark:text-teal-400 mt-2 uppercase tracking-wide" {...props} />,
+                              h3: ({node, ...props}) => <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 mt-2" {...props} />,
+                              ul: ({node, ...props}) => <ul className="list-disc list-outside ml-4 space-y-1 my-2" {...props} />,
+                              ol: ({node, ...props}) => <ol className="list-decimal list-outside ml-4 space-y-1 my-2" {...props} />,
+                              li: ({node, ...props}) => <li className="pl-1 marker:text-teal-500" {...props} />,
+                              strong: ({node, ...props}) => <strong className="font-bold text-nordic-charcoal dark:text-white" {...props} />,
+                              a: ({node, ...props}) => <a className="text-teal-600 hover:underline cursor-pointer font-medium" target="_blank" {...props} />,
+                              blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-teal-200 pl-3 italic text-slate-500 my-2" {...props} />,
+                          }}
+                       >
+                          {msg.content}
+                       </ReactMarkdown>
+                    </div>
                  )}
               </div>
             </div>
