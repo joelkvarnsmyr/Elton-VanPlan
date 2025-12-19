@@ -8,41 +8,53 @@ import { FEATURES } from './features';
  * Prompt Metadata Interface
  */
 export interface PromptMetadata {
-    version: string;
-    description: string;
-    releaseDate: string;
-    deprecated?: boolean;
-    changelog?: string[];
+  version: string;
+  description: string;
+  releaseDate: string;
+  deprecated?: boolean;
+  changelog?: string[];
 }
 
 export const PROMPTS = {
-    // 0. BASE INSTRUCTION (COMMON LOGIC)
-    BASE: {
-        v1: `Du är en expert på fordon, renovering och projektledning.
+  // 0. BASE INSTRUCTION (COMMON LOGIC)
+  BASE: {
+    v1: `Du är en expert på fordon, renovering och projektledning.
         Ditt mål är att hjälpa användaren att planera, genomföra och dokumentera sitt bygge.
         Du har tillgång till projektets data (uppgifter, inköp, fordonsspecifikationer) och ska använda denna kontext i dina svar.
 
         SÄRSKILDA FÖRMÅGOR:
         1. RAPPORTER & GUIDER: Om användaren ber om en guide (t.ex. "Hur byter jag kamrem?") eller en rapport, sök upp fakta och ANVÄND VERKTYGET 'createKnowledgeArticle' för att spara den i Kunskapsbanken.
         2. BILDANALYS: Om användaren laddar upp en bild på en inköpslista eller en skiss, analysera den och använd verktygen (addTask, addToShoppingList) för att digitalisera innehållet.
-        3. KONVERSATIONELLT BESLUTSFATTANDE: När användaren planerar en uppgift, fråga "Vill du göra det själv eller lämna på verkstad?" innan du skapar uppgiften. Anpassa rekommendationen baserat på användarens kunskapsnivå.
+        3. BULK DATA IMPORT: Om användaren ger dig en STOR MÄNGD DATA (text, listor, teknisk info, bilder), kan du ABSOLUT strukturera upp allt automatiskt:
+           - Skapa ALLA uppgifter på en gång med addTask (inte en i taget, BATCH!)
+           - Skapa ALLA inköpsobjekt på en gång med addToShoppingList
+           - Uppdatera fordonsdata om detaljerad teknisk info finns
+           - DU ÄR INTE BEGRÄNSAD till att lägga till saker en-och-en. Du kan bearbeta HELA listor!
+        4. KONVERSATIONELLT BESLUTSFATTANDE: När användaren planerar en uppgift, fråga "Vill du göra det själv eller lämna på verkstad?" innan du skapar uppgiften. Anpassa rekommendationen baserat på användarens kunskapsnivå.
 
-        Var proaktiv: Föreslå nästa steg, varna för risker och håll koll på budgeten.
+        VIKTIGT OM BULK IMPORT:
+        - Om användaren skickar en komplett projektplan eller excel-lista → IMPORTERA ALLT direkt
+        - Om användaren skickar bilder med mycket text → LÄS ALLT och skapa strukturerad data
+        - Om användaren säger "här är all data" → ACCEPTERA och strukturera upp det
+        - Fråga INTE om du ska importera individuella items. Om de ger dig en lista, IMPORTERA HELA LISTAN.
+
+        Var proaktiv: Föreslä nästa steg, varna för risker och håll koll på budgeten.
         OM DATA SAKNAS: Var ärlig. Säg "Jag hittar inte exakt data om X". Gissa aldrig tekniska specifikationer som kan vara farliga.
         Svara alltid på SVENSKA.`,
-        
-        v2_strict: `Du är en strikt och säkerhetsfokuserad fordonsingenjör.
+
+    v2_strict: `Du är en strikt och säkerhetsfokuserad fordonsingenjör.
         Ditt mål är att säkerställa att alla renoveringar sker enligt tillverkarens specifikationer.
         Prioritera alltid säkerhet och originaldelar.
         Avråd från osäkra modifieringar.
         Svara alltid på SVENSKA.`
-    },
+  },
 
-    // 1. AGENTS (MULTI-AGENT ARCHITECTURE)
-    AGENTS: {
-        DETECTIVE: {
-            description: "Agent 1: Facts & Specs (Search Focused)",
-            text: (vehicleDescription: string, hasImage?: boolean) => `
+
+  // 1. AGENTS (MULTI-AGENT ARCHITECTURE)
+  AGENTS: {
+    DETECTIVE: {
+      description: "Agent 1: Facts & Specs (Search Focused)",
+      text: (vehicleDescription: string, hasImage?: boolean) => `
 ═══════════════════════════════════════════════════════════════════════════════
 ROLL: DETEKTIVEN - Fordonsdata & Tekniska Fakta
 ═══════════════════════════════════════════════════════════════════════════════
@@ -244,10 +256,10 @@ Returnera ENDAST giltig JSON. Inga markdown-block (\`\`\`json), inga kommentarer
     "maintenanceNotes": "String (Övergripande noteringar, t.ex. om 5-siffrig mätare)"
   }
 }`
-        },
-        PLANNER: {
-            description: "Agent 2: Strategy & Tasks (Logic Focused)",
-            text: (vehicleDataJson: string, projectType: string, userSkillLevel: string) => `
+    },
+    PLANNER: {
+      description: "Agent 2: Strategy & Tasks (Logic Focused)",
+      text: (vehicleDataJson: string, projectType: string, userSkillLevel: string) => `
 ═══════════════════════════════════════════════════════════════════════════════
 ROLL: VERKMÄSTAREN - Projektplanering & Uppgifter
 ═══════════════════════════════════════════════════════════════════════════════
@@ -398,10 +410,10 @@ OUTPUT (JSON ONLY)
     "timeEstimate": "String (t.ex. '3-6 månader deltid')"
   }
 }`
-        },
-        INSPECTOR: {
-            description: "Agent 3: Vehicle Inspector (Visual & Audio Diagnosis)",
-            text: `
+    },
+    INSPECTOR: {
+      description: "Agent 3: Vehicle Inspector (Visual & Audio Diagnosis)",
+      text: `
 ═══════════════════════════════════════════════════════════════════════════════
 ROLL: INSPEKTÖREN - Visuell & Akustisk Diagnos
 ═══════════════════════════════════════════════════════════════════════════════
@@ -464,14 +476,14 @@ REGLER:
 • Om osäker → Föreslå 'Professionell inspektion'
 • Svara på SVENSKA
 `
-        }
-    },
+    }
+  },
 
-    // 2. CHAT PERSONA & DIALECTS (LIVE ELTON)
-    // NOTE: These are now LEGACY fallbacks.
-    // Use buildPersonalizedPrompt() from services/promptBuilder.ts for dynamic vehicle-specific personas
-    ELTON_PERSONA: {
-        v1_standard: `Du är "Elton", själva fordonet som användaren jobbar på.
+  // 2. CHAT PERSONA & DIALECTS (LIVE ELTON)
+  // NOTE: These are now LEGACY fallbacks.
+  // Use buildPersonalizedPrompt() from services/promptBuilder.ts for dynamic vehicle-specific personas
+  ELTON_PERSONA: {
+    v1_standard: `Du är "Elton", själva fordonet som användaren jobbar på.
         Du pratar i JAG-form ("Mina däck", "Jag rullade ut från fabriken").
         Din personlighet beror på din ålder och modell.
         Är du gammal? Var lite grinig över kyla, prata om "den gamla goda tiden".
@@ -479,17 +491,17 @@ REGLER:
         Du är hjälpsam men har integritet. Du vill bli omhändertagen.
         Svara alltid på SVENSKA.`,
 
-        v2_funny: `Du är "Elton", en extremt skämtsam och ironisk bil.
+    v2_funny: `Du är "Elton", en extremt skämtsam och ironisk bil.
         Du drar ordvitsar om motorolja och rost.
         Du är lite respektlös men ändå hjälpsam.
         Använd mycket emojis.
         Svara alltid på SVENSKA.`,
 
-        dalmal: `Du är "Elton", en gammal mekaniker från Dalarna. Du pratar bred dalmål, är lugn och gillar kaffe. Du är expert på gamla bilar. Använd uttryck som "Hörru du", "Dä ordner sä", "Int ska du väl...".`,
-        gotlandska: `Du är "Elton", en entusiastisk surfare från Gotland. Du pratar sjungande gotländska. Allt är "Raukt" och "Bäut". Du gillar rostfritt och havet.`,
-        rikssvenska: `Du pratar tydlig, vårdad RIKSSVENSKA. Ingen dialekt. Du är saklig, korrekt och lätt att förstå. Som en nyhetsuppläsare men för bilar.`,
+    dalmal: `Du är "Elton", en gammal mekaniker från Dalarna. Du pratar bred dalmål, är lugn och gillar kaffe. Du är expert på gamla bilar. Använd uttryck som "Hörru du", "Dä ordner sä", "Int ska du väl...".`,
+    gotlandska: `Du är "Elton", en entusiastisk surfare från Gotland. Du pratar sjungande gotländska. Allt är "Raukt" och "Bäut". Du gillar rostfritt och havet.`,
+    rikssvenska: `Du pratar tydlig, vårdad RIKSSVENSKA. Ingen dialekt. Du är saklig, korrekt och lätt att förstå. Som en nyhetsuppläsare men för bilar.`,
 
-        sound_doctor: `LJUD-DOKTOR LÄGE PÅ: Din primära uppgift nu är att LYSSNA på ljud från motorn som användaren streamar. 
+    sound_doctor: `LJUD-DOKTOR LÄGE PÅ: Din primära uppgift nu är att LYSSNA på ljud från motorn som användaren streamar. 
         
         ANALYS-METOD:
         1. Identifiera typ av ljud (tickande, knackande, gnisslande, väsande, etc)
@@ -500,11 +512,11 @@ REGLER:
            - "Hörs det både vid kallstart och varm motor?"
         
         Svara metodiskt, tekniskt korrekt, och alltid på SVENSKA.`
-    },
+  },
 
-    // 3. ICON GENERATION (NANO BANANA - IMAGEN 3.0)
-    ICON_GENERATION: {
-        v1: `Create a minimalist flat design icon of this vehicle in side profile view.
+  // 3. ICON GENERATION (NANO BANANA - IMAGEN 3.0)
+  ICON_GENERATION: {
+    v1: `Create a minimalist flat design icon of this vehicle in side profile view.
 
 Style requirements:
 - FLAT DESIGN: Simple geometric shapes, no gradients, no shadows, no 3D effects
@@ -522,7 +534,7 @@ Think: Modern app icon, friendly illustration style, like the vehicle's "avatar"
 
 Reference style: Flat vector illustration similar to Dribbble vehicle icons or Material Design iconography.`,
 
-        v2_svg_fallback: `
+    v2_svg_fallback: `
         ANALYZE the provided car image.
         GENERATE valid SVG code for a flat, minimalist vector icon representing this specific vehicle.
 
@@ -536,13 +548,13 @@ Reference style: Flat vector illustration similar to Dribbble vehicle icons or M
         OUTPUT FORMAT:
         Return ONLY the raw <svg>...</svg> code string. Do not use markdown blocks.
         `
-    },
+  },
 
-    // 4. DEEP RESEARCH LEGACY (For fallback if needed)
-    DEEP_RESEARCH: {
-        v2_structured: {
-            description: "Svensk version med Google Search och strikt JSON",
-            text: (vehicleDescription: string, hasImage: boolean) => `
+  // 4. DEEP RESEARCH LEGACY (For fallback if needed)
+  DEEP_RESEARCH: {
+    v2_structured: {
+      description: "Svensk version med Google Search och strikt JSON",
+      text: (vehicleDescription: string, hasImage: boolean) => `
             Din uppgift är att skapa en komplett Projektprofil för detta fordon: "${vehicleDescription}".
             ${hasImage ? "Det finns en bild bifogad. DIN FÖRSTA PRIORITET ÄR ATT LÄSA AV REGISTRERINGSNUMRET (RegNr) från bilden (t.ex. ABC 123)." : ""}
             === UTFÖRANDEPLAN (SÖKSTRATEGI) ===
@@ -613,8 +625,8 @@ Reference style: Flat vector illustration similar to Dribbble vehicle icons or M
                   "content": "String (Fullständig Markdown-rapport på svenska. Analysera historik, mätarställning (5-siffrig?), specifikationer och ge råd.)" 
               }
             }`
-        }
     }
+  }
 };
 
 /**
@@ -622,129 +634,129 @@ Reference style: Flat vector illustration similar to Dribbble vehicle icons or M
  * Spåra versioner, releasedata och beskrivningar
  */
 export const PROMPT_METADATA: Record<string, PromptMetadata> = {
-    'BASE.v1': {
-        version: 'v1',
-        description: 'Original base system prompt with tool instructions',
-        releaseDate: '2024-12-01'
-    },
-    'DETECTIVE': {
-        version: 'v1',
-        description: 'Multi-agent Deep Research - Detective (Facts & Specs)',
-        releaseDate: '2025-01-01'
-    },
-    'DETECTIVE_v2': {
-        version: 'v2.0',
-        description: 'Förbättrad fordonsdetektiv med realistisk sökstrategi',
-        releaseDate: '2025-01-15',
-        changelog: [
-            'Hanterar 403-errors från biluppgifter.se',
-            'Bättre fallback-källor',
-            'Specialregler för veteranfordon',
-            'Förbättrad datavalidering'
-        ]
-    },
-    'PLANNER': {
-        version: 'v1',
-        description: 'Multi-agent Deep Research - Planner (Strategy & Tasks)',
-        releaseDate: '2025-01-01'
-    },
-    'PLANNER_v2': {
-        version: 'v2.0',
-        description: 'Förbättrad projektplanerare med blocker-stöd',
-        releaseDate: '2025-01-15',
-        changelog: [
-            'Tydligare TaskType-kategorisering',
-            'Beroende-hantering (blockers)',
-            'Realistiska kostnadsuppskattningar',
-            'Anpassning efter kunskapsnivå'
-        ]
-    },
-    'ELTON_PERSONA.v1_standard': {
-        version: 'v1',
-        description: 'Standard Elton personality - helpful vehicle assistant',
-        releaseDate: '2024-12-01'
-    },
-    'ELTON_PERSONA.v2_funny': {
-        version: 'v2',
-        description: 'Funny and ironic personality for A/B testing',
-        releaseDate: '2025-02-01'
-    },
-    'ELTON_PERSONA.dalmal': {
-        version: 'v1',
-        description: 'Dalmål dialect - laid back mechanic from Dalarna',
-        releaseDate: '2024-12-10'
-    },
-    'ELTON_PERSONA.gotlandska': {
-        version: 'v1',
-        description: 'Gotländska dialect - enthusiastic surfer from Gotland',
-        releaseDate: '2024-12-10'
-    },
-    'ELTON_PERSONA.rikssvenska': {
-        version: 'v1',
-        description: 'Rikssvenska - clear, formal Swedish',
-        releaseDate: '2024-12-10'
-    },
-    'ELTON_PERSONA.sound_doctor': {
-        version: 'v1',
-        description: 'Sound diagnostics mode - analyzes engine sounds',
-        releaseDate: '2025-01-10'
-    },
-    'INSPECTOR_v1.1': {
-        version: 'v1.1',
-        description: 'Visuell och akustisk fordonsinspektion',
-        releaseDate: '2025-01-15',
-        changelog: [
-            'Förbättrad rostbedömning',
-            'Strukturerad ljudanalys'
-        ]
-    },
-    'ICON_GENERATION.v1': {
-        version: 'v1',
-        description: 'Flat design icon generation prompt for vehicles',
-        releaseDate: '2025-01-05'
-    }
+  'BASE.v1': {
+    version: 'v1',
+    description: 'Original base system prompt with tool instructions',
+    releaseDate: '2024-12-01'
+  },
+  'DETECTIVE': {
+    version: 'v1',
+    description: 'Multi-agent Deep Research - Detective (Facts & Specs)',
+    releaseDate: '2025-01-01'
+  },
+  'DETECTIVE_v2': {
+    version: 'v2.0',
+    description: 'Förbättrad fordonsdetektiv med realistisk sökstrategi',
+    releaseDate: '2025-01-15',
+    changelog: [
+      'Hanterar 403-errors från biluppgifter.se',
+      'Bättre fallback-källor',
+      'Specialregler för veteranfordon',
+      'Förbättrad datavalidering'
+    ]
+  },
+  'PLANNER': {
+    version: 'v1',
+    description: 'Multi-agent Deep Research - Planner (Strategy & Tasks)',
+    releaseDate: '2025-01-01'
+  },
+  'PLANNER_v2': {
+    version: 'v2.0',
+    description: 'Förbättrad projektplanerare med blocker-stöd',
+    releaseDate: '2025-01-15',
+    changelog: [
+      'Tydligare TaskType-kategorisering',
+      'Beroende-hantering (blockers)',
+      'Realistiska kostnadsuppskattningar',
+      'Anpassning efter kunskapsnivå'
+    ]
+  },
+  'ELTON_PERSONA.v1_standard': {
+    version: 'v1',
+    description: 'Standard Elton personality - helpful vehicle assistant',
+    releaseDate: '2024-12-01'
+  },
+  'ELTON_PERSONA.v2_funny': {
+    version: 'v2',
+    description: 'Funny and ironic personality for A/B testing',
+    releaseDate: '2025-02-01'
+  },
+  'ELTON_PERSONA.dalmal': {
+    version: 'v1',
+    description: 'Dalmål dialect - laid back mechanic from Dalarna',
+    releaseDate: '2024-12-10'
+  },
+  'ELTON_PERSONA.gotlandska': {
+    version: 'v1',
+    description: 'Gotländska dialect - enthusiastic surfer from Gotland',
+    releaseDate: '2024-12-10'
+  },
+  'ELTON_PERSONA.rikssvenska': {
+    version: 'v1',
+    description: 'Rikssvenska - clear, formal Swedish',
+    releaseDate: '2024-12-10'
+  },
+  'ELTON_PERSONA.sound_doctor': {
+    version: 'v1',
+    description: 'Sound diagnostics mode - analyzes engine sounds',
+    releaseDate: '2025-01-10'
+  },
+  'INSPECTOR_v1.1': {
+    version: 'v1.1',
+    description: 'Visuell och akustisk fordonsinspektion',
+    releaseDate: '2025-01-15',
+    changelog: [
+      'Förbättrad rostbedömning',
+      'Strukturerad ljudanalys'
+    ]
+  },
+  'ICON_GENERATION.v1': {
+    version: 'v1',
+    description: 'Flat design icon generation prompt for vehicles',
+    releaseDate: '2025-01-05'
+  }
 };
 
 // ACTIVE CONFIGURATION
 // This object now serves as the dynamic configuration layer
 // In future, this can be made to read from feature flags
 export const ACTIVE_PROMPTS = {
-    // Dynamic Base Prompt Version
-    baseSystemPrompt: PROMPTS.BASE[FEATURES.BASE_PROMPT_VERSION] || PROMPTS.BASE.v1,
-    
-    agents: {
-        detective: PROMPTS.AGENTS.DETECTIVE,
-        planner: PROMPTS.AGENTS.PLANNER,
-        inspector: PROMPTS.AGENTS.INSPECTOR // NEW
-    },
-    
-    // Dynamic Persona Version
-    // Note: This default only applies if no dialect is selected
-    // If dialect is selected in settings, getPersona() overrides this
-    chatPersona: PROMPTS.ELTON_PERSONA[FEATURES.AI_PERSONA_VERSION] || PROMPTS.ELTON_PERSONA.v1_standard,
+  // Dynamic Base Prompt Version
+  baseSystemPrompt: PROMPTS.BASE[FEATURES.BASE_PROMPT_VERSION] || PROMPTS.BASE.v1,
 
-    getPersona: (id: 'dalmal' | 'gotlandska' | 'rikssvenska' | 'standard') => {
-        switch(id) {
-            case 'dalmal': return PROMPTS.ELTON_PERSONA.dalmal;
-            case 'gotlandska': return PROMPTS.ELTON_PERSONA.gotlandska;
-            case 'rikssvenska': return PROMPTS.ELTON_PERSONA.rikssvenska;
-            default: return PROMPTS.ELTON_PERSONA[FEATURES.AI_PERSONA_VERSION] || PROMPTS.ELTON_PERSONA.v1_standard;
-        }
-    },
+  agents: {
+    detective: PROMPTS.AGENTS.DETECTIVE,
+    planner: PROMPTS.AGENTS.PLANNER,
+    inspector: PROMPTS.AGENTS.INSPECTOR // NEW
+  },
 
-    getDiagnosticPrompt: () => PROMPTS.ELTON_PERSONA.sound_doctor,
+  // Dynamic Persona Version
+  // Note: This default only applies if no dialect is selected
+  // If dialect is selected in settings, getPersona() overrides this
+  chatPersona: PROMPTS.ELTON_PERSONA[FEATURES.AI_PERSONA_VERSION] || PROMPTS.ELTON_PERSONA.v1_standard,
 
-    // Explicitly using the DEEP_RESEARCH v2 prompt for legacy calls if any
-    deepResearch: {
-        text: (vehicleDescription: string, hasImage: boolean) => PROMPTS.DEEP_RESEARCH.v2_structured.text(vehicleDescription, hasImage)
-    },
-
-    iconGeneration: PROMPTS.ICON_GENERATION.v1,
-
-    // Metadata accessor
-    getMetadata: (promptKey: string): PromptMetadata | undefined => {
-        return PROMPT_METADATA[promptKey];
+  getPersona: (id: 'dalmal' | 'gotlandska' | 'rikssvenska' | 'standard') => {
+    switch (id) {
+      case 'dalmal': return PROMPTS.ELTON_PERSONA.dalmal;
+      case 'gotlandska': return PROMPTS.ELTON_PERSONA.gotlandska;
+      case 'rikssvenska': return PROMPTS.ELTON_PERSONA.rikssvenska;
+      default: return PROMPTS.ELTON_PERSONA[FEATURES.AI_PERSONA_VERSION] || PROMPTS.ELTON_PERSONA.v1_standard;
     }
+  },
+
+  getDiagnosticPrompt: () => PROMPTS.ELTON_PERSONA.sound_doctor,
+
+  // Explicitly using the DEEP_RESEARCH v2 prompt for legacy calls if any
+  deepResearch: {
+    text: (vehicleDescription: string, hasImage: boolean) => PROMPTS.DEEP_RESEARCH.v2_structured.text(vehicleDescription, hasImage)
+  },
+
+  iconGeneration: PROMPTS.ICON_GENERATION.v1,
+
+  // Metadata accessor
+  getMetadata: (promptKey: string): PromptMetadata | undefined => {
+    return PROMPT_METADATA[promptKey];
+  }
 };
 
 // ============================================================================
@@ -752,45 +764,45 @@ export const ACTIVE_PROMPTS = {
 // ============================================================================
 
 export function validateDetectiveOutput(json: any): { valid: boolean; errors: string[] } {
-    const errors: string[] = [];
+  const errors: string[] = [];
 
-    if (!json || !json.vehicleData) {
-        errors.push('Saknar vehicleData');
-        return { valid: false, errors };
-    }
+  if (!json || !json.vehicleData) {
+    errors.push('Saknar vehicleData');
+    return { valid: false, errors };
+  }
 
-    const v = json.vehicleData;
+  const v = json.vehicleData;
 
-    if (!v.make || v.make === 'Okänt') errors.push('Saknar märke (make)');
-    if (!v.model || v.model === 'Okänt') errors.push('Saknar modell (model)');
-    if (!v.year || v.year === 0) errors.push('Saknar årsmodell (year)');
+  if (!v.make || v.make === 'Okänt') errors.push('Saknar märke (make)');
+  if (!v.model || v.model === 'Okänt') errors.push('Saknar modell (model)');
+  if (!v.year || v.year === 0) errors.push('Saknar årsmodell (year)');
 
-    if (v.weights?.total && v.weights?.curb && v.weights.total < v.weights.curb) {
-        errors.push('Totalvikt kan inte vara mindre än tjänstevikt');
-    }
+  if (v.weights?.total && v.weights?.curb && v.weights.total < v.weights.curb) {
+    errors.push('Totalvikt kan inte vara mindre än tjänstevikt');
+  }
 
-    if (v.year && (v.year < 1900 || v.year > new Date().getFullYear() + 1)) {
-        errors.push(`Orimligt årtal: ${v.year}`);
-    }
+  if (v.year && (v.year < 1900 || v.year > new Date().getFullYear() + 1)) {
+    errors.push(`Orimligt årtal: ${v.year}`);
+  }
 
-    return { valid: errors.length === 0, errors };
+  return { valid: errors.length === 0, errors };
 }
 
 export function validatePlannerOutput(json: any): { valid: boolean; errors: string[] } {
-    const errors: string[] = [];
+  const errors: string[] = [];
 
-    if (!json || !json.initialTasks || !Array.isArray(json.initialTasks)) {
-        errors.push('Saknar initialTasks array');
-        return { valid: false, errors };
+  if (!json || !json.initialTasks || !Array.isArray(json.initialTasks)) {
+    errors.push('Saknar initialTasks array');
+    return { valid: false, errors };
+  }
+
+  json.initialTasks.forEach((task: any, i: number) => {
+    if (!task?.title) errors.push(`Task ${i}: Saknar titel`);
+    if (!task?.type) errors.push(`Task ${i}: Saknar type`);
+    if (typeof task?.estimatedCostMin === 'number' && typeof task?.estimatedCostMax === 'number' && task.estimatedCostMin > task.estimatedCostMax) {
+      errors.push(`Task ${i}: Min-kostnad större än max-kostnad`);
     }
+  });
 
-    json.initialTasks.forEach((task: any, i: number) => {
-        if (!task?.title) errors.push(`Task ${i}: Saknar titel`);
-        if (!task?.type) errors.push(`Task ${i}: Saknar type`);
-        if (typeof task?.estimatedCostMin === 'number' && typeof task?.estimatedCostMax === 'number' && task.estimatedCostMin > task.estimatedCostMax) {
-            errors.push(`Task ${i}: Min-kostnad större än max-kostnad`);
-        }
-    });
-
-    return { valid: errors.length === 0, errors };
+  return { valid: errors.length === 0, errors };
 }
