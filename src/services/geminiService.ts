@@ -18,6 +18,7 @@ import {
   type ChatResponse
 } from './aiProxyService';
 import { performDeepResearch } from './firebaseAIService';
+import { fetchVehicleByRegNo, validateSwedishRegNo } from './vehicleDataService';
 
 // Flatten all phases for context
 const ALL_PHASES = [
@@ -277,8 +278,39 @@ export const generateProjectProfile = async (
   const finalSkillLevel = userSkillLevel || 'intermediate';
 
   try {
+    // 1. Try to fetch hard facts if the input looks like a RegNo
+    let hardFactData = "";
+    let hardFactVehicleData: Partial<VehicleData> | null = null;
+
+    if (validateSwedishRegNo(vehicleDescription)) {
+      console.log(`[GeminiService] Detected RegNo: ${vehicleDescription}, fetching hard facts...`);
+      const vehicleSpec = await fetchVehicleByRegNo(vehicleDescription);
+      if (vehicleSpec.success && vehicleSpec.data) {
+        hardFactVehicleData = vehicleSpec.data;
+        hardFactData = `
+        VIKTIGT: FÖLJANDE HÅRDA FAKTA HÄMTADES FRÅN REGISTRET. DU MÅSTE ANVÄNDA DESSA:
+        Märke: ${vehicleSpec.data.make}
+        Modell: ${vehicleSpec.data.model}
+        År: ${vehicleSpec.data.year}
+        Motor: ${vehicleSpec.data.engine?.power} ${vehicleSpec.data.engine?.fuel}
+        Växellåda: ${vehicleSpec.data.gearbox}
+        RegNr: ${vehicleSpec.data.regNo}
+        VIN: ${vehicleSpec.data.vin}
+        
+        ANVÄND OVANSTÅENDE DATA SOM SANNINGEN. SÖK INTE EFTER MOTSTRIDIG INFO.
+        `;
+      }
+    }
+
     // Get prompts for the agents
-    const detectivePrompt = ACTIVE_PROMPTS.agents.detective.text(vehicleDescription, !!imageBase64);
+    const detectivePrompt = ACTIVE_PROMPTS.agents.detective.text(
+      `${vehicleDescription} ${hardFactData}`,
+      !!imageBase64
+    );
+
+    // Inject hard facts explicitly into the prompt context
+    const enrichedDetectivePrompt = hardFactData ? `${detectivePrompt}\n\n${hardFactData}` : detectivePrompt;
+
     const plannerPrompt = ACTIVE_PROMPTS.agents.planner.text(
       '{}', // Vehicle data placeholder - detective will fill this
       finalProjectType,
@@ -291,9 +323,24 @@ export const generateProjectProfile = async (
       imageBase64,
       finalProjectType,
       finalSkillLevel,
-      detectivePrompt,
+      enrichedDetectivePrompt,
       plannerPrompt
     );
+
+    // Merge hard facts into the result to ensure data persistence
+    if (hardFactVehicleData) {
+      console.log('✨ Merging hard facts into AI result...');
+      result.vehicleData = {
+        ...result.vehicleData,
+        ...hardFactVehicleData,
+        // Ensure critical fields are preserved from hard facts
+        regNo: hardFactVehicleData.regNo || result.vehicleData.regNo,
+        vin: hardFactVehicleData.vin || result.vehicleData.vin,
+        make: hardFactVehicleData.make || result.vehicleData.make,
+        model: hardFactVehicleData.model || result.vehicleData.model,
+        year: hardFactVehicleData.year || result.vehicleData.year
+      };
+    }
 
     return result;
 

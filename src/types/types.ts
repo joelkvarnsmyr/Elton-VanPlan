@@ -6,9 +6,9 @@ export type UserSkillLevel = 'beginner' | 'intermediate' | 'expert';
 
 // Legacy phases (still used for categorization in UI if detailed phases not set)
 export const PROJECT_PHASES = {
-    renovation: ['Fas 1: Akut', 'Fas 2: Mekanisk Säkerhet', 'Fas 3: Kaross & Rost', 'Fas 4: Inredning & Finish'],
-    conversion: ['Fas 1: Planering & Inköp', 'Fas 2: Isolering & Grund', 'Fas 3: El & Vatten', 'Fas 4: Snickerier & Inredning', 'Fas 5: Finish & Piff'],
-    maintenance: ['Vårkoll', 'Säsong', 'Höst/Vinterförvaring', 'Löpande']
+  renovation: ['Fas 1: Akut', 'Fas 2: Mekanisk Säkerhet', 'Fas 3: Kaross & Rost', 'Fas 4: Inredning & Finish'],
+  conversion: ['Fas 1: Planering & Inköp', 'Fas 2: Isolering & Grund', 'Fas 3: El & Vatten', 'Fas 4: Snickerier & Inredning', 'Fas 5: Finish & Piff'],
+  maintenance: ['Vårkoll', 'Säsong', 'Höst/Vinterförvaring', 'Löpande']
 };
 
 // --- NEW TASK TYPES & PHASES ---
@@ -40,7 +40,7 @@ export enum BuildPhase {
 }
 
 export enum TaskStatus {
-  IDEA = 'Idé & Research', 
+  IDEA = 'Idé & Research',
   TODO = 'Att göra',
   IN_PROGRESS = 'Pågående',
   DONE = 'Klart',
@@ -48,9 +48,9 @@ export enum TaskStatus {
 }
 
 export enum Priority {
-  HIGH = 'Hög',     
-  MEDIUM = 'Medel', 
-  LOW = 'Låg'       
+  HIGH = 'Hög',
+  MEDIUM = 'Medel',
+  LOW = 'Låg'
 }
 
 export enum CostType {
@@ -80,7 +80,7 @@ export interface Link {
 export interface Comment {
   id: string;
   text: string;
-  createdAt: string; 
+  createdAt: string;
   author: 'user' | 'ai';
 }
 
@@ -88,7 +88,7 @@ export interface Attachment {
   id: string;
   name: string;
   type: 'image' | 'file';
-  data: string; 
+  data: string;
 }
 
 export interface Subtask {
@@ -99,7 +99,7 @@ export interface Subtask {
 
 export interface DecisionOption {
   id: string;
-  title: string; 
+  title: string;
   description: string;
   costRange: string;
   pros: string[];
@@ -112,13 +112,13 @@ export interface Task {
   title: string;
   description: string;
   status: TaskStatus;
-  phase: string; 
-  priority?: Priority; 
-  sprint?: string;     
+  phase: string;
+  priority?: Priority;
+  sprint?: string;
   estimatedCostMin: number;
   estimatedCostMax: number;
   actualCost: number;
-  weightKg: number; 
+  weightKg: number;
   costType: CostType;
   tags: string[];
   links: Link[];
@@ -126,11 +126,11 @@ export interface Task {
   attachments: Attachment[];
   subtasks: Subtask[];
   decisionOptions?: DecisionOption[];
-  
+
   // Planner Improvements
   difficultyLevel?: DifficultyLevel;
   requiredTools?: string[];
-  
+
   // Advanced Project Management (New)
   type?: TaskType;
   mechanicalPhase?: MechanicalPhase;
@@ -191,13 +191,13 @@ export interface ServiceItem {
 }
 
 export interface FuelLogItem {
-    id: string;
-    date: string;
-    mileage: number; 
-    liters: number;
-    pricePerLiter: number;
-    totalCost: number;
-    fullTank: boolean;
+  id: string;
+  date: string;
+  mileage: number;
+  liters: number;
+  pricePerLiter: number;
+  totalCost: number;
+  fullTank: boolean;
 }
 
 export interface ResourceLink {
@@ -209,51 +209,51 @@ export interface ResourceLink {
 }
 
 export interface KnowledgeArticle {
-    id: string;
-    title: string;
-    summary: string;
-    content: string; 
-    tags: string[];
+  id: string;
+  title: string;
+  summary: string;
+  content: string;
+  tags: string[];
 }
 
 export interface Contact {
-    name: string;
-    phone: string;
-    location: string;
-    category: 'Specialist' | 'Veteran & Kaross' | 'Service & Akut' | 'Märkesverkstad' | 'Försäkring & Räddning';
-    specialty: string;
-    note?: string;
+  name: string;
+  phone: string;
+  location: string;
+  category: 'Specialist' | 'Veteran & Kaross' | 'Service & Akut' | 'Märkesverkstad' | 'Försäkring & Räddning';
+  specialty: string;
+  note?: string;
 }
 
 // New: Structured Expert Analysis
 export interface ExpertAnalysis {
-    commonFaults: { 
-        title: string; 
-        description: string; 
-        urgency: 'High' | 'Medium' | 'Low';
-    }[];
-    modificationTips: { 
-        title: string; 
-        description: string; 
-    }[];
-    maintenanceNotes: string; // e.g. "Smörj spindelbultar!"
+  commonFaults: {
+    title: string;
+    description: string;
+    urgency: 'High' | 'Medium' | 'Low';
+  }[];
+  modificationTips: {
+    title: string;
+    description: string;
+  }[];
+  maintenanceNotes: string; // e.g. "Smörj spindelbultar!"
 }
 
 export interface VehicleMaintenanceData {
-    fluids: {
-        oilType: string;
-        oilCapacity: string;
-        coolantType: string;
-        gearboxOil?: string;
-    };
-    battery: {
-        type: string;
-        capacity: string;
-    };
-    tires: {
-        pressureFront: string;
-        pressureRear: string;
-    };
+  fluids: {
+    oilType: string;
+    oilCapacity: string;
+    coolantType: string;
+    gearboxOil?: string;
+  };
+  battery: {
+    type: string;
+    capacity: string;
+  };
+  tires: {
+    pressureFront: string;
+    pressureRear: string;
+  };
 }
 
 // Detailed Vehicle Data Structure
@@ -379,11 +379,11 @@ export interface VehicleData {
 }
 
 export interface UserProfile {
-    uid: string;
-    name: string;
-    email: string;
-    avatar?: string;
-    skillLevel?: UserSkillLevel; // Mechanical skill level for personalized AI guidance
+  uid: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  skillLevel?: UserSkillLevel; // Mechanical skill level for personalized AI guidance
 }
 
 /**
@@ -391,10 +391,10 @@ export interface UserProfile {
  * Preferences and configuration for the user experience
  */
 export interface UserSettings {
-    userId: string;
-    dialectId?: 'dalmal' | 'gotlandska' | 'rikssvenska' | 'standard';
-    darkMode?: boolean;
-    language?: 'sv' | 'en';
+  userId: string;
+  dialectId?: 'dalmal' | 'gotlandska' | 'rikssvenska' | 'standard';
+  darkMode?: boolean;
+  language?: 'sv' | 'en';
 }
 
 // --- INSPECTION MODULE ---
@@ -405,68 +405,71 @@ export interface InspectionFinding {
   audioUrl?: string;
   date: string;
   category: 'EXTERIOR' | 'ENGINE' | 'UNDERCARRIAGE' | 'INTERIOR';
-  
+
   // AI Analysis
   aiDiagnosis: string;
-  severity: 'COSMETIC' | 'WARNING' | 'CRITICAL'; 
+  severity: 'COSMETIC' | 'WARNING' | 'CRITICAL';
   confidence: number;
-  
+
   // System Link
-  convertedToTaskId?: string; 
+  convertedToTaskId?: string;
 }
 
 export interface Project {
-    id: string;
-    name: string;
-    type: ProjectType;
-    brand: BrandId;
+  id: string;
+  name: string;
+  type: ProjectType;
+  brand: BrandId;
 
-    // === OWNERSHIP (Multi-owner support) ===
-    ownerIds: string[];        // All owners (e.g., married couple sharing a project)
-    primaryOwnerId: string;    // "Account holder" for billing/primary contact
-    memberIds: string[];       // Editors who don't own (collaborators)
-    invitedEmails: string[];   // Pending invitations
+  // === OWNERSHIP (Multi-owner support) ===
+  ownerIds: string[];        // All owners (e.g., married couple sharing a project)
+  primaryOwnerId: string;    // "Account holder" for billing/primary contact
+  memberIds: string[];       // Editors who don't own (collaborators)
+  invitedEmails: string[];   // Pending invitations
 
-    // Legacy fields (deprecated - for backwards compatibility)
-    /** @deprecated Use ownerIds[0] instead */
-    ownerId?: string;
-    /** @deprecated Lookup in users collection instead */
-    ownerEmail?: string;
-    /** @deprecated Use memberIds instead */
-    members?: string[];
+  // Legacy fields (deprecated - for backwards compatibility)
+  /** @deprecated Use ownerIds[0] instead */
+  ownerId?: string;
+  /** @deprecated Lookup in users collection instead */
+  ownerEmail?: string;
+  /** @deprecated Use memberIds instead */
+  members?: string[];
 
-    // === VEHICLE DATA ===
-    vehicleData: VehicleData;
+  // === VEHICLE DATA ===
+  vehicleData: VehicleData;
 
-    // === SUB-COLLECTION REFERENCES (data loaded separately) ===
-    // Note: These arrays are kept for backwards compatibility but
-    // should be loaded via getTasks(), getShoppingItems() etc.
-    tasks: Task[];
-    shoppingItems: ShoppingItem[];
-    serviceLog: ServiceItem[];
-    fuelLog: FuelLogItem[];
-    inspections?: InspectionFinding[];
-    contacts?: Contact[];
-    knowledgeArticles?: KnowledgeArticle[];
+  // === SUB-COLLECTION REFERENCES (data loaded separately) ===
+  // Note: These arrays are kept for backwards compatibility but
+  // should be loaded via getTasks(), getShoppingItems() etc.
+  tasks: Task[];
+  shoppingItems: ShoppingItem[];
+  serviceLog: ServiceItem[];
+  fuelLog: FuelLogItem[];
+  inspections?: InspectionFinding[];
+  contacts?: Contact[];
+  knowledgeArticles?: KnowledgeArticle[];
 
-    // === METADATA ===
-    customIcon?: string;
-    created: string;
-    lastModified: string;
-    isDemo?: boolean;
+  // === METADATA ===
+  customIcon?: string;
+  created: string;
+  lastModified: string;
+  isDemo?: boolean;
 
-    // === PROJECT PREFERENCES ===
-    nickname?: string; // Fordonets smeknamn (påverkar Eltons personlighet)
+  // === HISTORY ===
+  historyEvents?: any[];
 
-    // === LOCATION ===
-    location?: {
-        city: string;
-        region: string;
-        country: string;
-        coordinates?: { lat: number; lng: number };
-        source: 'gps' | 'ip' | 'manual';
-        lastUpdated: string;
-    };
+  // === PROJECT PREFERENCES ===
+  nickname?: string; // Fordonets smeknamn (påverkar Eltons personlighet)
+
+  // === LOCATION ===
+  location?: {
+    city: string;
+    region: string;
+    country: string;
+    coordinates?: { lat: number; lng: number };
+    source: 'gps' | 'ip' | 'manual';
+    lastUpdated: string;
+  };
 }
 
 

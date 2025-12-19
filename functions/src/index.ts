@@ -5,6 +5,14 @@
  * Alla AI-relaterade funktioner hanteras säkert på backend.
  */
 
+import * as admin from 'firebase-admin';
+
+// Initialize Firebase Admin globally once
+if (admin.apps.length === 0) {
+    admin.initializeApp();
+}
+
+
 // AI Proxy Functions
 export { aiChat, aiParse, aiDeepResearch, aiToolResponse } from './ai/proxy';
 

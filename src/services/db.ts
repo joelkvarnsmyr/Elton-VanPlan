@@ -29,8 +29,8 @@ import {
   Contact,
   InspectionFinding
 } from '@/types/types';
-import { 
-  DEMO_PROJECT 
+import {
+  DEMO_PROJECT
 } from '@/constants/constants';
 
 // --- HELPERS ---
@@ -127,101 +127,101 @@ export const forceSeedProject = async (userEmail: string, userId: string) => {
 // --- USER PROFILE ---
 
 export const getUserProfile = async (uid: string, email: string): Promise<UserProfile> => {
-    const userRef = doc(db, 'users', uid);
-    const userSnap = await getDoc(userRef);
+  const userRef = doc(db, 'users', uid);
+  const userSnap = await getDoc(userRef);
 
-    if (userSnap.exists()) {
-        return userSnap.data() as UserProfile;
-    } else {
-        const nameFromEmail = email.split('@')[0];
-        const formattedName = nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1);
-        
-        const newProfile: UserProfile = {
-            uid,
-            email,
-            name: formattedName
-        };
-        await setDoc(userRef, newProfile);
-        return newProfile;
-    }
+  if (userSnap.exists()) {
+    return userSnap.data() as UserProfile;
+  } else {
+    const nameFromEmail = email.split('@')[0];
+    const formattedName = nameFromEmail.charAt(0).toUpperCase() + nameFromEmail.slice(1);
+
+    const newProfile: UserProfile = {
+      uid,
+      email,
+      name: formattedName
+    };
+    await setDoc(userRef, newProfile);
+    return newProfile;
+  }
 };
 
 export const updateUserProfile = async (uid: string, data: Partial<UserProfile>) => {
-    const userRef = doc(db, 'users', uid);
-    await updateDoc(userRef, data);
+  const userRef = doc(db, 'users', uid);
+  await updateDoc(userRef, data);
 };
 
 // --- DATA ACCESS ---
 
 export const getProjectsForUser = async (userId: string, userEmail?: string): Promise<Project[]> => {
-    console.log('🔍 getProjectsForUser called:', { userId, userEmail });
+  console.log('🔍 getProjectsForUser called:', { userId, userEmail });
 
-    const projectsMap = new Map<string, Project>();
+  const projectsMap = new Map<string, Project>();
 
-    // 1. Get owned projects (NEW MODEL: ownerIds array)
-    const qOwnerIds = query(collection(db, 'projects'), where("ownerIds", "array-contains", userId));
-    const snapOwnerIds = await getDocs(qOwnerIds);
-    console.log('  📊 Owned projects (ownerIds):', snapOwnerIds.size);
-    snapOwnerIds.forEach(doc => {
-        const data = doc.data();
-        console.log('    - Owner:', doc.id, data.name);
-        projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
-    });
+  // 1. Get owned projects (NEW MODEL: ownerIds array)
+  const qOwnerIds = query(collection(db, 'projects'), where("ownerIds", "array-contains", userId));
+  const snapOwnerIds = await getDocs(qOwnerIds);
+  console.log('  📊 Owned projects (ownerIds):', snapOwnerIds.size);
+  snapOwnerIds.forEach(doc => {
+    const data = doc.data();
+    console.log('    - Owner:', doc.id, data.name);
+    projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
+  });
 
-    // 1b. Legacy: Get owned projects (OLD MODEL: ownerId singular)
-    const qOwnerId = query(collection(db, 'projects'), where("ownerId", "==", userId));
-    const snapOwnerId = await getDocs(qOwnerId);
-    console.log('  📊 Owned projects (legacy ownerId):', snapOwnerId.size);
-    snapOwnerId.forEach(doc => {
-        const data = doc.data();
-        if (!projectsMap.has(doc.id)) {
-            console.log('    - Owner (legacy):', doc.id, data.name);
-            projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
-        }
-    });
-
-    // 2. Get member projects (NEW MODEL: memberIds array)
-    const qMemberIds = query(collection(db, 'projects'), where("memberIds", "array-contains", userId));
-    const snapMemberIds = await getDocs(qMemberIds);
-    console.log('  📊 Member projects (memberIds):', snapMemberIds.size);
-    snapMemberIds.forEach(doc => {
-        const data = doc.data();
-        if (!projectsMap.has(doc.id)) {
-            console.log('    - Member:', doc.id, data.name);
-            projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
-        }
-    });
-
-    // 2b. Legacy: Get member projects (OLD MODEL: members array)
-    const qMembers = query(collection(db, 'projects'), where("members", "array-contains", userId));
-    const snapMembers = await getDocs(qMembers);
-    console.log('  📊 Member projects (legacy members):', snapMembers.size);
-    snapMembers.forEach(doc => {
-        const data = doc.data();
-        if (!projectsMap.has(doc.id)) {
-            console.log('    - Member (legacy):', doc.id, data.name);
-            projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
-        }
-    });
-
-    // 3. Get invited projects (if email is provided)
-    if (userEmail) {
-        const qInvited = query(collection(db, 'projects'), where("invitedEmails", "array-contains", userEmail));
-        const snapInvited = await getDocs(qInvited);
-        console.log('  📊 Invited projects found:', snapInvited.size);
-        snapInvited.forEach(doc => {
-            const data = doc.data();
-            if (!projectsMap.has(doc.id)) {
-                console.log('    - Invited:', doc.id, data.name);
-                projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
-            }
-        });
+  // 1b. Legacy: Get owned projects (OLD MODEL: ownerId singular)
+  const qOwnerId = query(collection(db, 'projects'), where("ownerId", "==", userId));
+  const snapOwnerId = await getDocs(qOwnerId);
+  console.log('  📊 Owned projects (legacy ownerId):', snapOwnerId.size);
+  snapOwnerId.forEach(doc => {
+    const data = doc.data();
+    if (!projectsMap.has(doc.id)) {
+      console.log('    - Owner (legacy):', doc.id, data.name);
+      projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
     }
+  });
 
-    const allProjects = Array.from(projectsMap.values());
-    console.log('✅ Total unique projects:', allProjects.length);
+  // 2. Get member projects (NEW MODEL: memberIds array)
+  const qMemberIds = query(collection(db, 'projects'), where("memberIds", "array-contains", userId));
+  const snapMemberIds = await getDocs(qMemberIds);
+  console.log('  📊 Member projects (memberIds):', snapMemberIds.size);
+  snapMemberIds.forEach(doc => {
+    const data = doc.data();
+    if (!projectsMap.has(doc.id)) {
+      console.log('    - Member:', doc.id, data.name);
+      projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
+    }
+  });
 
-    return allProjects;
+  // 2b. Legacy: Get member projects (OLD MODEL: members array)
+  const qMembers = query(collection(db, 'projects'), where("members", "array-contains", userId));
+  const snapMembers = await getDocs(qMembers);
+  console.log('  📊 Member projects (legacy members):', snapMembers.size);
+  snapMembers.forEach(doc => {
+    const data = doc.data();
+    if (!projectsMap.has(doc.id)) {
+      console.log('    - Member (legacy):', doc.id, data.name);
+      projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
+    }
+  });
+
+  // 3. Get invited projects (if email is provided)
+  if (userEmail) {
+    const qInvited = query(collection(db, 'projects'), where("invitedEmails", "array-contains", userEmail));
+    const snapInvited = await getDocs(qInvited);
+    console.log('  📊 Invited projects found:', snapInvited.size);
+    snapInvited.forEach(doc => {
+      const data = doc.data();
+      if (!projectsMap.has(doc.id)) {
+        console.log('    - Invited:', doc.id, data.name);
+        projectsMap.set(doc.id, { id: doc.id, ...data } as Project);
+      }
+    });
+  }
+
+  const allProjects = Array.from(projectsMap.values());
+  console.log('✅ Total unique projects:', allProjects.length);
+
+  return allProjects;
 }
 
 /**
@@ -259,395 +259,403 @@ export const getProjectFull = async (projectId: string): Promise<Project | null>
 };
 
 export const createProject = async (
-    name: string,
-    model: string,
-    userId: string,
-    userEmail: string,
-    template?: Partial<Project>
+  name: string,
+  model: string,
+  userId: string,
+  userEmail: string,
+  template?: Partial<Project>
 ): Promise<Project> => {
-    console.log('🔍 createProject called:', { name, model, userId, userEmail });
+  console.log('🔍 createProject called:', { name, model, userId, userEmail });
 
-    const newProjectRef = doc(collection(db, 'projects'));
-    const currentYear = new Date().getFullYear();
+  const newProjectRef = doc(collection(db, 'projects'));
+  const currentYear = new Date().getFullYear();
 
-    let vehicleData: VehicleData = {
-        make: model.split(' ')[0] || 'Okänd',
-        model: model.split(' ').slice(1).join(' ') || 'Modell',
-        year: currentYear, 
-        prodYear: currentYear,
-        regNo: '',
-        regDate: new Date().toISOString().split('T')[0],
-        status: 'I trafik',
-        bodyType: 'Skåp',
-        passengers: 3,
-        inspection: { last: '', next: '', mileage: '' },
-        engine: { fuel: 'Diesel', power: '', volume: '' },
-        gearbox: 'Manuell',
-        wheels: { drive: '2WD', tiresFront: '', tiresRear: '', boltPattern: '' },
-        dimensions: { length: 0, width: 0, height: '', wheelbase: 0 },
-        weights: { curb: 0, total: 0, load: 0, trailer: 0, trailerB: 0 },
-        vin: '',
-        color: '',
-        history: { owners: 1, events: 0, lastOwnerChange: '' }
+  let vehicleData: VehicleData = {
+    make: model.split(' ')[0] || 'Okänd',
+    model: model.split(' ').slice(1).join(' ') || 'Modell',
+    year: currentYear,
+    prodYear: currentYear,
+    regNo: '',
+    regDate: new Date().toISOString().split('T')[0],
+    status: 'I trafik',
+    bodyType: 'Skåp',
+    passengers: 3,
+    inspection: { last: '', next: '', mileage: '' },
+    engine: { fuel: 'Diesel', power: '', volume: '' },
+    gearbox: 'Manuell',
+    wheels: { drive: '2WD', tiresFront: '', tiresRear: '', boltPattern: '' },
+    dimensions: { length: 0, width: 0, height: '', wheelbase: 0 },
+    weights: { curb: 0, total: 0, load: 0, trailer: 0, trailerB: 0 },
+    vin: '',
+    color: '',
+    history: { owners: 1, events: 0, lastOwnerChange: '' }
+  };
+
+  if (template?.vehicleData) {
+    vehicleData = {
+      ...vehicleData,
+      ...template.vehicleData,
+      year: template.vehicleData.year || currentYear,
+      prodYear: template.vehicleData.prodYear || currentYear
     };
+  }
 
-    if (template?.vehicleData) {
-        vehicleData = {
-            ...vehicleData,
-            ...template.vehicleData,
-            year: template.vehicleData.year || currentYear,
-            prodYear: template.vehicleData.prodYear || currentYear
-        };
+  const newProject: Project = {
+    id: newProjectRef.id,
+    name: name || 'Nytt Projekt',
+    type: (template?.type || 'renovation') as any,
+    brand: 'vanplan',
+
+    // NEW ownership model
+    ownerIds: [userId],
+    primaryOwnerId: userId,
+    memberIds: [],
+    invitedEmails: [],
+
+    // Legacy fields (for backwards compatibility)
+    ownerId: userId,
+    ownerEmail: userEmail,
+    members: [],
+
+    // Data
+    vehicleData: vehicleData,
+    tasks: [],
+    shoppingItems: [],
+    serviceLog: [],
+    fuelLog: [],
+    knowledgeArticles: [], // Legacy field, now using sub-collection
+    customIcon: template?.customIcon || null,
+
+    // Metadata
+    created: new Date().toISOString(),
+    lastModified: new Date().toISOString(),
+    isDemo: false,
+
+    // User preferences
+    ...(template?.userSkillLevel && { userSkillLevel: template.userSkillLevel }),
+    ...(template?.nickname && { nickname: template.nickname })
+  };
+
+  console.log('💾 Saving project to Firestore:', {
+    id: newProject.id,
+    name: newProject.name,
+    ownerId: newProject.ownerId,
+    ownerEmail: newProject.ownerEmail
+  });
+
+  await setDoc(newProjectRef, newProject);
+
+  console.log('✅ Project saved successfully!');
+
+  if (template?.tasks && template.tasks.length > 0) {
+    const tasksRef = collection(db, 'projects', newProjectRef.id, 'tasks');
+    const batch = writeBatch(db);
+
+    for (const task of template.tasks) {
+      const taskRef = doc(tasksRef);
+      const taskWithId = {
+        ...task,
+        id: taskRef.id,
+        priority: task.priority || 'Medel',
+        phase: task.phase || 'Fas 0: Inköp & Analys',
+        estimatedCostMin: task.estimatedCostMin || 0,
+        estimatedCostMax: task.estimatedCostMax || 0,
+        actualCost: task.actualCost || 0
+      };
+      batch.set(taskRef, taskWithId);
     }
+    await batch.commit();
+  }
 
-    const newProject: Project = {
-        id: newProjectRef.id,
-        name: name || 'Nytt Projekt',
-        type: (template?.type || 'renovation') as any,
-        brand: 'vanplan',
+  // Add knowledge articles to sub-collection
+  if (template?.knowledgeArticles && template.knowledgeArticles.length > 0) {
+    const knowledgeRef = getKnowledgeBaseRef(newProjectRef.id);
+    const batch = writeBatch(db);
 
-        // NEW ownership model
-        ownerIds: [userId],
-        primaryOwnerId: userId,
-        memberIds: [],
-        invitedEmails: [],
-
-        // Legacy fields (for backwards compatibility)
-        ownerId: userId,
-        ownerEmail: userEmail,
-        members: [],
-
-        // Data
-        vehicleData: vehicleData,
-        tasks: [],
-        shoppingItems: [],
-        serviceLog: [],
-        fuelLog: [],
-        knowledgeArticles: [], // Legacy field, now using sub-collection
-        customIcon: template?.customIcon || null,
-
-        // Metadata
-        created: new Date().toISOString(),
-        lastModified: new Date().toISOString(),
-        isDemo: false,
-
-        // User preferences
-        ...(template?.userSkillLevel && { userSkillLevel: template.userSkillLevel }),
-        ...(template?.nickname && { nickname: template.nickname })
-    };
-
-    console.log('💾 Saving project to Firestore:', {
-        id: newProject.id,
-        name: newProject.name,
-        ownerId: newProject.ownerId,
-        ownerEmail: newProject.ownerEmail
-    });
-
-    await setDoc(newProjectRef, newProject);
-
-    console.log('✅ Project saved successfully!');
-
-    if (template?.tasks && template.tasks.length > 0) {
-        const tasksRef = collection(db, 'projects', newProjectRef.id, 'tasks');
-        const batch = writeBatch(db);
-
-        for (const task of template.tasks) {
-            const taskRef = doc(tasksRef);
-            const taskWithId = {
-                ...task,
-                id: taskRef.id,
-                priority: task.priority || 'Medel',
-                phase: task.phase || 'Fas 0: Inköp & Analys',
-                estimatedCostMin: task.estimatedCostMin || 0,
-                estimatedCostMax: task.estimatedCostMax || 0,
-                actualCost: task.actualCost || 0
-            };
-            batch.set(taskRef, taskWithId);
-        }
-        await batch.commit();
+    for (const article of template.knowledgeArticles) {
+      const articleRef = doc(knowledgeRef, article.id || undefined);
+      const articleWithId = {
+        ...article,
+        id: article.id || articleRef.id
+      };
+      batch.set(articleRef, articleWithId);
     }
+    await batch.commit();
+  }
 
-    // Add knowledge articles to sub-collection
-    if (template?.knowledgeArticles && template.knowledgeArticles.length > 0) {
-        const knowledgeRef = getKnowledgeBaseRef(newProjectRef.id);
-        const batch = writeBatch(db);
-
-        for (const article of template.knowledgeArticles) {
-            const articleRef = doc(knowledgeRef, article.id || undefined);
-            const articleWithId = {
-                ...article,
-                id: article.id || articleRef.id
-            };
-            batch.set(articleRef, articleWithId);
-        }
-        await batch.commit();
-    }
-
-    return newProject;
+  return newProject;
 };
 
 export const deleteProjectFull = async (projectId: string) => {
-    // Get all sub-collections
-    const tasksSnap = await getDocs(getTasksRef(projectId));
-    const itemsSnap = await getDocs(getShoppingRef(projectId));
-    const serviceLogSnap = await getDocs(getServiceLogRef(projectId));
-    const fuelLogSnap = await getDocs(getFuelLogRef(projectId));
-    const knowledgeSnap = await getDocs(getKnowledgeBaseRef(projectId));
+  // Get all sub-collections
+  const tasksSnap = await getDocs(getTasksRef(projectId));
+  const itemsSnap = await getDocs(getShoppingRef(projectId));
+  const serviceLogSnap = await getDocs(getServiceLogRef(projectId));
+  const fuelLogSnap = await getDocs(getFuelLogRef(projectId));
+  const knowledgeSnap = await getDocs(getKnowledgeBaseRef(projectId));
 
-    const batch = writeBatch(db);
+  const batch = writeBatch(db);
 
-    // Delete all sub-collection documents
-    tasksSnap.forEach((docSnap) => batch.delete(docSnap.ref));
-    itemsSnap.forEach((docSnap) => batch.delete(docSnap.ref));
-    serviceLogSnap.forEach((docSnap) => batch.delete(docSnap.ref));
-    fuelLogSnap.forEach((docSnap) => batch.delete(docSnap.ref));
-    knowledgeSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+  // Delete all sub-collection documents
+  tasksSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+  itemsSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+  serviceLogSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+  fuelLogSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+  knowledgeSnap.forEach((docSnap) => batch.delete(docSnap.ref));
 
-    // Delete chat history if exists
-    const chatRef = doc(db, 'projects', projectId, 'chat', 'history');
-    batch.delete(chatRef);
+  // Delete chat history if exists
+  const chatRef = doc(db, 'projects', projectId, 'chat', 'history');
+  batch.delete(chatRef);
 
-    // Delete project document
-    batch.delete(getProjectRef(projectId));
+  // Delete project document
+  batch.delete(getProjectRef(projectId));
 
-    await batch.commit();
+  await batch.commit();
 };
 
 // --- SERVICE LOG (Sub-collection) ---
 
 export const getServiceLog = async (projectId: string): Promise<ServiceItem[]> => {
-    const querySnapshot = await getDocs(getServiceLogRef(projectId));
-    return querySnapshot.docs.map(doc => doc.data() as ServiceItem);
+  const querySnapshot = await getDocs(getServiceLogRef(projectId));
+  return querySnapshot.docs.map(doc => doc.data() as ServiceItem);
 };
 
 export const addServiceEntry = async (projectId: string, entry: Omit<ServiceItem, 'id'>) => {
-    const docRef = await addDoc(getServiceLogRef(projectId), entry);
-    await updateDoc(docRef, { id: docRef.id });
-    return { ...entry, id: docRef.id } as ServiceItem;
+  const docRef = await addDoc(getServiceLogRef(projectId), entry);
+  await updateDoc(docRef, { id: docRef.id });
+  return { ...entry, id: docRef.id } as ServiceItem;
 };
 
 export const updateServiceEntry = async (projectId: string, entryId: string, updates: Partial<ServiceItem>) => {
-    const entryRef = doc(getServiceLogRef(projectId), entryId);
-    await updateDoc(entryRef, updates);
+  const entryRef = doc(getServiceLogRef(projectId), entryId);
+  await updateDoc(entryRef, updates);
 };
 
 export const deleteServiceEntry = async (projectId: string, entryId: string) => {
-    const entryRef = doc(getServiceLogRef(projectId), entryId);
-    await deleteDoc(entryRef);
+  const entryRef = doc(getServiceLogRef(projectId), entryId);
+  await deleteDoc(entryRef);
 };
 
 // --- FUEL LOG (Sub-collection) ---
 
 export const getFuelLog = async (projectId: string): Promise<FuelLogItem[]> => {
-    const querySnapshot = await getDocs(getFuelLogRef(projectId));
-    return querySnapshot.docs.map(doc => doc.data() as FuelLogItem);
+  const querySnapshot = await getDocs(getFuelLogRef(projectId));
+  return querySnapshot.docs.map(doc => doc.data() as FuelLogItem);
 };
 
 export const addFuelEntry = async (projectId: string, entry: Omit<FuelLogItem, 'id'>) => {
-    const docRef = await addDoc(getFuelLogRef(projectId), entry);
-    await updateDoc(docRef, { id: docRef.id });
-    return { ...entry, id: docRef.id } as FuelLogItem;
+  const docRef = await addDoc(getFuelLogRef(projectId), entry);
+  await updateDoc(docRef, { id: docRef.id });
+  return { ...entry, id: docRef.id } as FuelLogItem;
 };
 
 export const updateFuelEntry = async (projectId: string, entryId: string, updates: Partial<FuelLogItem>) => {
-    const entryRef = doc(getFuelLogRef(projectId), entryId);
-    await updateDoc(entryRef, updates);
+  const entryRef = doc(getFuelLogRef(projectId), entryId);
+  await updateDoc(entryRef, updates);
 };
 
 export const deleteFuelEntry = async (projectId: string, entryId: string) => {
-    const entryRef = doc(getFuelLogRef(projectId), entryId);
-    await deleteDoc(entryRef);
+  const entryRef = doc(getFuelLogRef(projectId), entryId);
+  await deleteDoc(entryRef);
 };
 
 // Legacy batch update (kept for backwards compatibility during migration)
 export const updateFuelLog = async (projectId: string, updatedFuelLog: FuelLogItem[]) => {
-    // Delete all existing entries and re-create
-    const existingDocs = await getDocs(getFuelLogRef(projectId));
-    const batch = writeBatch(db);
-    existingDocs.forEach(docSnap => batch.delete(docSnap.ref));
+  // Delete all existing entries and re-create
+  const existingDocs = await getDocs(getFuelLogRef(projectId));
+  const batch = writeBatch(db);
+  existingDocs.forEach(docSnap => batch.delete(docSnap.ref));
 
-    // Add new entries
-    for (const entry of updatedFuelLog) {
-        const entryRef = doc(getFuelLogRef(projectId), entry.id || undefined);
-        batch.set(entryRef, { ...entry, id: entry.id || entryRef.id });
-    }
+  // Add new entries
+  for (const entry of updatedFuelLog) {
+    const entryRef = doc(getFuelLogRef(projectId), entry.id || undefined);
+    batch.set(entryRef, { ...entry, id: entry.id || entryRef.id });
+  }
 
-    await batch.commit();
+  await batch.commit();
 };
 
 // Legacy batch update (kept for backwards compatibility during migration)
 export const updateServiceLog = async (projectId: string, updatedServiceLog: ServiceItem[]) => {
-    // Delete all existing entries and re-create
-    const existingDocs = await getDocs(getServiceLogRef(projectId));
-    const batch = writeBatch(db);
-    existingDocs.forEach(docSnap => batch.delete(docSnap.ref));
+  // Delete all existing entries and re-create
+  const existingDocs = await getDocs(getServiceLogRef(projectId));
+  const batch = writeBatch(db);
+  existingDocs.forEach(docSnap => batch.delete(docSnap.ref));
 
-    // Add new entries
-    for (const entry of updatedServiceLog) {
-        const entryRef = doc(getServiceLogRef(projectId), entry.id || undefined);
-        batch.set(entryRef, { ...entry, id: entry.id || entryRef.id });
-    }
+  // Add new entries
+  for (const entry of updatedServiceLog) {
+    const entryRef = doc(getServiceLogRef(projectId), entry.id || undefined);
+    batch.set(entryRef, { ...entry, id: entry.id || entryRef.id });
+  }
 
-    await batch.commit();
+  await batch.commit();
 };
 
 export const updateContacts = async (projectId: string, contacts: Contact[]) => {
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        contacts: contacts,
-        lastModified: new Date().toISOString()
-    });
+  const projectRef = getProjectRef(projectId);
+  await updateDoc(projectRef, {
+    contacts: contacts,
+    lastModified: new Date().toISOString()
+  });
 };
 
 export const updateProjectLocation = async (projectId: string, location: any) => {
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        location: location,
-        lastModified: new Date().toISOString()
-    });
+  const projectRef = getProjectRef(projectId);
+  await updateDoc(projectRef, {
+    location: location,
+    lastModified: new Date().toISOString()
+  });
+};
+
+export const updateProject = async (projectId: string, updates: Partial<Project>) => {
+  const projectRef = getProjectRef(projectId);
+  await updateDoc(projectRef, {
+    ...updates,
+    lastModified: new Date().toISOString()
+  });
 };
 
 // --- KNOWLEDGE BASE (Sub-collection) ---
 
 export const getKnowledgeBase = async (projectId: string): Promise<KnowledgeArticle[]> => {
-    const querySnapshot = await getDocs(getKnowledgeBaseRef(projectId));
-    return querySnapshot.docs.map(doc => doc.data() as KnowledgeArticle);
+  const querySnapshot = await getDocs(getKnowledgeBaseRef(projectId));
+  return querySnapshot.docs.map(doc => doc.data() as KnowledgeArticle);
 };
 
 export const addKnowledgeArticle = async (projectId: string, article: Omit<KnowledgeArticle, 'id'>) => {
-    const docRef = await addDoc(getKnowledgeBaseRef(projectId), article);
-    await updateDoc(docRef, { id: docRef.id });
-    return { ...article, id: docRef.id } as KnowledgeArticle;
+  const docRef = await addDoc(getKnowledgeBaseRef(projectId), article);
+  await updateDoc(docRef, { id: docRef.id });
+  return { ...article, id: docRef.id } as KnowledgeArticle;
 };
 
 export const updateKnowledgeArticle = async (projectId: string, articleId: string, updates: Partial<KnowledgeArticle>) => {
-    const articleRef = doc(getKnowledgeBaseRef(projectId), articleId);
-    await updateDoc(articleRef, updates);
+  const articleRef = doc(getKnowledgeBaseRef(projectId), articleId);
+  await updateDoc(articleRef, updates);
 };
 
 export const deleteKnowledgeArticle = async (projectId: string, articleId: string) => {
-    const articleRef = doc(getKnowledgeBaseRef(projectId), articleId);
-    await deleteDoc(articleRef);
+  const articleRef = doc(getKnowledgeBaseRef(projectId), articleId);
+  await deleteDoc(articleRef);
 };
 
 export const updateVehicleData = async (projectId: string, data: Partial<VehicleData>) => {
   const projectData = await getProject(projectId);
   if (projectData) {
-      const updatedVehicleData = { ...projectData.vehicleData, ...data };
-      await updateDoc(getProjectRef(projectId), { vehicleData: updatedVehicleData });
+    const updatedVehicleData = { ...projectData.vehicleData, ...data };
+    await updateDoc(getProjectRef(projectId), { vehicleData: updatedVehicleData });
   }
 };
 
 // --- INSPECTION FINDINGS ---
 
 export const addInspectionFinding = async (projectId: string, finding: Omit<InspectionFinding, 'id'>) => {
-    const docRef = await addDoc(getInspectionsRef(projectId), {
-        ...finding,
-        projectId,
-        date: finding.date || new Date().toISOString()
-    });
-    await updateDoc(docRef, { id: docRef.id });
-    return { ...finding, id: docRef.id, projectId } as InspectionFinding;
+  const docRef = await addDoc(getInspectionsRef(projectId), {
+    ...finding,
+    projectId,
+    date: finding.date || new Date().toISOString()
+  });
+  await updateDoc(docRef, { id: docRef.id });
+  return { ...finding, id: docRef.id, projectId } as InspectionFinding;
 };
 
 export const getInspectionFindings = async (projectId: string): Promise<InspectionFinding[]> => {
-    const snapshot = await getDocs(getInspectionsRef(projectId));
-    return snapshot.docs.map(doc => doc.data() as InspectionFinding);
+  const snapshot = await getDocs(getInspectionsRef(projectId));
+  return snapshot.docs.map(doc => doc.data() as InspectionFinding);
 };
 
 export const updateInspectionFinding = async (projectId: string, findingId: string, updates: Partial<InspectionFinding>) => {
-    const findingRef = doc(getInspectionsRef(projectId), findingId);
-    await updateDoc(findingRef, updates);
+  const findingRef = doc(getInspectionsRef(projectId), findingId);
+  await updateDoc(findingRef, updates);
 };
 
 export const deleteInspectionFinding = async (projectId: string, findingId: string) => {
-    const findingRef = doc(getInspectionsRef(projectId), findingId);
-    await deleteDoc(findingRef);
+  const findingRef = doc(getInspectionsRef(projectId), findingId);
+  await deleteDoc(findingRef);
 };
 
 // --- CO-WORKING ---
 
 export const inviteUserToProject = async (projectId: string, email: string) => {
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        invitedEmails: arrayUnion(email),
-        lastModified: new Date().toISOString()
-    });
+  const projectRef = getProjectRef(projectId);
+  await updateDoc(projectRef, {
+    invitedEmails: arrayUnion(email),
+    lastModified: new Date().toISOString()
+  });
 };
 
 export const acceptProjectInvite = async (projectId: string, userId: string, email: string) => {
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        // NEW model
-        memberIds: arrayUnion(userId),
-        // Legacy (keep in sync)
-        members: arrayUnion(userId),
-        // Remove from invited
-        invitedEmails: arrayRemove(email),
-        lastModified: new Date().toISOString()
-    });
+  const projectRef = getProjectRef(projectId);
+  await updateDoc(projectRef, {
+    // NEW model
+    memberIds: arrayUnion(userId),
+    // Legacy (keep in sync)
+    members: arrayUnion(userId),
+    // Remove from invited
+    invitedEmails: arrayRemove(email),
+    lastModified: new Date().toISOString()
+  });
 };
 
 export const removeMemberFromProject = async (projectId: string, userId: string) => {
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        // NEW model
-        memberIds: arrayRemove(userId),
-        // Legacy (keep in sync)
-        members: arrayRemove(userId),
-        lastModified: new Date().toISOString()
-    });
+  const projectRef = getProjectRef(projectId);
+  await updateDoc(projectRef, {
+    // NEW model
+    memberIds: arrayRemove(userId),
+    // Legacy (keep in sync)
+    members: arrayRemove(userId),
+    lastModified: new Date().toISOString()
+  });
 };
 
 export const cancelInvite = async (projectId: string, email: string) => {
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        invitedEmails: arrayRemove(email),
-        lastModified: new Date().toISOString()
-    });
+  const projectRef = getProjectRef(projectId);
+  await updateDoc(projectRef, {
+    invitedEmails: arrayRemove(email),
+    lastModified: new Date().toISOString()
+  });
 };
 
 // Add a co-owner to a project (new feature)
 export const addCoOwner = async (projectId: string, userId: string) => {
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        ownerIds: arrayUnion(userId),
-        lastModified: new Date().toISOString()
-    });
+  const projectRef = getProjectRef(projectId);
+  await updateDoc(projectRef, {
+    ownerIds: arrayUnion(userId),
+    lastModified: new Date().toISOString()
+  });
 };
 
 // Remove a co-owner from a project (new feature)
 export const removeCoOwner = async (projectId: string, userId: string) => {
-    const project = await getProject(projectId);
-    if (!project) throw new Error('Project not found');
+  const project = await getProject(projectId);
+  if (!project) throw new Error('Project not found');
 
-    // Cannot remove primary owner
-    if (project.primaryOwnerId === userId) {
-        throw new Error('Cannot remove primary owner. Transfer ownership first.');
-    }
+  // Cannot remove primary owner
+  if (project.primaryOwnerId === userId) {
+    throw new Error('Cannot remove primary owner. Transfer ownership first.');
+  }
 
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        ownerIds: arrayRemove(userId),
-        lastModified: new Date().toISOString()
-    });
+  const projectRef = getProjectRef(projectId);
+  await updateDoc(projectRef, {
+    ownerIds: arrayRemove(userId),
+    lastModified: new Date().toISOString()
+  });
 };
 
 // Transfer primary ownership (new feature)
 export const transferPrimaryOwnership = async (projectId: string, newPrimaryOwnerId: string) => {
-    const project = await getProject(projectId);
-    if (!project) throw new Error('Project not found');
+  const project = await getProject(projectId);
+  if (!project) throw new Error('Project not found');
 
-    // New owner must already be in ownerIds
-    if (!project.ownerIds.includes(newPrimaryOwnerId)) {
-        throw new Error('New owner must be added as co-owner first');
-    }
+  // New owner must already be in ownerIds
+  if (!project.ownerIds.includes(newPrimaryOwnerId)) {
+    throw new Error('New owner must be added as co-owner first');
+  }
 
-    const projectRef = getProjectRef(projectId);
-    await updateDoc(projectRef, {
-        primaryOwnerId: newPrimaryOwnerId,
-        lastModified: new Date().toISOString()
-    });
+  const projectRef = getProjectRef(projectId);
+  await updateDoc(projectRef, {
+    primaryOwnerId: newPrimaryOwnerId,
+    lastModified: new Date().toISOString()
+  });
 }
 
 

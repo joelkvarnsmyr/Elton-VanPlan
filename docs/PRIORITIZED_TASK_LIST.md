@@ -26,20 +26,9 @@
 
 ---
 
-### 2. Fixa Import-funktionen
-**Prioritet:** HÖG | **Uppskattad tid:** 1 dag
-
-**Varför akut:** Användare kan inte återställa sina backuper.
-
-**Steg:**
-1. Lägg till JSON-schema validering i `handleImportData`
-2. Implementera projektimport med `addNewProject`
-3. Hantera tasks, shopping items, och service log
-4. Lägg till konflikthantering för existerande data
-5. Testa full import/export-cykel
-
-**Filer att ändra:**
-- `src/App.tsx` (rad 230-231)
+### 2. Fixa Import-funktionen (BORTTAGEN)
+**Status:** DEPRECATED | **Anledning:** Ersatt av ägarskapsmigrering
+**Historik:** Tidigare prioriterad, men nu borttagen då vi inte ska ha JSON-import/export.
 
 ---
 
@@ -209,7 +198,7 @@
 **För att komma ur "AI-kaoset" - gör detta FÖRST:**
 
 1. **IDAG:** Skapa en Cloud Function för AI-anrop och flytta API-nyckeln
-2. **DENNA VECKA:** Implementera import-funktionen
+2. **DENNA VECKA:** (DONE) Import-funktion borttagen till förmån för ägarskapsmigrering
 3. **NÄSTA VECKA:** Skriv tester för geminiService och db
 4. **INOM 2 VECKOR:** Arkivera prototype_app och städa kodbas
 
@@ -224,9 +213,9 @@
 ## Teknisk checklista innan lansering
 
 - [ ] API-nycklar i backend (Cloud Functions)
-- [ ] Import-funktionen fungerar
+- [x] Import-funktionen borttagen/hanterad
 - [ ] Kritiska enhetstester finns
-- [ ] prototype_app borttagen
+- [x] prototype_app borttagen
 - [ ] Error boundaries implementerade
 - [ ] Firestore offline persistence aktiverat
 

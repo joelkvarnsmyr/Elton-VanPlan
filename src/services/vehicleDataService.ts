@@ -6,6 +6,8 @@
  */
 
 import { VehicleData } from '@/types/types';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from './firebase';
 
 // ===========================
 // TYPES & INTERFACES
@@ -101,27 +103,42 @@ async function fetchFromTransportstyrelsen(regNo: string): Promise<VehicleAPIRes
 // BILUPPGIFTER.SE INTEGRATION
 // ===========================
 
+// ===========================
+// CLOUD FUNCTION INTEGRATION
+// ===========================
+
 /**
- * Fetch vehicle data from Biluppgifter.se
- * NOTE: Requires scraping or paid API access
+ * Call the vehicle scraping Cloud Function
  */
-async function fetchFromBiluppgifter(regNo: string): Promise<VehicleAPIResponse> {
+async function callScraperFunction(regNo: string): Promise<VehicleAPIResponse> {
   try {
-    // TODO: Implement scraping or API integration
-    console.warn('Biluppgifter.se integration not yet implemented');
+    const functions = getFunctions(app, 'europe-west1');
+    const scrapeVehicleData = httpsCallable(functions, 'scrapeVehicleData');
+
+    // Call the function
+    const result = await scrapeVehicleData({ regNo });
+    const data = result.data as any; // Type safe casting would be better
+
+    if (data.success && data.vehicleData) {
+      return {
+        success: true,
+        data: data.vehicleData,
+        source: data.source || 'scraper'
+      };
+    }
 
     return {
       success: false,
-      error: 'Biluppgifter.se integration pending',
-      source: 'biluppgifter'
+      error: data.error || 'Ingen data hittades',
+      source: 'manual'
     };
 
   } catch (error) {
-    console.error('Biluppgifter.se error:', error);
+    console.error('Cloud Function error:', error);
     return {
       success: false,
-      error: 'Failed to fetch from Biluppgifter.se',
-      source: 'biluppgifter'
+      error: 'Kunde inte nå fordonstjänsten',
+      source: 'manual'
     };
   }
 }
@@ -148,19 +165,16 @@ export async function fetchVehicleByRegNo(regNo: string): Promise<VehicleAPIResp
     };
   }
 
-  // Try Transportstyrelsen first (official source)
-  let result = await fetchFromTransportstyrelsen(cleanRegNo);
+  // Try Cloud Scraper (Car.info / Biluppgifter backup)
+  console.log(`Fetching data for ${cleanRegNo} via Cloud Scraper...`);
+  const result = await callScraperFunction(cleanRegNo);
+
   if (result.success && result.data) {
+    console.log('Vehicle data found via scraper:', result.source);
     setCachedVehicle(cleanRegNo, result.data, result.source);
     return result;
   }
 
-  // Fallback to Biluppgifter.se
-  result = await fetchFromBiluppgifter(cleanRegNo);
-  if (result.success && result.data) {
-    setCachedVehicle(cleanRegNo, result.data, result.source);
-    return result;
-  }
 
   // Return manual entry mode if all sources fail
   return {
@@ -326,53 +340,67 @@ export function formatRegNo(regNo: string): string {
  * This should be removed in production
  */
 export function getMockVehicleData(regNo: string): Partial<VehicleData> {
+  // Only return full demo data for the specific demo reg number
+  if (regNo.toUpperCase().replace(/\s/g, '') === 'JSN398') {
+    return {
+      regNo: 'JSN 398',
+      make: 'Volkswagen',
+      model: 'LT 31',
+      year: 1976,
+      prodYear: 1976,
+      regDate: '1978-02-14',
+      status: 'I trafik',
+      bodyType: 'Skåp',
+      passengers: 3,
+      inspection: {
+        last: '2025-08-13',
+        mileage: '10 000 mil',
+        next: '2026-08-13'
+      },
+      engine: {
+        fuel: 'Bensin',
+        power: '75 HK',
+        volume: '2.0L',
+        code: 'CH'
+      },
+      gearbox: 'Manuell 4-växlad',
+      wheels: {
+        drive: 'Bakhjulsdrift (RWD)',
+        tiresFront: '185R14C',
+        tiresRear: '185R14C',
+        boltPattern: '5x160'
+      },
+      dimensions: {
+        length: 5400,
+        width: 1980,
+        height: '2600',
+        wheelbase: 2500
+      },
+      weights: {
+        curb: 2280,
+        total: 3160,
+        load: 880,
+        trailer: 1400,
+        trailerB: 750
+      },
+      vin: 'WVWZZZ2KZXW123456',
+      color: 'Vit',
+      history: {
+        owners: 3,
+        events: 12,
+        lastOwnerChange: '2023-06-28'
+      }
+    };
+  }
+
+  // Generic fallback for other numbers (prevents "LT31 hallucination")
   return {
     regNo: formatRegNo(regNo),
-    make: 'Volkswagen',
-    model: 'LT 31',
-    year: 1976,
-    prodYear: 1976,
-    regDate: '1978-02-14',
-    status: 'I trafik',
-    bodyType: 'Skåp',
-    passengers: 3,
-    inspection: {
-      last: '2025-08-13',
-      mileage: '10 000 mil',
-      next: '2026-08-13'
-    },
-    engine: {
-      fuel: 'Bensin',
-      power: '75 HK',
-      volume: '2.0L',
-      code: 'EA827'
-    },
-    gearbox: 'Manuell 4-växlad',
-    wheels: {
-      drive: 'Bakhjulsdrift (RWD)',
-      tiresFront: '215R14',
-      tiresRear: '215R14',
-      boltPattern: '5x160'
-    },
-    dimensions: {
-      length: 5400,
-      width: 1980,
-      height: '2600',
-      wheelbase: 2500
-    },
-    weights: {
-      curb: 2280,
-      total: 3160,
-      load: 880,
-      trailer: 1400,
-      trailerB: 750
-    },
-    vin: 'WVWZZZ2KZXW123456',
-    color: 'Vit',
-    history: {
-      owners: 3,
-      events: 12,
-      lastOwnerChange: '2023-06-28'
-    }
+    make: '',
+    model: '',
+    year: new Date().getFullYear(),
+    status: 'Okänd',
+    vin: '',
+    engine: { fuel: 'Okänd', power: '', volume: '' }
   };
 }

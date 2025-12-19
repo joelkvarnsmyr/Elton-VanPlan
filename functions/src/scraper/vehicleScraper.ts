@@ -40,15 +40,15 @@ const CONFIG = {
 
     // Sources in priority order (biluppgifter.se has more detailed data!)
     SOURCES: {
-        BILUPPGIFTER: {
-            name: 'biluppgifter.se',
-            baseUrl: 'https://biluppgifter.se/fordon/',
-            priority: 1  // PRIMARY - Better data quality
-        },
         CAR_INFO: {
             name: 'car.info',
             baseUrl: 'https://www.car.info/sv-se/license-plate/S/',
-            priority: 2  // FALLBACK - Good but less detailed
+            priority: 1  // PRIMARY - More reliable scraping
+        },
+        BILUPPGIFTER: {
+            name: 'biluppgifter.se',
+            baseUrl: 'https://biluppgifter.se/fordon/',
+            priority: 2  // FALLBACK - Often blocks bots (403)
         }
     }
 };
@@ -679,88 +679,104 @@ export const scrapeVehicleData = onCall(
         region: 'europe-west1',
         timeoutSeconds: 30,
         memory: '256MiB',
-        cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
+        cors: true,
+        invoker: 'public'
     },
     async (request): Promise<ScrapeResult> => {
+        console.log('[Main] Function started. RegNo:', request.data?.regNo);
 
-        // Validera input
-        const regNo = request.data?.regNo;
-        if (!regNo || typeof regNo !== 'string') {
+        try {
+            // Validera input
+            const regNo = request.data?.regNo;
+            if (!regNo || typeof regNo !== 'string') {
+                return {
+                    success: false,
+                    source: 'none',
+                    vehicleData: null,
+                    error: 'Registreringsnummer krävs',
+                    scrapedAt: new Date().toISOString(),
+                    cached: false
+                };
+            }
+
+            const normalizedRegNo = normalizeRegNo(regNo);
+
+            // Validera format (svenska regnummer)
+            if (!/^[A-Z]{3}\d{2}[A-Z0-9]$/.test(normalizedRegNo)) {
+                return {
+                    success: false,
+                    source: 'none',
+                    vehicleData: null,
+                    error: 'Ogiltigt registreringsnummerformat. Förväntat: ABC123 eller ABC12A',
+                    scrapedAt: new Date().toISOString(),
+                    cached: false
+                };
+            }
+
+            console.log(`[Main] Processing: ${normalizedRegNo} (v1.1)`);
+
+            // 1. Kolla cache först
+            const cached = await getCachedVehicleData(normalizedRegNo);
+            if (cached) {
+                return {
+                    success: true,
+                    source: cached.source,
+                    vehicleData: cached.vehicleData,
+                    scrapedAt: cached.scrapedAt.toDate().toISOString(),
+                    cached: true
+                };
+            }
+
+            // 2. Försök car.info först (fungerar bättre)
+            let vehicleData = await scrapeCarInfo(normalizedRegNo);
+            let source = CONFIG.SOURCES.CAR_INFO.name;
+
+            // 3. Fallback till biluppgifter.se
+            if (!vehicleData) {
+                console.log(`[Main] Falling back to biluppgifter.se`);
+                vehicleData = await scrapeBiluppgifter(normalizedRegNo);
+                source = CONFIG.SOURCES.BILUPPGIFTER.name;
+            }
+
+            // 4. Om vi fick data, cacha och returnera
+            if (vehicleData) {
+                // Fyll i standardvärden för saknade fält
+                const completeData = fillDefaultValues(vehicleData);
+
+                // Spara i cache
+                await setCachedVehicleData(normalizedRegNo, completeData, source);
+
+                return {
+                    success: true,
+                    source,
+                    vehicleData: completeData,
+                    scrapedAt: new Date().toISOString(),
+                    cached: false
+                };
+            }
+
+            // 5. Ingen data hittades
             return {
                 success: false,
                 source: 'none',
                 vehicleData: null,
-                error: 'Registreringsnummer krävs',
+                error: 'Kunde inte hitta fordonsdata. Kontrollera registreringsnumret.',
                 scrapedAt: new Date().toISOString(),
                 cached: false
             };
-        }
 
-        const normalizedRegNo = normalizeRegNo(regNo);
-
-        // Validera format (svenska regnummer)
-        if (!/^[A-Z]{3}\d{2}[A-Z0-9]$/.test(normalizedRegNo)) {
+        } catch (error: any) {
+            console.error('[Main] CRITICAL ERROR:', error);
+            // Return safe error object instead of crashing (which causes CORS error)
             return {
                 success: false,
-                source: 'none',
+                source: 'error',
                 vehicleData: null,
-                error: 'Ogiltigt registreringsnummerformat. Förväntat: ABC123 eller ABC12A',
+                error: `Serverfel: ${error.message || 'Okänt fel'}`,
                 scrapedAt: new Date().toISOString(),
                 cached: false
             };
         }
-
-        console.log(`[Main] Processing: ${normalizedRegNo}`);
-
-        // 1. Kolla cache först
-        const cached = await getCachedVehicleData(normalizedRegNo);
-        if (cached) {
-            return {
-                success: true,
-                source: cached.source,
-                vehicleData: cached.vehicleData,
-                scrapedAt: cached.scrapedAt.toDate().toISOString(),
-                cached: true
-            };
-        }
-
-        // 2. Försök biluppgifter.se först (bäst datakvalitet)
-        let vehicleData = await scrapeBiluppgifter(normalizedRegNo);
-        let source = CONFIG.SOURCES.BILUPPGIFTER.name;
-
-        // 3. Fallback till car.info
-        if (!vehicleData) {
-            console.log(`[Main] Falling back to car.info`);
-            vehicleData = await scrapeCarInfo(normalizedRegNo);
-            source = CONFIG.SOURCES.CAR_INFO.name;
-        }
-
-        // 4. Om vi fick data, cacha och returnera
-        if (vehicleData) {
-            // Fyll i standardvärden för saknade fält
-            const completeData = fillDefaultValues(vehicleData);
-
-            // Spara i cache
-            await setCachedVehicleData(normalizedRegNo, completeData, source);
-
-            return {
-                success: true,
-                source,
-                vehicleData: completeData,
-                scrapedAt: new Date().toISOString(),
-                cached: false
-            };
-        }
-
-        // 5. Ingen data hittades
-        return {
-            success: false,
-            source: 'none',
-            vehicleData: null,
-            error: 'Kunde inte hitta fordonsdata. Kontrollera registreringsnumret.',
-            scrapedAt: new Date().toISOString(),
-            cached: false
-        };
     });
 
 /**

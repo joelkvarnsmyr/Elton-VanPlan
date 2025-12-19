@@ -383,7 +383,7 @@ export const aiDeepResearch = onCall(
     maxInstances: 5,
     timeoutSeconds: 180,
     memory: '1GiB',
-    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
+    cors: true
   },
   async (request: CallableRequest<DeepResearchRequest>) => {
     if (!request.auth) {

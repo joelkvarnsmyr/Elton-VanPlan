@@ -97,15 +97,15 @@ export const ROADMAP_FEATURES: Feature[] = [
         description: 'Duplicerad kod i prototype_app/ skapar förvirring och underhållsbörda.',
         detailedDescription: 'Mappen prototype_app/ innehåller en äldre version av applikationen med överlappande komponenter och services. Detta leder till förvirring och risk för att ändringar görs på fel ställe.',
         purpose: 'Reducera teknisk skuld och förenkla kodbas.',
-        status: 'in-progress',
+        status: 'done',
         tech: ['Git', 'Cleanup'],
         priority: 'medium',
         tags: ['TechDebt', 'Cleanup'],
         checklist: [
             { label: 'Verifiera att allt är migrerat', completed: true },
-            { label: 'Ta bort från main', completed: false, inProgress: true },
-            { label: 'Verifiera att inga beroenden finns kvar', completed: false },
-            { label: 'Uppdatera dokumentation', completed: false }
+            { label: 'Ta bort från main', completed: true },
+            { label: 'Verifiera att inga beroenden finns kvar', completed: true },
+            { label: 'Uppdatera dokumentation', completed: true }
         ]
     },
 
