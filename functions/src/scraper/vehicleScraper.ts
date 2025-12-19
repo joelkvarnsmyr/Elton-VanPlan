@@ -58,14 +58,16 @@ const CONFIG = {
             name: 'biluppgifter.se',
             enabled: true,
             buildUrl: (regNo: string) => `https://biluppgifter.se/fordon/${regNo.toLowerCase()}/`
+        },
+        {
+            id: 'transportstyrelsen',
+            name: 'Transportstyrelsen',
+            enabled: true,
+            buildUrl: (regNo: string) => `https://fordon-fu-regnr.transportstyrelsen.se/UppgifterAnnatFordon?LicensePlate=${regNo}`
         }
-        // Lägg till fler källor här:
-        // {
-        //     id: 'kvdbil',
-        //     name: 'kvdbil.se',
-        //     enabled: false,
-        //     buildUrl: (regNo: string) => `https://www.kvdbil.se/.../${regNo}`
-        // }
+        // Framtida källor (kräver API-nyckel):
+        // { id: 'carfax', name: 'Carfax', enabled: false, ... }
+        // { id: 'autodata', name: 'Autodata', enabled: false, ... }
     ]
 };
 
@@ -503,6 +505,136 @@ async function scrapeBiluppgifter(regNo: string): Promise<RawVehicleData | null>
     return data;
 }
 
+/**
+ * Scrapar Transportstyrelsen och returnerar RawVehicleData
+ *
+ * Officiell källa från myndigheten. Använder accordion-struktur.
+ * URL: https://fordon-fu-regnr.transportstyrelsen.se/UppgifterAnnatFordon?LicensePlate=XXX
+ */
+async function scrapeTransportstyrelsen(regNo: string): Promise<RawVehicleData | null> {
+    const source = CONFIG.SOURCES.find(s => s.id === 'transportstyrelsen')!;
+    const url = source.buildUrl(regNo);
+
+    console.log(`[Transportstyrelsen] Fetching: ${url}`);
+
+    const response = await fetchWithTimeout(url);
+
+    if (!response.ok) {
+        console.log(`[Transportstyrelsen] HTTP ${response.status} for ${regNo}`);
+        return null;
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+
+    // Check for "not found" scenarios
+    if (html.includes('Inga uppgifter hittades') || html.includes('Fordonet finns inte')) {
+        console.log(`[Transportstyrelsen] Vehicle not found: ${regNo}`);
+        return null;
+    }
+
+    const data: RawVehicleData = {
+        regNo: regNo,
+        extras: {}
+    };
+
+    // Helper: Get all key-value pairs from a section
+    // Structure: <div id="ts-XXXCollapse"> contains <div class="col-sm-6"><strong>Label</strong> Value</div>
+    const getAllFromSection = (sectionId: string): Record<string, string> => {
+        const pairs: Record<string, string> = {};
+        $(`#${sectionId} .row`).each((_, row) => {
+            $(row).find('.col-sm-6, .col-xs-12').each((__, col) => {
+                const $col = $(col);
+                const label = $col.find('strong').text().trim().replace(':', '');
+                const fullText = $col.text().trim();
+                const value = fullText.replace($col.find('strong').text(), '').trim();
+                if (label && value) {
+                    pairs[label] = value;
+                }
+            });
+        });
+        return pairs;
+    };
+
+    // Try to extract from "Sammanfattning" section
+    const summary = getAllFromSection('ts-sammanfattningCollapse');
+
+    // Try "Fordonsidentitet" section
+    const identity = getAllFromSection('ts-fordonsidentitetCollapse');
+
+    // Try "Tekniska data" section
+    const technical = getAllFromSection('ts-tekniskadataCollapse');
+
+    // Try "Besiktning" section
+    const inspection = getAllFromSection('ts-besiktningCollapse');
+
+    // Map extracted data to RawVehicleData
+    // From summary
+    data.make = summary['Fabrikat'] || summary['Märke'] || undefined;
+    data.model = summary['Modell'] || summary['Handelsbenämning'] || undefined;
+    data.status = summary['Status'] || undefined;
+
+    if (summary['I trafik']) {
+        data.inTraffic = summary['I trafik'].toLowerCase().includes('ja');
+    }
+
+    // From identity
+    data.vin = identity['Chassinummer'] || identity['VIN'] || identity['Identifieringsnummer'] || undefined;
+
+    const yearStr = identity['Årsmodell'] || identity['Fordonsår'] || '';
+    if (yearStr) {
+        const match = yearStr.match(/(\d{4})/);
+        if (match) data.year = parseInt(match[1]);
+    }
+
+    const firstRegStr = identity['Första registrering'] || identity['I trafik första gången'] || '';
+    if (firstRegStr) data.firstRegistered = parseSwedishDate(firstRegStr);
+
+    data.color = identity['Färg'] || identity['Karosserifärg'] || undefined;
+    data.bodyType = identity['Karosseri'] || identity['Karosstyp'] || undefined;
+
+    // From technical
+    data.fuelType = technical['Drivmedel'] || technical['Bränsle'] || undefined;
+    data.enginePower = technical['Motoreffekt'] || technical['Effekt'] || undefined;
+    data.engineVolume = technical['Slagvolym'] || technical['Motorvolym'] || undefined;
+    data.gearbox = technical['Växellåda'] || undefined;
+
+    data.curbWeight = parseSwedishNumber(technical['Tjänstevikt']) || undefined;
+    data.totalWeight = parseSwedishNumber(technical['Totalvikt']) || undefined;
+    data.trailerWeightBraked = parseSwedishNumber(technical['Släpvagnsvikt bromsad']) ||
+                               parseSwedishNumber(technical['Släpvagnsvikt']) || undefined;
+    data.trailerWeightUnbraked = parseSwedishNumber(technical['Släpvagnsvikt obromsad']) || undefined;
+
+    data.length = parseSwedishNumber(technical['Längd']) || undefined;
+    data.width = parseSwedishNumber(technical['Bredd']) || undefined;
+
+    // From inspection
+    const lastInspStr = inspection['Senast godkänd'] || inspection['Senaste besiktning'] || '';
+    if (lastInspStr) data.lastInspection = parseSwedishDate(lastInspStr);
+
+    const nextInspStr = inspection['Ska besiktas senast'] || inspection['Nästa besiktning'] || '';
+    if (nextInspStr) data.nextInspection = parseSwedishDate(nextInspStr);
+
+    data.mileageAtInspection = inspection['Mätarställning'] || undefined;
+
+    // Calculate load capacity
+    if (data.totalWeight && data.curbWeight) {
+        data.loadCapacity = data.totalWeight - data.curbWeight;
+    }
+
+    // Log what we found
+    const fieldsFound = Object.entries(data).filter(([k, v]) => v !== undefined && k !== 'extras').length;
+    console.log(`[Transportstyrelsen] Scraped: ${data.make || '?'} ${data.model || '?'} (${data.year || '?'}), ${fieldsFound} fields`);
+
+    // Only return if we got meaningful data
+    if (!data.make && !data.model && !data.vin) {
+        console.log(`[Transportstyrelsen] No meaningful data extracted`);
+        return null;
+    }
+
+    return data;
+}
+
 // =============================================================================
 // PARALLEL FETCH
 // =============================================================================
@@ -517,7 +649,8 @@ async function fetchAllSources(regNo: string): Promise<SourceResult[]> {
 
     const scraperMap: Record<string, (regNo: string) => Promise<RawVehicleData | null>> = {
         'car_info': scrapeCarInfo,
-        'biluppgifter': scrapeBiluppgifter
+        'biluppgifter': scrapeBiluppgifter,
+        'transportstyrelsen': scrapeTransportstyrelsen
     };
 
     const fetchPromises = enabledSources.map(async (source): Promise<SourceResult> => {
@@ -604,9 +737,11 @@ Slå ihop följande fordonsdata från ${successfulSources.length} källor till e
 REGLER:
 1. Välj det mest trovärdiga/kompletta värdet för varje fält
 2. Om värden skiljer sig, prioritera:
-   - VIN: biluppgifter.se (ofta mer komplett)
-   - Tekniska specs: car.info (bättre struktur)
-   - Historik: den källa som har mest data
+   - Transportstyrelsen är OFFICIELL KÄLLA - prioritera för: status, besiktning, vikter, VIN
+   - VIN: Transportstyrelsen > biluppgifter.se > car.info
+   - Tekniska specs: Transportstyrelsen > car.info > biluppgifter.se
+   - Historik (mileageHistory): car.info har bäst historikdata
+   - Ägarhistorik: biluppgifter.se har ofta mer detaljer
 3. Behåll mileageHistory om det finns (viktig historik)
 4. Normalisera datum till YYYY-MM-DD format
 5. Vikter ska vara i kg (heltal)
