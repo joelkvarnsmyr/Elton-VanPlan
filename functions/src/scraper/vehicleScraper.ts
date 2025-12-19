@@ -324,7 +324,7 @@ async function scrapeCarInfo(regNo: string): Promise<RawVehicleData | null> {
     const source = CONFIG.SOURCES.find(s => s.id === 'car_info')!;
     const url = source.buildUrl(regNo);
 
-    console.log(`[CarInfo] Fetching: ${url}`);
+    console.log(`📋 Kontrollerar fordon hos car.info...`);
 
     const response = await fetchWithTimeout(url);
 
@@ -520,7 +520,7 @@ async function scrapeCarInfo(regNo: string): Promise<RawVehicleData | null> {
         console.warn(`[CarInfo] Failed to extract equipment:`, error);
     }
 
-    console.log(`[CarInfo] Scraped: ${data.make} ${data.model} (${data.year})`);
+    console.log(`✅ Hittade: ${data.make} ${data.model} (${data.year})`);
     return data;
 }
 
@@ -531,7 +531,7 @@ async function scrapeBiluppgifter(regNo: string): Promise<RawVehicleData | null>
     const source = CONFIG.SOURCES.find(s => s.id === 'biluppgifter')!;
     const url = source.buildUrl(regNo);
 
-    console.log(`[Biluppgifter] Fetching: ${url}`);
+    console.log(`📋 Kontrollerar fordon hos biluppgifter.se...`);
 
     const response = await fetchWithTimeout(url);
 
@@ -740,7 +740,7 @@ async function scrapeBiluppgifter(regNo: string): Promise<RawVehicleData | null>
         console.warn(`[Biluppgifter] Failed to extract ownership history:`, error);
     }
 
-    console.log(`[Biluppgifter] Scraped: ${data.make} ${data.model} (${data.year})`);
+    console.log(`✅ Hittade: ${data.make} ${data.model} (${data.year})`);
     return data;
 }
 
@@ -754,7 +754,7 @@ async function scrapeTransportstyrelsen(regNo: string): Promise<RawVehicleData |
     const source = CONFIG.SOURCES.find(s => s.id === 'transportstyrelsen')!;
     const url = source.buildUrl(regNo);
 
-    console.log(`[Transportstyrelsen] Fetching: ${url}`);
+    console.log(`📋 Kontrollerar hos Transportstyrelsen...`);
 
     const response = await fetchWithTimeout(url);
 
@@ -827,27 +827,88 @@ async function scrapeTransportstyrelsen(regNo: string): Promise<RawVehicleData |
     }
 
     const firstRegStr = identity['Första registrering'] || identity['I trafik första gången'] || '';
-    if (firstRegStr) data.firstRegistered = parseSwedishDate(firstRegStr);
+    if (firstRegStr) {
+        data.firstRegistered = parseSwedishDate(firstRegStr);
+
+        // Registration history
+        data.registrationHistory = {
+            firstRegistrationSweden: parseSwedishDate(firstRegStr),
+            isImported: identity['Import']?.toLowerCase().includes('ja') || identity['Importerad']?.toLowerCase().includes('ja') || false
+        };
+    }
 
     data.color = identity['Färg'] || identity['Karosserifärg'] || undefined;
     data.bodyType = identity['Karosseri'] || identity['Karosstyp'] || undefined;
+    data.doors = parseSwedishNumber(identity['Antal dörrar']) || undefined;
+    data.passengers = parseSwedishNumber(identity['Antal passagerare']) || parseSwedishNumber(identity['Sittplatser']) || undefined;
 
-    // From technical
+    // From technical - EXPANDED
     data.fuelType = technical['Drivmedel'] || technical['Bränsle'] || undefined;
     data.enginePower = technical['Motoreffekt'] || technical['Effekt'] || undefined;
     data.engineVolume = technical['Slagvolym'] || technical['Motorvolym'] || undefined;
+    data.engineCode = technical['Motortyp'] || technical['Motorkod'] || undefined;
+    data.cylinders = parseSwedishNumber(technical['Cylindrar']) || parseSwedishNumber(technical['Antal cylindrar']) || undefined;
     data.gearbox = technical['Växellåda'] || undefined;
 
+    // Transmission details
+    const gearCountStr = technical['Antal växlar'] || technical['Växlar'];
+    if (gearCountStr) {
+        data.gearCount = parseSwedishNumber(gearCountStr);
+    }
+
+    const driveStr = technical['Drivning'] || technical['Hjuldrivning'];
+    if (driveStr) {
+        if (driveStr.match(/fyrhjul|4wd|awd/i)) data.driveType = 'Fyrhjulsdrift';
+        else if (driveStr.match(/bakhjul|rwd/i)) data.driveType = 'Bakhjulsdrift';
+        else if (driveStr.match(/framhjul|fwd/i)) data.driveType = 'Framhjulsdrift';
+    }
+
+    // Weights
     data.curbWeight = parseSwedishNumber(technical['Tjänstevikt']) || undefined;
     data.totalWeight = parseSwedishNumber(technical['Totalvikt']) || undefined;
     data.trailerWeightBraked = parseSwedishNumber(technical['Släpvagnsvikt bromsad']) ||
         parseSwedishNumber(technical['Släpvagnsvikt']) || undefined;
     data.trailerWeightUnbraked = parseSwedishNumber(technical['Släpvagnsvikt obromsad']) || undefined;
 
+    // Dimensions
     data.length = parseSwedishNumber(technical['Längd']) || undefined;
     data.width = parseSwedishNumber(technical['Bredd']) || undefined;
+    data.height = parseSwedishNumber(technical['Höjd']) || undefined;
+    data.wheelbase = parseSwedishNumber(technical['Axelavstånd']) || undefined;
 
-    // From inspection
+    // Capacity
+    const tankCapStr = technical['Tankvolym'] || technical['Bränsletank'];
+    if (tankCapStr) {
+        data.fuelTankCapacity = parseSwedishNumber(tankCapStr);
+    }
+
+    // Environmental & Tax
+    const envClass = technical['Miljöklass'] || technical['Euroklass'];
+    const co2Str = technical['CO2-utsläpp'] || technical['Koldioxidutsläpp'];
+    const taxStr = technical['Fordonsskatt'] || technical['Skatt'];
+
+    if (envClass || co2Str || taxStr) {
+        data.taxEnvironment = {
+            environmentalClass: envClass,
+            co2Emissions: co2Str ? parseSwedishNumber(co2Str) : undefined,
+            annualTax: taxStr ? parseSwedishNumber(taxStr) : undefined
+        };
+    }
+
+    // Fuel consumption
+    const fuelMixed = technical['Bränsleförbrukning blandad'] || technical['Förbrukning blandad'];
+    const fuelUrban = technical['Bränsleförbrukning stad'] || technical['Förbrukning stad'];
+    const fuelHighway = technical['Bränsleförbrukning landsväg'] || technical['Förbrukning landsväg'];
+
+    if (fuelMixed || fuelUrban || fuelHighway) {
+        data.fuelConsumption = {
+            mixed: fuelMixed ? parseFloat(fuelMixed.replace(',', '.')) : undefined,
+            urban: fuelUrban ? parseFloat(fuelUrban.replace(',', '.')) : undefined,
+            highway: fuelHighway ? parseFloat(fuelHighway.replace(',', '.')) : undefined
+        };
+    }
+
+    // From inspection - EXPANDED
     const lastInspStr = inspection['Senast godkänd'] || inspection['Senaste besiktning'] || '';
     if (lastInspStr) data.lastInspection = parseSwedishDate(lastInspStr);
 
@@ -856,6 +917,92 @@ async function scrapeTransportstyrelsen(regNo: string): Promise<RawVehicleData |
 
     data.mileageAtInspection = inspection['Mätarställning'] || undefined;
 
+    // NY: Try to extract inspection history
+    try {
+        const inspections: Array<any> = [];
+
+        // Look for inspection history table or list
+        $('#ts-besiktningCollapse table tr, #ts-besiktningCollapse .inspection-row').each((_, row) => {
+            const $row = $(row);
+            const cells = $row.find('td');
+
+            if (cells.length >= 2) {
+                const dateStr = $(cells[0]).text().trim();
+                const resultStr = $(cells[1]).text().trim();
+                const mileageStr = cells.length > 2 ? $(cells[2]).text().trim() : '';
+                const remarksStr = cells.length > 3 ? $(cells[3]).text().trim() : '';
+
+                if (dateStr && dateStr.match(/\d{4}/)) {
+                    const inspection: any = {
+                        date: parseSwedishDate(dateStr),
+                        result: resultStr.match(/godk|pass/i) ? 'Pass' : resultStr.match(/ej godk|fail|underk/i) ? 'Fail' : resultStr
+                    };
+
+                    if (mileageStr) {
+                        inspection.mileage = parseSwedishNumber(mileageStr);
+                    }
+
+                    if (remarksStr) {
+                        inspection.remarks = [{
+                            description: remarksStr,
+                            severity: remarksStr.match(/kritisk|farlig/i) ? 'Critical' : remarksStr.match(/varning/i) ? 'Warning' : 'Advisory'
+                        }];
+                    }
+
+                    inspections.push(inspection);
+                }
+            }
+        });
+
+        // Also try div-based structure
+        $('#ts-besiktningCollapse .besiktning-item, #ts-besiktningCollapse .inspection-item').each((_, item) => {
+            const $item = $(item);
+            const dateStr = $item.find('.datum, .date').text().trim();
+            const resultStr = $item.find('.resultat, .result').text().trim();
+
+            if (dateStr) {
+                inspections.push({
+                    date: parseSwedishDate(dateStr),
+                    result: resultStr.match(/godk|pass/i) ? 'Pass' : resultStr.match(/ej godk|fail/i) ? 'Fail' : resultStr
+                });
+            }
+        });
+
+        if (inspections.length > 0) {
+            data.inspectionHistory = inspections;
+        }
+    } catch (error) {
+        console.warn(`[Transportstyrelsen] Failed to extract inspection history:`, error);
+    }
+
+    // NY: Try to extract ownership history
+    try {
+        const ownership: Array<any> = [];
+
+        $('#ts-ägarhistorikCollapse table tr, #ts-ownershipCollapse table tr').each((_, row) => {
+            const $row = $(row);
+            const cells = $row.find('td');
+
+            if (cells.length >= 1) {
+                const dateStr = $(cells[0]).text().trim();
+                const typeStr = cells.length > 1 ? $(cells[1]).text().trim() : '';
+
+                if (dateStr && dateStr.match(/\d{4}/)) {
+                    ownership.push({
+                        changeDate: parseSwedishDate(dateStr),
+                        ownerType: typeStr.match(/företag|bolag/i) ? 'Company' : typeStr.match(/privat/i) ? 'Private' : undefined
+                    });
+                }
+            }
+        });
+
+        if (ownership.length > 0) {
+            data.ownershipHistory = ownership;
+        }
+    } catch (error) {
+        console.warn(`[Transportstyrelsen] Failed to extract ownership history:`, error);
+    }
+
     // Calculate load capacity
     if (data.totalWeight && data.curbWeight) {
         data.loadCapacity = data.totalWeight - data.curbWeight;
@@ -863,7 +1010,7 @@ async function scrapeTransportstyrelsen(regNo: string): Promise<RawVehicleData |
 
     // Log what we found
     const fieldsFound = Object.entries(data).filter(([k, v]) => v !== undefined && k !== 'extras').length;
-    console.log(`[Transportstyrelsen] Scraped: ${data.make || '?'} ${data.model || '?'} (${data.year || '?'}), ${fieldsFound} fields`);
+    console.log(`✅ Hittade: ${data.make || '?'} ${data.model || '?'} (${data.year || '?'}), ${fieldsFound} uppgifter`);
 
     // Only return if we got meaningful data
     if (!data.make && !data.model && !data.vin) {
@@ -884,7 +1031,7 @@ async function scrapeTransportstyrelsen(regNo: string): Promise<RawVehicleData |
 async function fetchAllSources(regNo: string): Promise<SourceResult[]> {
     const enabledSources = CONFIG.SOURCES.filter(s => s.enabled);
 
-    console.log(`[Parallel] Fetching from ${enabledSources.length} sources...`);
+    console.log(`🔍 Söker fordonsdata från ${enabledSources.length} register...`);
 
     const scraperMap: Record<string, (regNo: string) => Promise<RawVehicleData | null>> = {
         'car_info': scrapeCarInfo,
@@ -929,7 +1076,7 @@ async function fetchAllSources(regNo: string): Promise<SourceResult[]> {
     const results = await Promise.all(fetchPromises);
 
     const successCount = results.filter(r => r.success).length;
-    console.log(`[Parallel] Completed: ${successCount}/${results.length} sources succeeded`);
+    console.log(`✅ Genomsökning klar: ${successCount}/${results.length} register svarade`);
 
     return results;
 }
@@ -958,7 +1105,7 @@ async function aiMergeVehicleData(
         return adaptToVehicleData(successfulSources[0].data!, [successfulSources[0].sourceName]);
     }
 
-    console.log(`[AI Merge] Merging data from ${successfulSources.length} sources with AI...`);
+    console.log(`🤖 Kombinerar data från ${successfulSources.length} källor...`);
 
     const ai = new GoogleGenAI({ apiKey });
 
@@ -1059,7 +1206,7 @@ RETURNERA JSON enligt detta schema (inga kommentarer, bara valid JSON):
         // Ensure regNo is set correctly
         merged.regNo = regNo;
 
-        console.log(`[AI Merge] Successfully merged: ${merged.make} ${merged.model}`);
+        console.log(`✅ Färdig: ${merged.make} ${merged.model}`);
         return merged;
 
     } catch (error: any) {
@@ -1151,7 +1298,7 @@ async function getCachedVehicleData(regNo: string): Promise<CachedVehicleData | 
             return null;
         }
 
-        console.log(`[Cache] Hit for ${regNo}`);
+        console.log(`💾 Laddade sparad data för ${regNo}`);
         return data;
     } catch (error) {
         console.error(`[Cache] Error reading ${regNo}:`, error);
@@ -1179,7 +1326,7 @@ async function setCachedVehicleData(
             scrapedAt: now,
             expiresAt
         });
-        console.log(`[Cache] Saved ${regNo} from ${sources.join(', ')}`);
+        console.log(`💾 Sparade data för ${regNo}`);
     } catch (error) {
         console.error(`[Cache] Error saving ${regNo}:`, error);
     }
