@@ -123,7 +123,16 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
                 throw new Error(aiData.error);
             }
 
-            // ... setAiSuggestions ...
+            setAiSuggestions({
+                fullAiData: aiData,
+                suggestedName: aiData.projectName,
+                detectedMake: aiData.vehicleData?.make,
+                detectedModel: aiData.vehicleData?.model,
+                detectedYear: aiData.vehicleData?.year,
+                icon: iconResult.status === 'fulfilled' ? iconResult.value : null,
+                aiProvider: 'gemini',
+                hasErrors: !!aiData.error
+            });
 
             setIsResearching(false);
             setStep(3);
@@ -132,7 +141,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, 
             console.error('Research failed:', error);
             clearInterval(stepInterval);
             setIsResearching(false);
-            errorToast('Hoppsan! Något gick fel. Försök igen eller fyll i manuellt.');
+            error('Hoppsan! Något gick fel. Försök igen eller fyll i manuellt.');
             // We do NOT go back to step 1 automatically, let user retry or edit
         }
     };
