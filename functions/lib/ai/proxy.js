@@ -319,7 +319,7 @@ exports.aiDeepResearch = (0, https_1.onCall)({
     maxInstances: 5,
     timeoutSeconds: 180,
     memory: '1GiB',
-    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
+    cors: true
 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'User must be authenticated');
