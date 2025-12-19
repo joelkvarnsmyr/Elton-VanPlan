@@ -107,6 +107,19 @@ interface RawVehicleData {
     enginePower?: string;
     engineVolume?: string;
     cylinders?: number;
+    engineCode?: string;
+    torque?: string;
+    valveTrain?: string; // SOHC, DOHC
+    cooling?: string; // Vattenkyld, Luftkyld
+
+    // Prestanda (för bilentusiaster)
+    topSpeed?: number; // km/h
+    acceleration?: string; // "0-100 km/h: 12.5s"
+    fuelConsumption?: {
+        mixed?: number; // L/100km
+        urban?: number;
+        highway?: number;
+    };
 
     // Transmission
     gearbox?: string;
@@ -118,6 +131,7 @@ interface RawVehicleData {
     width?: number;
     height?: number;
     wheelbase?: number;
+    cargoVolume?: number; // Liters
 
     // Vikter (alla i kg)
     curbWeight?: number;
@@ -136,14 +150,65 @@ interface RawVehicleData {
     nextInspection?: string;
     mileageAtInspection?: string;
 
+    // NY: Besiktningshistorik
+    inspectionHistory?: Array<{
+        date: string;
+        result?: 'Pass' | 'Fail' | 'Conditional' | string;
+        mileage?: number;
+        remarks?: Array<{
+            severity?: 'Critical' | 'Warning' | 'Advisory' | string;
+            description: string;
+            code?: string;
+        }>;
+        station?: string;
+    }>;
+
     // Historik
     ownerCount?: number;
     lastOwnerChange?: string;
+
+    // NY: Ägarhistorik
+    ownershipHistory?: Array<{
+        changeDate: string;
+        ownerType?: 'Private' | 'Company' | string;
+    }>;
+
+    // NY: Registreringshistorik
+    registrationHistory?: {
+        firstRegistrationSweden?: string;
+        firstRegistrationOriginal?: string;
+        isImported?: boolean;
+        deregistrationPeriods?: Array<{
+            from: string;
+            to: string;
+        }>;
+    };
+
+    // Milhistorik
     mileageHistory?: Array<{
         date: string;
         mileage: number;
         mileageFormatted?: string;
         type?: string;
+        source?: 'Inspection' | 'Service' | 'Registration' | string;
+    }>;
+
+    // NY: Skatt & Miljö
+    taxEnvironment?: {
+        annualTax?: number; // SEK
+        environmentalClass?: string; // Euro 5/6, EEV
+        co2Emissions?: number; // g/km
+        bonusMalus?: 'Bonus' | 'Malus' | 'Neutral' | string;
+    };
+
+    // NY: Kapacitet & Tekniska detaljer
+    fuelTankCapacity?: number; // Liters
+    batteryCapacity?: number; // kWh (för elbilar)
+
+    // NY: Utrustning & Säkerhet
+    equipment?: Array<{
+        category?: 'Safety' | 'Comfort' | 'Technology' | string;
+        description: string;
     }>;
 
     // Extra data som kan finnas
@@ -329,10 +394,52 @@ async function scrapeCarInfo(regNo: string): Promise<RawVehicleData | null> {
     data.mileageAtInspection = getSpec('Mätarställning') || undefined;
     data.bodyType = getSpec('Kaross') || undefined;
     data.vin = getSpec('Chassinummer (vin)') || undefined;
+
+    // Motor - Utökad
     data.enginePower = getSpec('Effekt') || undefined;
     data.engineVolume = getSpec('Motorvolym') || undefined;
     data.fuelType = getSpec('Bränsle') || undefined;
+    data.engineCode = getSpec('Motortyp') || getSpec('Motorkod') || undefined;
+    data.cylinders = parseSwedishNumber(getSpec('Cylindrar')) || parseSwedishNumber(getSpec('Antal cylindrar')) || undefined;
+    data.torque = getSpec('Vridmoment') || undefined;
+    data.valveTrain = getSpec('Ventilsystem') || getSpec('Toppventiler') || undefined;
+    data.cooling = getSpec('Kylning') || undefined;
+
+    // Prestanda
+    const topSpeedStr = getSpec('Topphastighet') || getSpec('Max hastighet');
+    if (topSpeedStr) {
+        data.topSpeed = parseSwedishNumber(topSpeedStr);
+    }
+    data.acceleration = getSpec('0-100 km/h') || getSpec('Acceleration') || undefined;
+
+    // Bränsleförbrukning
+    const fuelMixed = getSpec('Bränsleförbrukning blandad körning') || getSpec('Förbrukning blandad');
+    const fuelUrban = getSpec('Bränsleförbrukning stad') || getSpec('Förbrukning stad');
+    const fuelHighway = getSpec('Bränsleförbrukning landsväg') || getSpec('Förbrukning landsväg');
+    if (fuelMixed || fuelUrban || fuelHighway) {
+        data.fuelConsumption = {
+            mixed: fuelMixed ? parseFloat(fuelMixed.replace(',', '.')) : undefined,
+            urban: fuelUrban ? parseFloat(fuelUrban.replace(',', '.')) : undefined,
+            highway: fuelHighway ? parseFloat(fuelHighway.replace(',', '.')) : undefined
+        };
+    }
+
     data.driveType = getSpec('Drivlina') || undefined;
+
+    // Kapacitet
+    const tankCapStr = getSpec('Bränsletank') || getSpec('Tankvolym');
+    if (tankCapStr) {
+        data.fuelTankCapacity = parseSwedishNumber(tankCapStr);
+    }
+
+    const cargoVolStr = getSpec('Bagageutrymme') || getSpec('Lastutrymme');
+    if (cargoVolStr) {
+        data.cargoVolume = parseSwedishNumber(cargoVolStr);
+    }
+
+    // Antal dörrar och passagerare
+    data.doors = parseSwedishNumber(getSpec('Antal dörrar')) || undefined;
+    data.passengers = parseSwedishNumber(getSpec('Antal passagerare')) || parseSwedishNumber(getSpec('Sittplatser')) || undefined;
 
     const gearbox = getSpec('Växellåda');
     if (gearbox) data.gearbox = gearbox;
@@ -363,7 +470,7 @@ async function scrapeCarInfo(regNo: string): Promise<RawVehicleData | null> {
         data.loadCapacity = data.totalWeight - data.curbWeight;
     }
 
-    // Extract mileage history from JavaScript
+    // Extract mileage history from JavaScript - ENHANCED
     try {
         const scriptContent = html.match(/var\s+datasetMileageWithoutUnofficial\s*=\s*(\[[\s\S]*?\]);/);
         if (scriptContent && scriptContent[1]) {
@@ -381,12 +488,36 @@ async function scrapeCarInfo(regNo: string): Promise<RawVehicleData | null> {
                     date: entry.label || entry.x,
                     mileage: entry.y || 0,
                     mileageFormatted: entry.mileage_formatted,
-                    type: entry.value_type
+                    type: entry.value_type,
+                    source: entry.value_type?.includes('Besiktning') ? 'Inspection' : 'Service'
                 }));
             }
         }
     } catch (error) {
         console.warn(`[CarInfo] Failed to extract mileage history:`, error);
+    }
+
+    // Extract equipment/utrustning
+    try {
+        const equipment: Array<{ category?: string; description: string }> = [];
+        $('.equipment-list li, .utrustning-list li, .specs-equipment li').each((_, el) => {
+            const $el = $(el);
+            const text = $el.text().trim();
+            if (text) {
+                // Try to categorize
+                let category: string | undefined;
+                if (text.match(/airbag|abs|esp|säkerhet|alarm/i)) category = 'Safety';
+                else if (text.match(/klimat|cruise|navi|stereo|komfort/i)) category = 'Comfort';
+                else if (text.match(/sensor|kamera|display|bluetooth/i)) category = 'Technology';
+
+                equipment.push({ category, description: text });
+            }
+        });
+        if (equipment.length > 0) {
+            data.equipment = equipment;
+        }
+    } catch (error) {
+        console.warn(`[CarInfo] Failed to extract equipment:`, error);
     }
 
     console.log(`[CarInfo] Scraped: ${data.make} ${data.model} (${data.year})`);
@@ -501,6 +632,114 @@ async function scrapeBiluppgifter(regNo: string): Promise<RawVehicleData | null>
     data.tiresFront = getSpec('Däck fram') || undefined;
     data.tiresRear = getSpec('Däck bak') || undefined;
 
+    // NY: Skatt & Miljö
+    const taxStr = getSpec('Fordonsskatt') || getSpec('Skatt/år') || getSpec('Årlig fordonsskatt');
+    const envClass = getSpec('Miljöklass') || getSpec('Euroklass');
+    const co2Str = getSpec('CO2-utsläpp') || getSpec('Koldioxid');
+    const fuelMixed = getSpec('Bränsleförbrukning blandad') || getSpec('Förbrukning blandad');
+    const fuelUrban = getSpec('Bränsleförbrukning stad') || getSpec('Förbrukning stad');
+    const fuelHighway = getSpec('Bränsleförbrukning landsväg') || getSpec('Förbrukning landsväg');
+
+    if (taxStr || envClass || co2Str || fuelMixed || fuelUrban || fuelHighway) {
+        data.taxEnvironment = {
+            annualTax: taxStr ? parseSwedishNumber(taxStr) : undefined,
+            environmentalClass: envClass,
+            co2Emissions: co2Str ? parseSwedishNumber(co2Str) : undefined
+        };
+    }
+
+    if (fuelMixed || fuelUrban || fuelHighway) {
+        data.fuelConsumption = {
+            mixed: fuelMixed ? parseFloat(fuelMixed.replace(',', '.')) : undefined,
+            urban: fuelUrban ? parseFloat(fuelUrban.replace(',', '.')) : undefined,
+            highway: fuelHighway ? parseFloat(fuelHighway.replace(',', '.')) : undefined
+        };
+    }
+
+    // NY: Tekniska detaljer
+    data.cylinders = parseSwedishNumber(getSpec('Cylindrar')) || parseSwedishNumber(getSpec('Antal cylindrar')) || undefined;
+    data.doors = parseSwedishNumber(getSpec('Antal dörrar')) || undefined;
+    data.passengers = parseSwedishNumber(getSpec('Sittplatser')) || parseSwedishNumber(getSpec('Antal passagerare')) || undefined;
+
+    const tankCapStr = getSpec('Bränsletank') || getSpec('Tankvolym');
+    if (tankCapStr) {
+        data.fuelTankCapacity = parseSwedishNumber(tankCapStr);
+    }
+
+    const battCapStr = getSpec('Batterikapacitet');
+    if (battCapStr) {
+        data.batteryCapacity = parseFloat(battCapStr.replace(',', '.'));
+    }
+
+    // NY: Besiktningshistorik (om tillgänglig på sidan)
+    try {
+        const inspections: Array<any> = [];
+        $('.inspection-history .inspection-item, .besiktning-list .besiktning-item').each((_, inspEl) => {
+            const $insp = $(inspEl);
+            const dateStr = $insp.find('.inspection-date, .besiktning-datum').text().trim();
+            const resultStr = $insp.find('.inspection-result, .besiktning-resultat').text().trim();
+            const mileageStr = $insp.find('.inspection-mileage, .besiktning-mil').text().trim();
+
+            if (dateStr) {
+                const inspection: any = {
+                    date: parseSwedishDate(dateStr),
+                    result: resultStr.includes('Godkänd') ? 'Pass' : resultStr.includes('Icke godkänd') ? 'Fail' : resultStr
+                };
+
+                if (mileageStr) {
+                    inspection.mileage = parseSwedishNumber(mileageStr);
+                }
+
+                // Extract remarks if available
+                const remarks: Array<any> = [];
+                $insp.find('.inspection-remark, .anmärkning').each((__, remarkEl) => {
+                    const text = $(remarkEl).text().trim();
+                    if (text) {
+                        remarks.push({
+                            description: text,
+                            severity: text.match(/kritisk/i) ? 'Critical' : text.match(/varning/i) ? 'Warning' : 'Advisory'
+                        });
+                    }
+                });
+
+                if (remarks.length > 0) {
+                    inspection.remarks = remarks;
+                }
+
+                inspections.push(inspection);
+            }
+        });
+
+        if (inspections.length > 0) {
+            data.inspectionHistory = inspections;
+        }
+    } catch (error) {
+        console.warn(`[Biluppgifter] Failed to extract inspection history:`, error);
+    }
+
+    // NY: Ägarhistorik (om tillgänglig)
+    try {
+        const ownership: Array<any> = [];
+        $('.owner-history .owner-item, .ägare-list .ägare-item').each((_, ownerEl) => {
+            const $owner = $(ownerEl);
+            const dateStr = $owner.find('.owner-date, .ägare-datum').text().trim();
+            const typeStr = $owner.find('.owner-type, .ägare-typ').text().trim();
+
+            if (dateStr) {
+                ownership.push({
+                    changeDate: parseSwedishDate(dateStr),
+                    ownerType: typeStr.match(/företag|bolag/i) ? 'Company' : typeStr.match(/privat/i) ? 'Private' : undefined
+                });
+            }
+        });
+
+        if (ownership.length > 0) {
+            data.ownershipHistory = ownership;
+        }
+    } catch (error) {
+        console.warn(`[Biluppgifter] Failed to extract ownership history:`, error);
+    }
+
     console.log(`[Biluppgifter] Scraped: ${data.make} ${data.model} (${data.year})`);
     return data;
 }
@@ -602,7 +841,7 @@ async function scrapeTransportstyrelsen(regNo: string): Promise<RawVehicleData |
     data.curbWeight = parseSwedishNumber(technical['Tjänstevikt']) || undefined;
     data.totalWeight = parseSwedishNumber(technical['Totalvikt']) || undefined;
     data.trailerWeightBraked = parseSwedishNumber(technical['Släpvagnsvikt bromsad']) ||
-                               parseSwedishNumber(technical['Släpvagnsvikt']) || undefined;
+        parseSwedishNumber(technical['Släpvagnsvikt']) || undefined;
     data.trailerWeightUnbraked = parseSwedishNumber(technical['Släpvagnsvikt obromsad']) || undefined;
 
     data.length = parseSwedishNumber(technical['Längd']) || undefined;
