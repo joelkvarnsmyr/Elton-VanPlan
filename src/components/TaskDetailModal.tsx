@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
-import { Task, Link, Comment, Attachment, Subtask, ShoppingItem, VehicleData, TaskStatus } from '@/types/types';
-import { X, ExternalLink, Plus, MessageSquare, Paperclip, Trash2, Send, Save, FileText, Lightbulb, Check, XCircle, ListChecks, CheckCircle2, Circle, BookOpen, Wrench, ShoppingBag, Archive } from 'lucide-react';
+import { Task, Link, Comment, Attachment, Subtask, ShoppingItem, VehicleData, TaskStatus, ChatContext } from '@/types/types';
+import { X, ExternalLink, Plus, MessageSquare, Paperclip, Trash2, Send, Save, FileText, Lightbulb, Check, XCircle, ListChecks, CheckCircle2, Circle, BookOpen, Wrench, ShoppingBag, Archive, MessageCircle } from 'lucide-react';
 import { KNOWLEDGE_ARTICLES } from '@/constants/constants';
+import { ContextualChat } from './ContextualChat';
 
 interface TaskDetailModalProps {
     task: Task;
@@ -24,6 +25,17 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
     const [newShoppingItemName, setNewShoppingItemName] = useState('');
     const [newShoppingItemCost, setNewShoppingItemCost] = useState('');
     const [showAddShopping, setShowAddShopping] = useState(false);
+    const [chatContext, setChatContext] = useState<ChatContext | null>(null);
+
+    const openChatForTask = () => {
+        const linkedItems = shoppingItems.filter(i => i.linkedTaskId === task.id);
+        setChatContext({
+            type: 'task',
+            task,
+            vehicleData,
+            relatedItems: linkedItems
+        });
+    };
 
     // Local state edit fields
     const [editedDescription, setEditedDescription] = useState(task.description);
@@ -196,14 +208,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
                         <h2 className="text-2xl font-serif font-bold text-nordic-charcoal dark:text-nordic-ice">{task.title}</h2>
                     </div>
                     <div className="flex gap-2">
-                        {onAskElton && (
-                            <button
-                                onClick={() => onAskElton(`Uppgift: ${task.title}\nBeskrivning: ${task.description || 'Ingen'}`)}
-                                className="flex items-center gap-2 px-3 py-2 bg-teal-50 dark:bg-teal-900/20 rounded-xl text-xs font-bold text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors"
-                            >
-                                <MessageSquare size={16} /> Fråga Elton
-                            </button>
-                        )}
+                        {/* Contextual AI Chat Button */}
+                        <button
+                            onClick={openChatForTask}
+                            className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-xs font-bold text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                        >
+                            <MessageCircle size={16} /> Prata med ELTON
+                        </button>
                         <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-nordic-charcoal rounded-full transition-colors">
                             <X size={24} className="text-slate-500 dark:text-slate-400" />
                         </button>
@@ -625,6 +636,19 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
                     </div>
                 </div>
             </div>
+
+            {/* Contextual Chat Modal */}
+            {chatContext && (
+                <ContextualChat
+                    context={chatContext}
+                    onClose={() => setChatContext(null)}
+                    onUpdateTask={(updatedTask) => {
+                        onUpdate(updatedTask);
+                        // Update context with fresh task data
+                        setChatContext(prev => prev ? { ...prev, task: updatedTask } : null);
+                    }}
+                />
+            )}
         </div>
     );
 };
