@@ -31,3 +31,7 @@ dist-ssr
 # Test output
 test-output/*
 !test-output/.gitkeep
+
+# Firebase credentials
+firebase-service-account.json
+*-firebase-adminsdk-*.json

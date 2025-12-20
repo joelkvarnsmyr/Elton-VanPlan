@@ -37,7 +37,7 @@ export const ELTON_PHASE0_TASKS: Task[] = [
         subtasks: [
             { id: 'st-purch-1', title: 'Besiktningsprotokoll granskat', completed: true },
             { id: 'st-purch-2', title: 'Provkörning genomförd', completed: true },
-            { id: 'st-purch-3', title: 'Ägarbyte via app' completed: true },
+            { id: 'st-purch-3', title: 'Ägarbyte via app', completed: true },
             { id: 'st-purch-4', title: 'Betalning klar', completed: true }
         ],
         created: '2025-11-01T10:00:00Z',

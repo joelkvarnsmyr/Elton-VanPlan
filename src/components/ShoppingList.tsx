@@ -1,12 +1,13 @@
 
 import React, { useState, useMemo } from 'react';
-import { ShoppingItem, Task, VendorOption, ShoppingItemStatus } from '@/types/types';
-import { ShoppingBag, Plus, ExternalLink, Circle, CheckCircle2 } from 'lucide-react';
-import { STORES, getStoreById, getStoreOptions } from '@/config/stores';
+import { ShoppingItem, Task, VendorOption, ShoppingItemStatus, VehicleData, ChatContext } from '@/types/types';
+import { ShoppingBag, Plus, ExternalLink, Circle, CheckCircle2, MessageCircle } from 'lucide-react';
+import { ContextualChat } from './ContextualChat';
 
 interface ShoppingListProps {
   items: ShoppingItem[];
   tasks?: Task[];
+  vehicleData?: VehicleData;
   onToggle: (id: string) => void;
   onAdd: (item: Omit<ShoppingItem, 'id'>) => void;
   onUpdate: (item: ShoppingItem) => void;
@@ -18,6 +19,7 @@ interface ShoppingListProps {
 export const ShoppingList: React.FC<ShoppingListProps> = ({
   items,
   tasks = [],
+  vehicleData,
   onToggle,
   onAdd,
   onUpdate,
@@ -29,6 +31,17 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
   const [newItemCost, setNewItemCost] = useState('');
   const [newItemCategory, setNewItemCategory] = useState<ShoppingItem['category']>('Reservdelar');
   const [activeFilter, setActiveFilter] = useState('Alla');
+  const [chatContext, setChatContext] = useState<ChatContext | null>(null);
+
+  const openChatForItem = (item: ShoppingItem) => {
+    if (!vehicleData) return;
+    setChatContext({
+      type: 'shopping_item',
+      item,
+      vehicleData,
+      relatedTasks: tasks
+    });
+  };
 
   const categories = ['Reservdelar', 'Kemi & Färg', 'Verktyg', 'Inredning', 'Övrigt'];
 
@@ -55,17 +68,18 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
   const itemsByCategory = useMemo(() => {
     const categoryMap = new Map<string, ShoppingItem[]>();
 
-    categories.forEach(cat => {
-      const categoryItems = filteredItems.filter(item =>
-        item.category === cat && (activeFilter === 'Alla' || activeFilter === cat)
-      );
+    // If a specific category is selected, only show that category
+    const categoriesToShow = activeFilter === 'Alla' ? categories : [activeFilter];
+
+    categoriesToShow.forEach(cat => {
+      const categoryItems = filteredItems.filter(item => item.category === cat);
       if (categoryItems.length > 0) {
         categoryMap.set(cat, categoryItems);
       }
     });
 
     return Array.from(categoryMap.entries());
-  }, [filteredItems, activeFilter]);
+  }, [filteredItems, activeFilter, categories]);
 
   return (
     <div className="min-h-screen bg-[#f5f3f0] pb-20">
@@ -78,8 +92,8 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
                 key={cat}
                 onClick={() => setActiveFilter(cat)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activeFilter === cat
-                    ? 'bg-[#2c2c2c] text-white'
-                    : 'bg-transparent text-slate-600 hover:bg-slate-100'
+                  ? 'bg-[#2c2c2c] text-white'
+                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
                   }`}
               >
                 {cat}
@@ -181,6 +195,20 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
                         </div>
                       </div>
 
+                      {/* Chat button */}
+                      {vehicleData && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openChatForItem(item);
+                          }}
+                          className="flex-shrink-0 text-blue-500 hover:text-blue-600 transition-colors"
+                          title="Prata med ELTON om detta"
+                        >
+                          <MessageCircle size={16} />
+                        </button>
+                      )}
+
                       {/* Link icon */}
                       {item.url && (
                         <a
@@ -201,6 +229,18 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
           </div>
         )}
       </div>
+
+      {/* Contextual Chat Modal */}
+      {chatContext && (
+        <ContextualChat
+          context={chatContext}
+          onClose={() => setChatContext(null)}
+          onUpdateItem={(updatedItem) => {
+            onUpdate(updatedItem);
+            setChatContext(prev => prev ? { ...prev, item: updatedItem } : null);
+          }}
+        />
+      )}
     </div>
   );
 };

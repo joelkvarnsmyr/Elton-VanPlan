@@ -1,26 +1,24 @@
+"use strict";
 /**
  * ELTON DETAILED INSPECTION DATA
- * 
+ *
  * Converted from inspektionsdata-elton.json to DetailedInspection format
  * Date: 2025-12-20
  */
-
-import { DetailedInspection, DetailedInspectionArea, DetailedInspectionFinding } from '@/types/types';
-
-export const ELTON_DETAILED_INSPECTION: DetailedInspection = {
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ELTON_DETAILED_INSPECTION = void 0;
+exports.ELTON_DETAILED_INSPECTION = {
     id: 'inspection-elton-2025-12-20',
     projectId: 'elton-jsn398',
     date: '2025-12-20',
     inspectors: ['Joel Kvarnsmyr', 'Hanna Eriksson'],
     type: 'Totalinspektion (Exteriör, Interiör, Mekaniskt)',
     sourceFiles: ['Elton exteriör.m4a', 'Elton interiör.m4a'],
-
     statistics: {
         total: 88,
         negative: 68,
         positive: 20
     },
-
     areas: [
         // --- TAK ---
         {
@@ -46,7 +44,6 @@ export const ELTON_DETAILED_INSPECTION: DetailedInspection = {
                 { id: 14, category: 'Positivt', type: 'Skick', description: 'Endast mindre anmärkningar noterades på bakre delen/toppen.' }
             ]
         },
-
         // --- VÄNSTER SIDA ---
         {
             areaId: 2,
@@ -75,7 +72,6 @@ export const ELTON_DETAILED_INSPECTION: DetailedInspection = {
                 { id: 32, category: 'Positivt', type: 'Skick', description: 'Elintaget ser bra ut och saknar rost.' }
             ]
         },
-
         // --- BAKSIDA ---
         {
             areaId: 3,
@@ -97,7 +93,6 @@ export const ELTON_DETAILED_INSPECTION: DetailedInspection = {
                 { id: 43, category: 'Positivt', type: 'Skick', description: 'Bakfönstret bedöms vara i skapligt skick.' }
             ]
         },
-
         // --- HÖGER SIDA / SKJUTDÖRR ---
         {
             areaId: 4,
@@ -123,7 +118,6 @@ export const ELTON_DETAILED_INSPECTION: DetailedInspection = {
                 { id: 58, category: 'Positivt', type: 'Skick', description: 'Ingen rost noterades vid den nedre glidskenan.' }
             ]
         },
-
         // --- PASSAGERARDÖRR ---
         {
             areaId: 5,
@@ -139,7 +133,6 @@ export const ELTON_DETAILED_INSPECTION: DetailedInspection = {
                 { id: 63, category: 'Positivt', type: 'Skick', description: 'Gummilisterna bedöms vara i helt okej skick.' }
             ]
         },
-
         // --- FRAMSIDA ---
         {
             areaId: 6,
@@ -157,7 +150,6 @@ export const ELTON_DETAILED_INSPECTION: DetailedInspection = {
                 { id: 70, category: 'Positivt', type: 'Skick', description: 'Lyktor och blinkers är fria från rost (nyligen restaurerade).' }
             ]
         },
-
         // --- UNDERREDE ---
         {
             areaId: 7,
@@ -170,7 +162,6 @@ export const ELTON_DETAILED_INSPECTION: DetailedInspection = {
                 { id: 72, category: 'Positivt', type: 'Skick', description: 'Underredet bedöms i övrigt vara i mycket fint skick utan anmärkningar.' }
             ]
         },
-
         // --- MOTOR ---
         {
             areaId: 8,
@@ -191,7 +182,6 @@ export const ELTON_DETAILED_INSPECTION: DetailedInspection = {
                 { id: 82, category: 'Positivt', delkomponent: 'Motorgång', description: 'Motorn går jämnt och fint, känns trygg att köra.' }
             ]
         },
-
         // --- ELSYSTEM ---
         {
             areaId: 9,
@@ -205,7 +195,6 @@ export const ELTON_DETAILED_INSPECTION: DetailedInspection = {
                 { id: 85, category: 'Anmärkning', delkomponent: 'Ljudsystem', type: 'Kabeldragning', description: 'Kabeldragningen till högtalare i dörrar och interiör är slarvigt utförd.', severity: 'LOW' }
             ]
         },
-
         // --- INTERIÖR ---
         {
             areaId: 10,

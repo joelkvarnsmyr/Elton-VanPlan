@@ -8,6 +8,7 @@ interface TaskBoardProps {
   shoppingItems: ShoppingItem[];
   vehicleData: VehicleData;
   onUpdateTask: (task: Task) => void;
+  onAddShoppingItem?: (item: Omit<ShoppingItem, 'id'>) => void;
   initialFilter?: string | 'ALL';
 }
 
@@ -62,7 +63,7 @@ const getDifficultyInfo = (level?: DifficultyLevel) => {
   }
 };
 
-export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehicleData, onUpdateTask, initialFilter = 'ALL' }) => {
+export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehicleData, onUpdateTask, onAddShoppingItem, initialFilter = 'ALL' }) => {
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState<string | 'ALL'>('ALL');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -262,7 +263,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
                       key={task.id}
                       onClick={() => setSelectedTask(task)}
                       className={`group relative p-5 rounded-2xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg flex flex-col justify-between cursor-pointer ${blocked ? 'bg-slate-100 dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 opacity-60 cursor-not-allowed' :
-                          task.status === TaskStatus.DONE ? 'bg-white dark:bg-nordic-dark-bg border-slate-100 dark:border-nordic-charcoal opacity-70 hover:opacity-100' : 'bg-white dark:bg-nordic-dark-bg border-slate-200 dark:border-nordic-charcoal shadow-sm'
+                        task.status === TaskStatus.DONE ? 'bg-white dark:bg-nordic-dark-bg border-slate-100 dark:border-nordic-charcoal opacity-70 hover:opacity-100' : 'bg-white dark:bg-nordic-dark-bg border-slate-200 dark:border-nordic-charcoal shadow-sm'
                         }`}
                     >
                       <div>
@@ -307,7 +308,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
                             </div>
                           )}
                           <h4 className={`font-bold text-lg flex-1 ${blocked ? 'text-slate-400 dark:text-slate-600' :
-                              task.status === TaskStatus.DONE ? 'text-slate-500 dark:text-nordic-dark-muted line-through decoration-2 decoration-slate-300' : 'text-nordic-charcoal dark:text-nordic-ice'
+                            task.status === TaskStatus.DONE ? 'text-slate-500 dark:text-nordic-dark-muted line-through decoration-2 decoration-slate-300' : 'text-nordic-charcoal dark:text-nordic-ice'
                             }`}>
                             {task.title}
                           </h4>
@@ -369,8 +370,8 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
                           <button
                             onClick={(e) => { e.stopPropagation(); handleStatusChange(task); }}
                             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${task.status === TaskStatus.DONE
-                                ? 'bg-nordic-green text-green-800 scale-110 shadow-inner'
-                                : 'bg-slate-100 dark:bg-nordic-charcoal text-slate-400 hover:bg-nordic-blue hover:text-blue-800 hover:scale-110'
+                              ? 'bg-nordic-green text-green-800 scale-110 shadow-inner'
+                              : 'bg-slate-100 dark:bg-nordic-charcoal text-slate-400 hover:bg-nordic-blue hover:text-blue-800 hover:scale-110'
                               }`}
                           >
                             <Check size={20} strokeWidth={task.status === TaskStatus.DONE ? 3 : 2} />
@@ -395,6 +396,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
             onUpdateTask(updated);
             setSelectedTask(updated); // Keep modal open with fresh data
           }}
+          onAddShoppingItem={onAddShoppingItem}
           onClose={() => setSelectedTask(null)}
         />
       )}

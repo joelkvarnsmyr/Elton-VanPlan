@@ -19,6 +19,22 @@ import {
 } from '../src/data/elton-project-data';
 import { ELTON_DETAILED_INSPECTION } from '../src/data/elton-inspection-data';
 import { ELTON_PROJECT_METADATA } from '../src/data/elton-project-metadata';
+import {
+    ELTON_MILEAGE_HISTORY,
+    ELTON_HISTORY_EVENTS,
+    ELTON_PRICE_HISTORY,
+    ELTON_STATISTICS,
+    ELTON_ESTIMATED_CURRENT_MILEAGE,
+    ELTON_ANNUAL_DRIVING,
+    ELTON_DATA_LAST_UPDATED,
+    ELTON_NEXT_DATA_UPDATE
+} from '../src/data/elton-vehicle-history';
+import { ELTON_PHASE0_TASKS } from '../src/data/elton-phase0-tasks';
+import {
+    ELTON_RESOURCE_LINKS,
+    ELTON_WORKSHOPS,
+    ELTON_KNOWLEDGE_ARTICLES
+} from '../src/data/elton-knowledge-base';
 
 // Initialize Firebase Admin
 const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT ||
@@ -72,9 +88,23 @@ async function importEltonData(): Promise<ImportStats> {
             primaryOwnerId: OWNER_ID,
             memberIds: ['joel-kvarnsmyr'],
             invitedEmails: [],
-            vehicleData: ELTON_VEHICLE_DATA,
+            vehicleData: {
+                ...ELTON_VEHICLE_DATA,
+                // Add vehicle history inline
+                mileageHistory: ELTON_MILEAGE_HISTORY,
+                historyEvents: ELTON_HISTORY_EVENTS,
+                priceHistory: ELTON_PRICE_HISTORY,
+                statistics: ELTON_STATISTICS,
+                estimatedCurrentMileage: ELTON_ESTIMATED_CURRENT_MILEAGE,
+                annualDriving: ELTON_ANNUAL_DRIVING,
+                dataLastUpdated: ELTON_DATA_LAST_UPDATED,
+                nextDataUpdate: ELTON_NEXT_DATA_UPDATE
+            },
             detailedInspections: [ELTON_DETAILED_INSPECTION], // Structured inspection
             projectMetadata: ELTON_PROJECT_METADATA, // Context, decisions, etc
+            contacts: ELTON_WORKSHOPS, // Workshop contacts
+            knowledgeArticles: ELTON_KNOWLEDGE_ARTICLES, // Guides
+            resourceLinks: ELTON_RESOURCE_LINKS, // External links
             // Don't include tasks/shopping here - they go in subcollections
             tasks: [],
             shoppingItems: [],

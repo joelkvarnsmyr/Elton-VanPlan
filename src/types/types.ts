@@ -587,3 +587,24 @@ export interface ProjectExport {
   contacts: Contact[];
   tips: Array<{ title: string; text: string }>;
 }
+
+// --- CONTEXTUAL CHAT TYPES ---
+
+export interface ChatContext {
+  type: 'shopping_item' | 'task';
+  item?: ShoppingItem;
+  task?: Task;
+  vehicleData: VehicleData;
+  userSkillLevel?: UserSkillLevel;
+  relatedTasks?: Task[];
+  relatedItems?: ShoppingItem[];
+}
+
+export interface ContextualChatMessage {
+  id: string;
+  role: 'user' | 'model';
+  content: string;
+  timestamp: string;
+  proposedUpdates?: VendorOption[]; // For AI-suggested vendor options
+}
+

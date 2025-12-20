@@ -9,15 +9,21 @@ interface TaskDetailModalProps {
     vehicleData: VehicleData;
     shoppingItems: ShoppingItem[];
     onUpdate: (task: Task) => void;
+    onAddShoppingItem?: (item: Omit<ShoppingItem, 'id'>) => void;
+    onDelete?: (taskId: string) => void;
+    onAskElton?: (taskContext: string) => void;
     onClose: () => void;
 }
 
-export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleData, shoppingItems, onUpdate, onDelete, onAskElton, onClose }) => {
+export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleData, shoppingItems, onUpdate, onAddShoppingItem, onDelete, onAskElton, onClose }) => {
     const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'decision'>('details');
     const [newComment, setNewComment] = useState('');
     const [newLinkTitle, setNewLinkTitle] = useState('');
     const [newLinkUrl, setNewLinkUrl] = useState('');
     const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+    const [newShoppingItemName, setNewShoppingItemName] = useState('');
+    const [newShoppingItemCost, setNewShoppingItemCost] = useState('');
+    const [showAddShopping, setShowAddShopping] = useState(false);
 
     // Local state edit fields
     const [editedDescription, setEditedDescription] = useState(task.description);
@@ -192,7 +198,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
                     <div className="flex gap-2">
                         {onAskElton && (
                             <button
-                                onClick={handleAskElton}
+                                onClick={() => onAskElton(`Uppgift: ${task.title}\nBeskrivning: ${task.description || 'Ingen'}`)}
                                 className="flex items-center gap-2 px-3 py-2 bg-teal-50 dark:bg-teal-900/20 rounded-xl text-xs font-bold text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/30 transition-colors"
                             >
                                 <MessageSquare size={16} /> Fråga Elton
@@ -439,11 +445,65 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
                                             )}
 
                                             {/* NEW: Directly Linked Shopping Items */}
-                                            {smartContext.linkedItems && smartContext.linkedItems.length > 0 && (
-                                                <div className="bg-teal-50 dark:bg-teal-900/20 p-3 rounded-xl border border-teal-100 dark:border-teal-900/50">
-                                                    <span className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                                            <div className="bg-teal-50 dark:bg-teal-900/20 p-3 rounded-xl border border-teal-100 dark:border-teal-900/50">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider flex items-center gap-1">
                                                         <ShoppingBag size={12} /> Inköpslista för denna uppgift
                                                     </span>
+                                                    {onAddShoppingItem && (
+                                                        <button
+                                                            onClick={() => setShowAddShopping(!showAddShopping)}
+                                                            className="text-teal-600 hover:text-teal-700 text-xs flex items-center gap-1"
+                                                        >
+                                                            <Plus size={12} /> Lägg till
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                {/* Add shopping item form */}
+                                                {showAddShopping && onAddShoppingItem && (
+                                                    <div className="mb-3 p-2 bg-white dark:bg-nordic-dark-surface rounded-lg border border-teal-200">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Produktnamn..."
+                                                            value={newShoppingItemName}
+                                                            onChange={(e) => setNewShoppingItemName(e.target.value)}
+                                                            className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded mb-2 outline-none focus:ring-1 focus:ring-teal-500"
+                                                        />
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="number"
+                                                                placeholder="Pris (kr)"
+                                                                value={newShoppingItemCost}
+                                                                onChange={(e) => setNewShoppingItemCost(e.target.value)}
+                                                                className="w-24 px-2 py-1.5 text-sm border border-slate-200 rounded outline-none focus:ring-1 focus:ring-teal-500"
+                                                            />
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (newShoppingItemName.trim()) {
+                                                                        onAddShoppingItem({
+                                                                            name: newShoppingItemName,
+                                                                            category: 'Reservdelar',
+                                                                            estimatedCost: parseInt(newShoppingItemCost) || 0,
+                                                                            quantity: '1 st',
+                                                                            checked: false,
+                                                                            linkedTaskId: task.id
+                                                                        });
+                                                                        setNewShoppingItemName('');
+                                                                        setNewShoppingItemCost('');
+                                                                        setShowAddShopping(false);
+                                                                    }
+                                                                }}
+                                                                className="flex-1 bg-teal-600 text-white text-xs py-1.5 rounded hover:bg-teal-700"
+                                                            >
+                                                                Lägg till
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Linked items list */}
+                                                {smartContext.linkedItems && smartContext.linkedItems.length > 0 ? (
                                                     <div className="space-y-1">
                                                         {smartContext.linkedItems.map((item: any, idx: number) => (
                                                             <div key={idx} className="flex items-center justify-between gap-2 text-sm">
@@ -455,8 +515,10 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
                                                             </div>
                                                         ))}
                                                     </div>
-                                                </div>
-                                            )}
+                                                ) : (
+                                                    <p className="text-xs text-slate-400 italic">Inga inköp kopplade till denna uppgift än</p>
+                                                )}
+                                            </div>
 
                                             {/* Related Articles */}
                                             {smartContext.articles.map((article) => (
