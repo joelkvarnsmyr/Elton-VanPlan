@@ -7,14 +7,16 @@ import { MagicImport } from './components/MagicImport';
 import { VehicleSpecs } from './components/VehicleSpecs';
 import { ShoppingList } from './components/ShoppingList';
 import { AuthLanding } from './components/AuthLanding';
+import { WaitlistLanding } from './components/WaitlistLanding';
 import { ProjectSelector } from './components/ProjectSelector';
 import { ProjectMembers } from './components/ProjectMembers';
 import { Roadmap } from './components/Roadmap';
 import { FuelLog } from './components/FuelLog';
 import { ServiceBook } from './components/ServiceBook';
 import { TestScraper } from './components/TestScraper';
+import { InspectionPage } from './components/inspection/InspectionPage';
 import { Task, ShoppingItem, Project, UserProfile, FuelLogItem, ServiceItem, Contact, TaskStatus, VehicleData } from '@/types/types';
-import { LayoutDashboard, CheckSquare, MessageSquareMore, Sparkles, Sun, Moon, Wrench, ShoppingBag, Settings, Lock, Loader2, Database, LogOut, ArrowLeft, User, Save, ChevronLeft, Map, Users, Fuel, BookOpen } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, MessageSquareMore, Sparkles, Sun, Moon, Wrench, ShoppingBag, Settings, Lock, Loader2, Database, LogOut, ArrowLeft, User, Save, ChevronLeft, Map, Users, Fuel, BookOpen, ClipboardList } from 'lucide-react';
 
 // FIREBASE IMPORTS
 import { subscribeToAuthChanges, completeLogin, logout } from './services/auth';
@@ -58,7 +60,7 @@ export const App = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'tasks' | 'ai' | 'specs' | 'shopping' | 'roadmap' | 'scraper'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'tasks' | 'ai' | 'specs' | 'shopping' | 'roadmap' | 'scraper' | 'inspection'>('dashboard');
   const [isMagicImportOpen, setIsMagicImportOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [activePhaseFilter, setActivePhaseFilter] = useState<string>('ALL');
@@ -69,6 +71,7 @@ export const App = () => {
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [editName, setEditName] = useState('');
   const [editSkillLevel, setEditSkillLevel] = useState<'beginner' | 'intermediate' | 'expert'>('intermediate');
+  const [shoppingTaskFilter, setShoppingTaskFilter] = useState<string | undefined>(undefined); // NEW: Filter shopping by task
 
   const loadUserProjects = async (user: UserProfile) => {
     console.log('🔍 Loading projects for user:', user.uid, user.email);
@@ -498,7 +501,7 @@ export const App = () => {
   }
 
   if (!currentUser) {
-    return <AuthLanding onDemo={() => { }} />; // Demo mode is disabled when logged out.
+    return <WaitlistLanding />;
   }
 
   if (currentView === 'roadmap') {
@@ -642,7 +645,8 @@ export const App = () => {
             onUpdateLocation={handleUpdateLocation}
             projectType={activeProject.type}
           />}
-          {currentView === 'shopping' && <ShoppingList items={activeProject.shoppingItems} tasks={activeProject.tasks} onAdd={(i) => handleAddShoppingItem(i as any)} onDelete={handleDeleteShoppingItem} onToggle={(id) => { const i = activeProject.shoppingItems.find(x => x.id === id); if (i) handleUpdateShoppingItem({ ...i, checked: !i.checked }) }} onUpdate={handleUpdateShoppingItem} onUploadReceipt={handleUploadReceipt} />}
+          {currentView === 'shopping' && <ShoppingList items={activeProject.shoppingItems} tasks={activeProject.tasks} onAdd={(i) => handleAddShoppingItem(i as any)} onDelete={handleDeleteShoppingItem} onToggle={(id) => { const i = activeProject.shoppingItems.find(x => x.id === id); if (i) handleUpdateShoppingItem({ ...i, checked: !i.checked }) }} onUpdate={handleUpdateShoppingItem} onUploadReceipt={handleUploadReceipt} filterByTaskId={shoppingTaskFilter} />}
+          {currentView === 'inspection' && activeProject.inspections && activeProject.inspections.length > 0 && <InspectionPage inspection={activeProject.inspections[0] as any} tasks={activeProject.tasks} onViewTask={(taskId) => { setCurrentView('tasks'); }} />}
           {currentView === 'scraper' && <TestScraper onClose={() => setCurrentView('dashboard')} />}
         </div>
 
@@ -664,6 +668,7 @@ export const App = () => {
             <NavButton active={currentView === 'dashboard'} onClick={() => setCurrentView('dashboard')} icon={LayoutDashboard} label="Översikt" />
             <NavButton active={currentView === 'tasks'} onClick={() => { setCurrentView('tasks'); setActivePhaseFilter('ALL'); }} icon={CheckSquare} label="Att Göra" count={activeProject.tasks.filter(t => t.status !== 'Klart').length} />
             <NavButton active={currentView === 'shopping'} onClick={() => setCurrentView('shopping')} icon={ShoppingBag} label="Handla" count={activeProject.shoppingItems.filter(i => !i.checked).length} />
+            <NavButton active={currentView === 'inspection'} onClick={() => setCurrentView('inspection')} icon={ClipboardList} label="Inspektion" />
             <NavButton active={currentView === 'specs'} onClick={() => setCurrentView('specs')} icon={Wrench} label="Verkstad" />
             <NavButton active={false} onClick={() => setCurrentView('ai')} icon={MessageSquareMore} label="Elton AI" />
           </div>

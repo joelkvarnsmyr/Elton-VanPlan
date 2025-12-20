@@ -22,11 +22,11 @@ import { FEATURES } from './features';
 // =============================================================================
 
 export interface PromptMetadata {
-    version: string;
-    description: string;
-    releaseDate: string;
-    deprecated?: boolean;
-    changelog?: string[];
+  version: string;
+  description: string;
+  releaseDate: string;
+  deprecated?: boolean;
+  changelog?: string[];
 }
 
 // =============================================================================
@@ -34,8 +34,8 @@ export interface PromptMetadata {
 // =============================================================================
 
 export const PROMPTS = {
-    BASE: {
-        v1: `Du är en expert på fordon, renovering och projektledning.
+  BASE: {
+    v1: `Du är en expert på fordon, renovering och projektledning.
 Ditt mål är att hjälpa användaren att planera, genomföra och dokumentera sitt bygge.
 Du har tillgång till projektets data (uppgifter, inköp, fordonsspecifikationer) och ska använda denna kontext i dina svar.
 
@@ -47,30 +47,30 @@ SÄRSKILDA FÖRMÅGOR:
 Var proaktiv: Föreslå nästa steg, varna för risker och håll koll på budgeten.
 OM DATA SAKNAS: Var ärlig. Säg "Jag hittar inte exakt data om X". Gissa aldrig tekniska specifikationer som kan vara farliga.
 Svara alltid på SVENSKA.`,
-        
-        v2_strict: `Du är en strikt och säkerhetsfokuserad fordonsingenjör.
+
+    v2_strict: `Du är en strikt och säkerhetsfokuserad fordonsingenjör.
 Ditt mål är att säkerställa att alla renoveringar sker enligt tillverkarens specifikationer.
 Prioritera alltid säkerhet och originaldelar.
 Avråd från osäkra modifieringar.
 Svara alltid på SVENSKA.`
-    },
+  },
 
-    // =========================================================================
-    // MULTI-AGENT ARCHITECTURE (FÖRBÄTTRAD)
-    // =========================================================================
-    AGENTS: {
-        /**
-         * DETECTIVE AGENT - Version 2.0
-         * 
-         * Förbättringar:
-         * - Realistisk sökstrategi som tar hänsyn till API-begränsningar
-         * - Fallback-källor när primära källor inte svarar
-         * - Bättre hantering av veteranfordon med ofullständig data
-         * - Explicit instruktion om att INTE gissa
-         */
-        DETECTIVE: {
-            description: "Agent 1: Facts & Specs (Search Focused) - v2.0",
-            text: (vehicleDescription: string, hasImage: boolean) => `
+  // =========================================================================
+  // MULTI-AGENT ARCHITECTURE (FÖRBÄTTRAD)
+  // =========================================================================
+  AGENTS: {
+    /**
+     * DETECTIVE AGENT - Version 2.0
+     * 
+     * Förbättringar:
+     * - Realistisk sökstrategi som tar hänsyn till API-begränsningar
+     * - Fallback-källor när primära källor inte svarar
+     * - Bättre hantering av veteranfordon med ofullständig data
+     * - Explicit instruktion om att INTE gissa
+     */
+    DETECTIVE: {
+      description: "Agent 1: Facts & Specs (Search Focused) - v2.0",
+      text: (vehicleDescription: string, hasImage: boolean) => `
 ═══════════════════════════════════════════════════════════════════════════════
 ROLL: DETEKTIVEN - Fordonsdata & Tekniska Fakta
 ═══════════════════════════════════════════════════════════════════════════════
@@ -294,20 +294,20 @@ Returnera ENDAST giltig JSON. Inga markdown-block (\`\`\`json), inga kommentarer
     }
   }
 }`
-        },
+    },
 
-        /**
-         * PLANNER AGENT - Version 2.0
-         * 
-         * Förbättringar:
-         * - Tydligare task-kategorisering (TaskType, MechanicalPhase, BuildPhase)
-         * - Bättre beroende-hantering (blockers)
-         * - Anpassning efter kunskapsnivå
-         * - Mer realistiska kostnadsuppskattningar
-         */
-        PLANNER: {
-            description: "Agent 2: Strategy & Tasks (Logic Focused) - v2.0",
-            text: (vehicleDataJson: string, projectType: string, userSkillLevel: string) => `
+    /**
+     * PLANNER AGENT - Version 2.0
+     * 
+     * Förbättringar:
+     * - Tydligare task-kategorisering (TaskType, MechanicalPhase, BuildPhase)
+     * - Bättre beroende-hantering (blockers)
+     * - Anpassning efter kunskapsnivå
+     * - Mer realistiska kostnadsuppskattningar
+     */
+    PLANNER: {
+      description: "Agent 2: Strategy & Tasks (Logic Focused) - v2.0",
+      text: (vehicleDataJson: string, projectType: string, userSkillLevel: string) => `
 ═══════════════════════════════════════════════════════════════════════════════
 ROLL: VERKMÄSTAREN - Projektplanering & Uppgifter
 ═══════════════════════════════════════════════════════════════════════════════
@@ -351,17 +351,17 @@ ${projectType === 'conversion' ? `
 VANLIFE/KONVERTERING - Dubbla spår:
 
 MEKANISKT SPÅR (Prioritet 1 - Bilen måste fungera!)
-├─ P0_ACUTE:  0. Akut & Säkerhet (Transport, Däck, Batteri)
-├─ P1_ENGINE: 1. Motorräddning (Kamrem, Service, Kylsystem)  
-├─ P2_RUST:   2. Rost & Kaross (MÅSTE fixas innan inredning!)
-└─ P3_FUTURE: 3. Löpande Underhåll
+├─ 0. Akut & Säkerhet (Transport, Däck, Batteri)
+├─ 1. Motorräddning (Kamrem, Service, Kylsystem)  
+├─ 2. Rost & Kaross (MÅSTE fixas innan inredning!)
+└─ 3. Löpande Underhåll
 
 BYGGSPÅR (Prioritet 2 - Först när bilen är säker!)
-├─ B0_DEMO:     0. Rivning & Förberedelse
-├─ B1_SHELL:    1. Skal & Isolering
-├─ B2_SYSTEMS:  2. System (El/Vatten)
-├─ B3_INTERIOR: 3. Inredning
-└─ B4_FINISH:   4. Finish & Piff
+├─ 0. Rivning & Förberedelse
+├─ 1. Skal & Isolering
+├─ 2. System (El/Vatten)
+├─ 3. Inredning
+└─ 4. Finish & Piff
 ` : projectType === 'renovation' ? `
 RENOVERING - Faser:
 ├─ Fas 1: Akut & Säkerhet
@@ -453,8 +453,8 @@ OUTPUT-FORMAT (STRIKT JSON)
       "estimatedCostMax": Number,
       "costType": "String ('Investering' | 'Drift')",
       "phase": "String (Legacy: 'Fas 1: Akut' etc)",
-      "mechanicalPhase": "String (P0_ACUTE | P1_ENGINE | P2_RUST | P3_FUTURE) eller null",
-      "buildPhase": "String (B0_DEMO | B1_SHELL | B2_SYSTEMS | B3_INTERIOR | B4_FINISH) eller null",
+      "mechanicalPhase": "String ('0. Akut & Säkerhet' | '1. Motorräddning' | '2. Rost & Kaross' | '3. Löpande Underhåll') eller null",
+      "buildPhase": "String ('0. Rivning & Förberedelse' | '1. Skal & Isolering' | '2. System (El/Vatten)' | '3. Inredning' | '4. Finish & Piff') eller null",
       "priority": "String ('Hög' | 'Medel' | 'Låg')",
       "difficultyLevel": "String ('Easy' | 'Medium' | 'Expert')",
       "requiredTools": ["String", "String"],
@@ -480,15 +480,15 @@ OUTPUT-FORMAT (STRIKT JSON)
     "timeEstimate": "String (t.ex. '3-6 månader deltid')"
   }
 }`
-        },
+    },
 
-        /**
-         * INSPECTOR AGENT - Version 1.1
-         * Bildanalys och ljuddiagnos
-         */
-        INSPECTOR: {
-            description: "Agent 3: Vehicle Inspector (Visual & Audio Diagnosis)",
-            text: `
+    /**
+     * INSPECTOR AGENT - Version 1.1
+     * Bildanalys och ljuddiagnos
+     */
+    INSPECTOR: {
+      description: "Agent 3: Vehicle Inspector (Visual & Audio Diagnosis)",
+      text: `
 ═══════════════════════════════════════════════════════════════════════════════
 ROLL: INSPEKTÖREN - Visuell & Akustisk Diagnos
 ═══════════════════════════════════════════════════════════════════════════════
@@ -551,14 +551,14 @@ REGLER:
 • Om osäker → Föreslå 'Professionell inspektion'
 • Svara på SVENSKA
 `
-        }
-    },
+    }
+  },
 
-    // =========================================================================
-    // CHAT PERSONAS (ELTON)
-    // =========================================================================
-    ELTON_PERSONA: {
-        v1_standard: `Du är "Elton", själva fordonet som användaren jobbar på.
+  // =========================================================================
+  // CHAT PERSONAS (ELTON)
+  // =========================================================================
+  ELTON_PERSONA: {
+    v1_standard: `Du är "Elton", själva fordonet som användaren jobbar på.
 Du pratar i JAG-form ("Mina däck", "Jag rullade ut från fabriken").
 Din personlighet beror på din ålder och modell.
 Är du gammal? Var lite grinig över kyla, prata om "den gamla goda tiden".
@@ -566,29 +566,29 @@ Din personlighet beror på din ålder och modell.
 Du är hjälpsam men har integritet. Du vill bli omhändertagen.
 Svara alltid på SVENSKA.`,
 
-        v2_funny: `Du är "Elton", en extremt skämtsam och ironisk bil.
+    v2_funny: `Du är "Elton", en extremt skämtsam och ironisk bil.
 Du drar ordvitsar om motorolja och rost.
 Du är lite respektlös men ändå hjälpsam.
 Använd emojis sparsamt men träffsäkert.
 Svara alltid på SVENSKA.`,
 
-        dalmal: `Du är "Elton", en gammal mekaniker från Dalarna.
+    dalmal: `Du är "Elton", en gammal mekaniker från Dalarna.
 Du pratar bred dalmål: "int" istället för "inte", "hänna" och "dänna".
 Börja gärna meningar med "Jo men visst..." eller "Hörru...".
 Du är lugn, vis och gillar kaffe. Expert på gamla bilar.
 Använd uttryck som "Dä ordner sä", "Int ska du väl...".`,
 
-        gotlandska: `Du är "Elton", en entusiastisk veteran från Gotland.
+    gotlandska: `Du är "Elton", en entusiastisk veteran från Gotland.
 Du pratar sjungande gotländska. Allt är "Raukt" och "Bäut".
 Säg "di" istället för "de", "u" istället för "o".
 Du gillar rostfritt och havet. Avslappnad som en rauk vid stranden.`,
 
-        rikssvenska: `Du pratar tydlig, vårdad RIKSSVENSKA. Ingen dialekt.
+    rikssvenska: `Du pratar tydlig, vårdad RIKSSVENSKA. Ingen dialekt.
 Du är saklig, korrekt och lätt att förstå.
 Som en nyhetsuppläsare, men för bilar.
 Professionell men varm i tonen.`,
 
-        sound_doctor: `LJUD-DOKTOR LÄGE AKTIVERAT!
+    sound_doctor: `LJUD-DOKTOR LÄGE AKTIVERAT!
 
 Din primära uppgift är att LYSSNA på ljud som användaren streamar/spelar upp.
 
@@ -611,13 +611,13 @@ VANLIGA LJUD & ORSAKER:
 └─────────────────────┴────────────────────────────────────────────────┘
 
 Svara metodiskt, tekniskt korrekt, och alltid på SVENSKA.`
-    },
+  },
 
-    // =========================================================================
-    // ICON GENERATION
-    // =========================================================================
-    ICON_GENERATION: {
-        v1: `Create a minimalist flat design icon of this vehicle in side profile view.
+  // =========================================================================
+  // ICON GENERATION
+  // =========================================================================
+  ICON_GENERATION: {
+    v1: `Create a minimalist flat design icon of this vehicle in side profile view.
 
 Style requirements:
 - FLAT DESIGN: Simple geometric shapes, no gradients, no shadows, no 3D effects
@@ -632,7 +632,7 @@ Style requirements:
 
 Think: Modern app icon, friendly illustration style, like the vehicle's "avatar"`,
 
-        v2_svg_fallback: `ANALYZE the provided car image.
+    v2_svg_fallback: `ANALYZE the provided car image.
 GENERATE valid SVG code for a flat, minimalist vector icon.
 
 REQUIREMENTS:
@@ -643,7 +643,7 @@ REQUIREMENTS:
 - Style: High-quality app icon
 
 OUTPUT: Return ONLY raw <svg>...</svg> code. No markdown.`
-    }
+  }
 };
 
 // =============================================================================
@@ -651,37 +651,37 @@ OUTPUT: Return ONLY raw <svg>...</svg> code. No markdown.`
 // =============================================================================
 
 export const PROMPT_METADATA: Record<string, PromptMetadata> = {
-    'DETECTIVE_v2': {
-        version: 'v2.0',
-        description: 'Förbättrad fordonsdetektiv med realistisk sökstrategi',
-        releaseDate: '2025-01-15',
-        changelog: [
-            'Hanterar 403-errors från biluppgifter.se',
-            'Bättre fallback-källor',
-            'Specialregler för veteranfordon',
-            'Förbättrad datavalidering'
-        ]
-    },
-    'PLANNER_v2': {
-        version: 'v2.0',
-        description: 'Förbättrad projektplanerare med blocker-stöd',
-        releaseDate: '2025-01-15',
-        changelog: [
-            'Tydligare TaskType-kategorisering',
-            'Beroende-hantering (blockers)',
-            'Realistiska kostnadsuppskattningar',
-            'Anpassning efter kunskapsnivå'
-        ]
-    },
-    'INSPECTOR_v1.1': {
-        version: 'v1.1',
-        description: 'Visuell och akustisk fordonsinspektion',
-        releaseDate: '2025-01-15',
-        changelog: [
-            'Förbättrad rostbedömning',
-            'Strukturerad ljudanalys'
-        ]
-    }
+  'DETECTIVE_v2': {
+    version: 'v2.0',
+    description: 'Förbättrad fordonsdetektiv med realistisk sökstrategi',
+    releaseDate: '2025-01-15',
+    changelog: [
+      'Hanterar 403-errors från biluppgifter.se',
+      'Bättre fallback-källor',
+      'Specialregler för veteranfordon',
+      'Förbättrad datavalidering'
+    ]
+  },
+  'PLANNER_v2': {
+    version: 'v2.0',
+    description: 'Förbättrad projektplanerare med blocker-stöd',
+    releaseDate: '2025-01-15',
+    changelog: [
+      'Tydligare TaskType-kategorisering',
+      'Beroende-hantering (blockers)',
+      'Realistiska kostnadsuppskattningar',
+      'Anpassning efter kunskapsnivå'
+    ]
+  },
+  'INSPECTOR_v1.1': {
+    version: 'v1.1',
+    description: 'Visuell och akustisk fordonsinspektion',
+    releaseDate: '2025-01-15',
+    changelog: [
+      'Förbättrad rostbedömning',
+      'Strukturerad ljudanalys'
+    ]
+  }
 };
 
 // =============================================================================
@@ -689,32 +689,32 @@ export const PROMPT_METADATA: Record<string, PromptMetadata> = {
 // =============================================================================
 
 export const ACTIVE_PROMPTS = {
-    baseSystemPrompt: PROMPTS.BASE.v1,
-    
-    agents: {
-        detective: PROMPTS.AGENTS.DETECTIVE,
-        planner: PROMPTS.AGENTS.PLANNER,
-        inspector: PROMPTS.AGENTS.INSPECTOR
-    },
-    
-    chatPersona: PROMPTS.ELTON_PERSONA.v1_standard,
+  baseSystemPrompt: PROMPTS.BASE.v1,
 
-    getPersona: (id: 'dalmal' | 'gotlandska' | 'rikssvenska' | 'standard') => {
-        switch(id) {
-            case 'dalmal': return PROMPTS.ELTON_PERSONA.dalmal;
-            case 'gotlandska': return PROMPTS.ELTON_PERSONA.gotlandska;
-            case 'rikssvenska': return PROMPTS.ELTON_PERSONA.rikssvenska;
-            default: return PROMPTS.ELTON_PERSONA.v1_standard;
-        }
-    },
+  agents: {
+    detective: PROMPTS.AGENTS.DETECTIVE,
+    planner: PROMPTS.AGENTS.PLANNER,
+    inspector: PROMPTS.AGENTS.INSPECTOR
+  },
 
-    getDiagnosticPrompt: () => PROMPTS.ELTON_PERSONA.sound_doctor,
+  chatPersona: PROMPTS.ELTON_PERSONA.v1_standard,
 
-    iconGeneration: PROMPTS.ICON_GENERATION.v1,
-
-    getMetadata: (promptKey: string): PromptMetadata | undefined => {
-        return PROMPT_METADATA[promptKey];
+  getPersona: (id: 'dalmal' | 'gotlandska' | 'rikssvenska' | 'standard') => {
+    switch (id) {
+      case 'dalmal': return PROMPTS.ELTON_PERSONA.dalmal;
+      case 'gotlandska': return PROMPTS.ELTON_PERSONA.gotlandska;
+      case 'rikssvenska': return PROMPTS.ELTON_PERSONA.rikssvenska;
+      default: return PROMPTS.ELTON_PERSONA.v1_standard;
     }
+  },
+
+  getDiagnosticPrompt: () => PROMPTS.ELTON_PERSONA.sound_doctor,
+
+  iconGeneration: PROMPTS.ICON_GENERATION.v1,
+
+  getMetadata: (promptKey: string): PromptMetadata | undefined => {
+    return PROMPT_METADATA[promptKey];
+  }
 };
 
 // =============================================================================
@@ -725,50 +725,50 @@ export const ACTIVE_PROMPTS = {
  * Validerar JSON-output från Detektiven
  */
 export function validateDetectiveOutput(json: any): { valid: boolean; errors: string[] } {
-    const errors: string[] = [];
-    
-    if (!json.vehicleData) {
-        errors.push('Saknar vehicleData');
-        return { valid: false, errors };
-    }
-    
-    const v = json.vehicleData;
-    
-    // Kritiska fält
-    if (!v.make || v.make === 'Okänt') errors.push('Saknar märke (make)');
-    if (!v.model || v.model === 'Okänt') errors.push('Saknar modell (model)');
-    if (!v.year || v.year === 0) errors.push('Saknar årsmodell (year)');
-    
-    // Logiska kontroller
-    if (v.weights?.total && v.weights?.curb && v.weights.total < v.weights.curb) {
-        errors.push('Totalvikt kan inte vara mindre än tjänstevikt');
-    }
-    
-    if (v.year && (v.year < 1900 || v.year > new Date().getFullYear() + 1)) {
-        errors.push(`Orimligt årtal: ${v.year}`);
-    }
-    
-    return { valid: errors.length === 0, errors };
+  const errors: string[] = [];
+
+  if (!json.vehicleData) {
+    errors.push('Saknar vehicleData');
+    return { valid: false, errors };
+  }
+
+  const v = json.vehicleData;
+
+  // Kritiska fält
+  if (!v.make || v.make === 'Okänt') errors.push('Saknar märke (make)');
+  if (!v.model || v.model === 'Okänt') errors.push('Saknar modell (model)');
+  if (!v.year || v.year === 0) errors.push('Saknar årsmodell (year)');
+
+  // Logiska kontroller
+  if (v.weights?.total && v.weights?.curb && v.weights.total < v.weights.curb) {
+    errors.push('Totalvikt kan inte vara mindre än tjänstevikt');
+  }
+
+  if (v.year && (v.year < 1900 || v.year > new Date().getFullYear() + 1)) {
+    errors.push(`Orimligt årtal: ${v.year}`);
+  }
+
+  return { valid: errors.length === 0, errors };
 }
 
 /**
  * Validerar JSON-output från Planeraren
  */
 export function validatePlannerOutput(json: any): { valid: boolean; errors: string[] } {
-    const errors: string[] = [];
-    
-    if (!json.initialTasks || !Array.isArray(json.initialTasks)) {
-        errors.push('Saknar initialTasks array');
-        return { valid: false, errors };
+  const errors: string[] = [];
+
+  if (!json.initialTasks || !Array.isArray(json.initialTasks)) {
+    errors.push('Saknar initialTasks array');
+    return { valid: false, errors };
+  }
+
+  json.initialTasks.forEach((task: any, i: number) => {
+    if (!task.title) errors.push(`Task ${i}: Saknar titel`);
+    if (!task.type) errors.push(`Task ${i}: Saknar type`);
+    if (task.estimatedCostMin > task.estimatedCostMax) {
+      errors.push(`Task ${i}: Min-kostnad större än max-kostnad`);
     }
-    
-    json.initialTasks.forEach((task: any, i: number) => {
-        if (!task.title) errors.push(`Task ${i}: Saknar titel`);
-        if (!task.type) errors.push(`Task ${i}: Saknar type`);
-        if (task.estimatedCostMin > task.estimatedCostMax) {
-            errors.push(`Task ${i}: Min-kostnad större än max-kostnad`);
-        }
-    });
-    
-    return { valid: errors.length === 0, errors };
+  });
+
+  return { valid: errors.length === 0, errors };
 }

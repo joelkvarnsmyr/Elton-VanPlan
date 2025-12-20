@@ -1,0 +1,143 @@
+{
+    "projectId": "elton-jsn398",
+    "year": 2025,
+    "generatedDate": "2025-12-20",
+    "currency": "SEK",
+    "phases": {
+        "phase1_january": {
+            "name": "Januari: LiFePO4-batteri",
+            "timeline": "2025-01",
+            "items": [
+                {
+                    "item": "LiFePO4-celler 4x280Ah",
+                    "costMin": 6200,
+                    "costMax": 9500
+                },
+                {
+                    "item": "BMS",
+                    "costMin": 1100,
+                    "costMax": 2200
+                },
+                {
+                    "item": "Övrigt material (kablar, säkring, bussbars)",
+                    "costMin": 700,
+                    "costMax": 1300
+                }
+            ],
+            "totalMin": 8000,
+            "totalMax": 14000
+        },
+        "phase1_spring": {
+            "name": "Vår: Tätning & minimal service",
+            "timeline": "2025-03 till 2025-05",
+            "items": [
+                {
+                    "item": "Tätning tak (Sikaflex, rostomvandlare, primer)",
+                    "costMin": 400,
+                    "costMax": 800
+                },
+                {
+                    "item": "Rostbehandling punkter",
+                    "costMin": 300,
+                    "costMax": 600
+                },
+                {
+                    "item": "Motor oljebyte",
+                    "costMin": 500,
+                    "costMax": 800
+                }
+            ],
+            "totalMin": 1200,
+            "totalMax": 2200
+        },
+        "phase2_summer": {
+            "name": "Sommar: Taklucka & dörrjakt",
+            "timeline": "2025-06 till 2025-08",
+            "items": [
+                {
+                    "item": "Ny taklucka (Fiamma/MPK)",
+                    "costMin": 900,
+                    "costMax": 2500
+                },
+                {
+                    "item": "Begagnad skjutdörr inkl. frakt",
+                    "costMin": 2000,
+                    "costMax": 4000
+                },
+                {
+                    "item": "Begagnad förardörr inkl. frakt",
+                    "costMin": 1500,
+                    "costMax": 3000
+                }
+            ],
+            "totalMin": 4400,
+            "totalMax": 9500
+        },
+        "phase3_autumn_winter": {
+            "name": "Höst/Vinter: Stora jobb med garage",
+            "timeline": "2025-09 till 2026-02",
+            "items": [
+                {
+                    "item": "Dörrbyten (material vid behov)",
+                    "costMin": 500,
+                    "costMax": 1000
+                },
+                {
+                    "item": "Svetsning balk (material)",
+                    "costMin": 500,
+                    "costMax": 2000
+                },
+                {
+                    "item": "Hålrumsbehandling",
+                    "costMin": 1000,
+                    "costMax": 2000
+                },
+                {
+                    "item": "Underredsbehandling",
+                    "costMin": 2000,
+                    "costMax": 6000
+                },
+                {
+                    "item": "Isolering om (Armaflex)",
+                    "costMin": 2000,
+                    "costMax": 4000
+                },
+                {
+                    "item": "Victron-system komplett",
+                    "costMin": 12000,
+                    "costMax": 20000
+                }
+            ],
+            "totalMin": 18000,
+            "totalMax": 35000
+        }
+    },
+    "grandTotal": {
+        "min": 31600,
+        "max": 60700,
+        "note": "Exklusive eventuellt motorbyte (15-30k extra)"
+    },
+    "contingency": {
+        "recommended": "10-15%",
+        "amount": 5000,
+        "note": "Buffer för oväntade problem"
+    },
+    "projectTeam": {
+        "participants": [
+            {
+                "name": "Hanna Eriksson",
+                "role": "Ägare & Lärling",
+                "assets": "Ägare av fordonet"
+            },
+            {
+                "name": "Joel Kvarnsmyr",
+                "role": "Tekniskt ansvarig",
+                "assets": "Garage på Gotland (höst/vinter)"
+            }
+        ],
+        "goals": {
+            "summer2025": "Körbar bil för att lära känna den",
+            "travel": "Gotland i sommar (semester + arbete)"
+        }
+    }
+}

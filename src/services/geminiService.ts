@@ -200,10 +200,11 @@ export const streamGeminiResponse = async (
 
 /**
  * Parse text or image into structured tasks and shopping items
+ * Supports both single image and multiple images
  */
 export const parseTasksFromInput = async (
   input: string,
-  imageBase64?: string,
+  imageBase64?: string | string[],
   vehicleData?: VehicleData
 ): Promise<{ tasks: Partial<Task>[], shoppingItems: Partial<ShoppingItem>[] }> => {
   try {
@@ -223,9 +224,10 @@ export const parseTasksFromInput = async (
   }
 };
 
+
 /**
- * Parse enhanced project data from text/image (LEGACY STUB)
- * This function is deprecated - use parseTasksFromInput instead
+ * Parse enhanced project data from text/image
+ * Extracts vehicle data, tasks, shopping items, and history events
  */
 export const parseEnhancedProjectData = async (
   text: string,
@@ -236,14 +238,72 @@ export const parseEnhancedProjectData = async (
   tasks?: any[];
   shoppingItems?: any[];
 }> => {
-  console.warn('⚠️ parseEnhancedProjectData is deprecated and not implemented in Firebase AI Logic SDK');
-  console.warn('   Returning empty result. Consider using parseTasksFromInput instead.');
-  return {
-    vehicleData: {},
-    historyEvents: [],
-    tasks: [],
-    shoppingItems: []
-  };
+  try {
+    // First, get tasks and shopping items using the standard parser
+    const { tasks, shoppingItems } = await parseTasksFromInput(text, imageBase64);
+
+    // For vehicle data, we look for patterns in the text
+    // This is a simple implementation - can be enhanced with dedicated AI parsing
+    const vehicleData: any = {};
+
+    // Try to extract basic vehicle info from text
+    const regNoMatch = text.match(/([A-ZÅÄÖ]{3}\s?\\d{2}[A-Z0-9])/i);
+    if (regNoMatch) {
+      vehicleData.regNo = regNoMatch[1].toUpperCase().replace(/\\s/g, '');
+    }
+
+    const makeModelMatch = text.match(/(volvo|saab|ford|volkswagen|vw|mercedes|bmw|audi|toyota|nissan)\\s+([\\w\\d]+)/i);
+    if (makeModelMatch) {
+      vehicleData.make = makeModelMatch[1].charAt(0).toUpperCase() + makeModelMatch[1].slice(1).toLowerCase();
+      vehicleData.model = makeModelMatch[2];
+    }
+
+    const yearMatch = text.match(/(19|20)\\d{2}/);
+    if (yearMatch) {
+      const year = parseInt(yearMatch[0]);
+      if (year >= 1960 && year <= new Date().getFullYear() + 1) {
+        vehicleData.year = year;
+      }
+    }
+
+    // Try to extract history events (simple pattern matching)
+    const historyEvents: any[] = [];
+
+    // Look for cost mentions
+    const costMatches = text.matchAll(/(\\d+)\\s?(kr|kronor|sek)/gi);
+    for (const match of costMatches) {
+      const cost = parseInt(match[1]);
+      if (cost > 100) { // Only meaningful costs
+        const context = text.substring(Math.max(0, match.index! - 50), match.index! + 50);
+        historyEvents.push({
+          description: context.trim(),
+          cost
+        });
+      }
+    }
+
+    console.log('🔍 Enhanced project data extracted:', {
+      vehicleDataFields: Object.keys(vehicleData).length,
+      tasksCount: tasks.length,
+      shoppingItemsCount: shoppingItems.length,
+      historyEventsCount: historyEvents.length
+    });
+
+    return {
+      vehicleData: Object.keys(vehicleData).length > 0 ? vehicleData : undefined,
+      historyEvents: historyEvents.length > 0 ? historyEvents : undefined,
+      tasks,
+      shoppingItems
+    };
+  } catch (error) {
+    console.error('Enhanced project data parsing error:', error);
+    return {
+      vehicleData: {},
+      historyEvents: [],
+      tasks: [],
+      shoppingItems: []
+    };
+  }
 };
 
 // --- ICON GENERATION (DISABLED) ---

@@ -21,29 +21,49 @@ export const MagicImport: React.FC<MagicImportProps> = ({ project, onAddTasks, o
   const [generatedTasks, setGeneratedTasks] = useState<Task[]>([]);
   const [generatedShoppingItems, setGeneratedShoppingItems] = useState<Partial<ShoppingItem>[]>([]);
   const [generatedKnowledgeArticles, setGeneratedKnowledgeArticles] = useState<KnowledgeArticle[]>([]);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [imageType, setImageType] = useState<'task' | 'receipt' | 'project'>('task');
   const [error, setError] = useState<string | null>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Check file size (max 5MB)
+    const files = Array.from(e.target.files || []);
+
+    // Limit to 10 images max
+    if (files.length + selectedImages.length > 10) {
+      setError('Max 10 bilder åt gången');
+      return;
+    }
+
+    // Validate each file
+    for (const file of files) {
       if (file.size > 5 * 1024 * 1024) {
-        setError('Bilden är för stor (max 5MB)');
+        setError(`${file.name} är för stor (max 5MB per bild)`);
         return;
       }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
-        setError(null);
-      };
-      reader.onerror = () => {
-        setError('Kunde inte läsa bilden');
-      };
-      reader.readAsDataURL(file);
     }
+
+    // Read all files
+    const readers = files.map(file => {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Kunde inte läsa bilden'));
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(readers)
+      .then(results => {
+        setSelectedImages(prev => [...prev, ...results]);
+        setError(null);
+      })
+      .catch(() => {
+        setError('Kunde inte läsa bilderna');
+      });
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const convertToFullTask = (partial: Partial<Task>): Task => {
@@ -74,28 +94,38 @@ export const MagicImport: React.FC<MagicImportProps> = ({ project, onAddTasks, o
   };
 
   const handleAnalyze = async () => {
-    if (!textInput && !selectedImage) {
+    if (!textInput && selectedImages.length === 0) {
       setError('Skriv in text eller ladda upp en bild');
       return;
     }
 
     setIsAnalyzing(true);
     setError(null);
-    const base64Data = selectedImage ? selectedImage.split(',')[1] : undefined;
+
+    // Extract base64 data from all images (remove data:image/...;base64, prefix)
+    const base64DataArray = selectedImages.map(img => img.split(',')[1]);
 
     try {
-      if (imageType === 'receipt' && selectedImage && base64Data) {
-        // Receipt OCR
-        const receiptData = await extractReceiptData(base64Data);
-        if (receiptData.success && receiptData.items.length > 0) {
-          const items = receiptItemsToShoppingItems(receiptData.items);
-          setGeneratedShoppingItems(items);
+      if (imageType === 'receipt' && selectedImages.length > 0) {
+        // Receipt OCR - process all receipts
+        const allItems: Partial<ShoppingItem>[] = [];
+
+        for (const base64Data of base64DataArray) {
+          const receiptData = await extractReceiptData(base64Data);
+          if (receiptData.success && receiptData.items.length > 0) {
+            const items = receiptItemsToShoppingItems(receiptData.items);
+            allItems.push(...items);
+          }
+        }
+
+        if (allItems.length > 0) {
+          setGeneratedShoppingItems(allItems);
         } else {
-          setError('Kunde inte läsa kvittot. Försök med bättre belysning eller tydligare bild!');
+          setError('Kunde inte läsa kvittona. Försök med bättre belysning eller tydligare bilder!');
         }
       } else if (imageType === 'project' && project && onUpdateProject) {
-        // Full project import
-        const importedData = await parseProjectData(textInput, base64Data);
+        // Full project import (only first image for now, can be enhanced later)
+        const importedData = await parseProjectData(textInput, base64DataArray[0]);
 
         // Store imported data
         if (importedData.tasks && importedData.tasks.length > 0) {
@@ -115,8 +145,8 @@ export const MagicImport: React.FC<MagicImportProps> = ({ project, onAddTasks, o
           setError('Kunde inte hitta projektdata i texten/bilden.');
         }
       } else {
-        // Simple task generation
-        const { tasks } = await parseTasksFromInput(textInput, base64Data);
+        // Simple task generation with multiple images
+        const { tasks } = await parseTasksFromInput(textInput, base64DataArray);
 
         if (!tasks || tasks.length === 0) {
           setError('Kunde inte hitta några uppgifter i texten/bilden. Försök vara mer specifik.');
@@ -138,7 +168,8 @@ export const MagicImport: React.FC<MagicImportProps> = ({ project, onAddTasks, o
   const handleConfirm = async () => {
     // Handle full project import
     if (imageType === 'project' && project && onUpdateProject) {
-      const importedData = await parseProjectData(textInput, selectedImage?.split(',')[1]);
+      const base64Data = selectedImages.length > 0 ? selectedImages[0].split(',')[1] : undefined;
+      const importedData = await parseProjectData(textInput, base64Data);
       const updates = mergeProjectData(project, importedData);
       onUpdateProject(updates);
     }
@@ -158,7 +189,7 @@ export const MagicImport: React.FC<MagicImportProps> = ({ project, onAddTasks, o
     // Clear state
     setGeneratedKnowledgeArticles([]);
     setTextInput('');
-    setSelectedImage(null);
+    setSelectedImages([]);
     onClose();
   };
 
@@ -174,11 +205,11 @@ export const MagicImport: React.FC<MagicImportProps> = ({ project, onAddTasks, o
             <p className="text-sm text-nordic-slate">Klistra in anteckningar eller ladda upp kvitton</p>
           </div>
         </div>
-        <button 
-            onClick={onClose}
-            className="p-2 -mr-2 text-nordic-slate hover:bg-black/5 rounded-full transition-colors"
+        <button
+          onClick={onClose}
+          className="p-2 -mr-2 text-nordic-slate hover:bg-black/5 rounded-full transition-colors"
         >
-            <X size={24} />
+          <X size={24} />
         </button>
       </div>
 
@@ -199,22 +230,20 @@ export const MagicImport: React.FC<MagicImportProps> = ({ project, onAddTasks, o
             <div className="flex gap-2 p-1 bg-slate-100 dark:bg-nordic-dark-bg rounded-xl">
               <button
                 onClick={() => setImageType('task')}
-                className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all ${
-                  imageType === 'task'
-                    ? 'bg-white dark:bg-nordic-charcoal text-nordic-charcoal dark:text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
+                className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all ${imageType === 'task'
+                  ? 'bg-white dark:bg-nordic-charcoal text-nordic-charcoal dark:text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+                  }`}
               >
                 <Sparkles size={14} className="inline mr-1" />
                 Uppgifter
               </button>
               <button
                 onClick={() => setImageType('receipt')}
-                className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all ${
-                  imageType === 'receipt'
-                    ? 'bg-white dark:bg-nordic-charcoal text-nordic-charcoal dark:text-white shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
+                className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all ${imageType === 'receipt'
+                  ? 'bg-white dark:bg-nordic-charcoal text-nordic-charcoal dark:text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+                  }`}
               >
                 <Receipt size={14} className="inline mr-1" />
                 Kvitton
@@ -222,11 +251,10 @@ export const MagicImport: React.FC<MagicImportProps> = ({ project, onAddTasks, o
               {project && onUpdateProject && (
                 <button
                   onClick={() => setImageType('project')}
-                  className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all ${
-                    imageType === 'project'
-                      ? 'bg-white dark:bg-nordic-charcoal text-nordic-charcoal dark:text-white shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
-                  }`}
+                  className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all ${imageType === 'project'
+                    ? 'bg-white dark:bg-nordic-charcoal text-nordic-charcoal dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                    }`}
                 >
                   <Database size={14} className="inline mr-1" />
                   Projekt Data
@@ -234,32 +262,57 @@ export const MagicImport: React.FC<MagicImportProps> = ({ project, onAddTasks, o
               )}
             </div>
 
-             <textarea
+            <textarea
               className="w-full p-4 rounded-xl bg-nordic-ice/30 border border-nordic-slate/20 focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all min-h-[150px] placeholder:text-nordic-slate/50"
               placeholder={
                 imageType === 'receipt'
                   ? 'Eller ladda upp kvitto...'
                   : imageType === 'project'
-                  ? 'Klistra in JSON data eller dela text/bild med projektinformation (motorspec, kunskapsbas, uppgifter, etc)...'
-                  : 'Ex: Behöver köpa 4st Nokian däck, kostar ca 5000kr. Måste också fixa rost i balken (akut!)...'
+                    ? 'Klistra in JSON data eller dela text/bild med projektinformation (motorspec, kunskapsbas, uppgifter, etc)...'
+                    : 'Ex: Behöver köpa 4st Nokian däck, kostar ca 5000kr. Måste också fixa rost i balken (akut!)...'
               }
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               disabled={imageType === 'receipt'}
             />
 
+            {/* Image previews */}
+            {selectedImages.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {selectedImages.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={image}
+                      alt={`Bild ${index + 1}`}
+                      className="w-full h-24 object-cover rounded-lg border border-nordic-slate/20"
+                    />
+                    <button
+                      onClick={() => removeImage(index)}
+                      className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Ta bort bild"
+                    >
+                      <X size={14} />
+                    </button>
+                    <span className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
+                      {index + 1}/{selectedImages.length}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <label className="flex items-center space-x-2 cursor-pointer px-4 py-2 rounded-xl hover:bg-nordic-ice transition-colors text-nordic-slate text-sm font-medium">
                 {imageType === 'receipt' ? <Receipt size={18} /> : <ImageIcon size={18} />}
-                <span>Ladda upp {imageType === 'receipt' ? 'kvitto' : 'bild'}</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                <span>Ladda upp {imageType === 'receipt' ? 'kvitto' : 'bild'}{selectedImages.length > 0 ? `er (${selectedImages.length})` : ''}</span>
+                <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
               </label>
-              {selectedImage && <span className="text-xs text-green-600 font-medium">Bild vald ✓</span>}
+              {selectedImages.length > 0 && <span className="text-xs text-green-600 font-medium">{selectedImages.length} bild{selectedImages.length > 1 ? 'er' : ''} vald{selectedImages.length > 1 ? 'a' : ''} ✓</span>}
             </div>
 
             <button
               onClick={handleAnalyze}
-              disabled={isAnalyzing || (!textInput && !selectedImage)}
+              disabled={isAnalyzing || (!textInput && selectedImages.length === 0)}
               className="w-full py-4 bg-nordic-charcoal text-white rounded-xl font-medium hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
             >
               {isAnalyzing ? (
@@ -283,9 +336,8 @@ export const MagicImport: React.FC<MagicImportProps> = ({ project, onAddTasks, o
                 <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                   {generatedTasks.map((task, idx) => (
                     <div key={idx} className="p-4 rounded-xl border border-nordic-slate/10 bg-white shadow-sm flex items-start gap-4">
-                      <div className={`p-2 rounded-lg mt-1 shrink-0 ${
-                        task.costType === 'Investering' ? 'bg-nordic-green' : 'bg-nordic-pink'
-                      }`}>
+                      <div className={`p-2 rounded-lg mt-1 shrink-0 ${task.costType === 'Investering' ? 'bg-nordic-green' : 'bg-nordic-pink'
+                        }`}>
                         {task.costType === 'Investering' ? 'INV' : 'DRIFT'}
                       </div>
                       <div className="flex-1">
@@ -324,22 +376,22 @@ export const MagicImport: React.FC<MagicImportProps> = ({ project, onAddTasks, o
             )}
 
             <div className="flex space-x-3 pt-4">
-               <button
+              <button
                 onClick={() => {
                   setGeneratedTasks([]);
                   setGeneratedShoppingItems([]);
                 }}
                 className="flex-1 py-3 px-4 rounded-xl border border-nordic-slate/20 text-nordic-slate hover:bg-slate-50 font-medium"
-               >
-                 Avbryt
-               </button>
-               <button
+              >
+                Avbryt
+              </button>
+              <button
                 onClick={handleConfirm}
                 className="flex-1 py-3 px-4 rounded-xl bg-nordic-charcoal text-white hover:bg-slate-800 font-medium flex items-center justify-center space-x-2 shadow-lg shadow-slate-200"
-               >
-                 <Plus size={18} />
-                 <span>Lägg till allt</span>
-               </button>
+              >
+                <Plus size={18} />
+                <span>Lägg till allt</span>
+              </button>
             </div>
           </div>
         )}

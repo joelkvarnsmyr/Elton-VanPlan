@@ -1,0 +1,632 @@
+{
+    "inspektion": {
+        "objekt": "Fordon (Husbil/Van) - Elton",
+        "filnamn": [
+            "Elton exteriör.m4a",
+            "Elton interiör.m4a"
+        ],
+        "typ_av_granskning": "Totalinspektion (Exteriör, Interiör, Mekaniskt)",
+        "datum": "2025-12-20",
+        "statistik": {
+            "totalt_antal_observationer": 88,
+            "anmärkningar": 68,
+            "positiva_observationer": 20
+        },
+        "data_per_område": [
+            {
+                "område_id": 1,
+                "namn": "Taket",
+                "punkter": [
+                    {
+                        "id": 1,
+                        "kategori": "Anmärkning",
+                        "typ": "Sprickor",
+                        "beskrivning": "Taket har sprickbildningar på cirka 10 olika ställen."
+                    },
+                    {
+                        "id": 2,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost/Lacksläpp",
+                        "beskrivning": "Lacken har rest sig och rost tränger fram på flera ställen."
+                    },
+                    {
+                        "id": 3,
+                        "kategori": "Anmärkning",
+                        "typ": "Konstruktion",
+                        "beskrivning": "Det finns osäkra skruvar som misstänks orsaka vattenläckage."
+                    },
+                    {
+                        "id": 4,
+                        "kategori": "Anmärkning",
+                        "typ": "Struktur",
+                        "beskrivning": "En svacka i taket har noterats vid vänster framkant."
+                    },
+                    {
+                        "id": 5,
+                        "kategori": "Anmärkning",
+                        "typ": "Spricka",
+                        "beskrivning": "Kraftig sprickbildning på vänster sida, ungefär en tredjedel från bakre delen."
+                    },
+                    {
+                        "id": 6,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Genomgående rostangrepp runt hela den horisontella listen/vattenrännan."
+                    },
+                    {
+                        "id": 7,
+                        "kategori": "Anmärkning",
+                        "typ": "Sprickor",
+                        "beskrivning": "Sprickor i glasfibern framtill, troligen orsakade av skruvmontering."
+                    },
+                    {
+                        "id": 8,
+                        "kategori": "Anmärkning",
+                        "typ": "Läckage",
+                        "beskrivning": "Vattenläckage vid markisens infästning på höger sida."
+                    },
+                    {
+                        "id": 9,
+                        "kategori": "Anmärkning",
+                        "typ": "Rostskada",
+                        "beskrivning": "Större rostreaktion i glasfibern direkt under markisfästet."
+                    },
+                    {
+                        "id": 10,
+                        "kategori": "Anmärkning",
+                        "typ": "Spricka",
+                        "beskrivning": "Kraftig spricka i lacken längst fram ovanför förardörren."
+                    },
+                    {
+                        "id": 11,
+                        "kategori": "Anmärkning",
+                        "typ": "Isolering/Kondens",
+                        "beskrivning": "Dåligt utförd isolering i taket (baktill), vilket exponerar yttertaket och riskerar kondensproblem.",
+                        "detalj": "Isoleringen består av 5-7 cm tjocka skivor men verkar vara bristfälligt monterade på vissa ställen."
+                    },
+                    {
+                        "id": 12,
+                        "kategori": "Anmärkning",
+                        "typ": "Kondensrisk",
+                        "beskrivning": "Synligt yttertak inifrån på grund av bristfällig isolering/täckning."
+                    },
+                    {
+                        "id": 13,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Taket bedöms i övrigt vara i relativt gott skick."
+                    },
+                    {
+                        "id": 14,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Endast mindre anmärkningar noterades på bakre delen/toppen."
+                    }
+                ]
+            },
+            {
+                "område_id": 2,
+                "namn": "Vänster sida (Förardörr & Kaross)",
+                "punkter": [
+                    {
+                        "id": 15,
+                        "kategori": "Anmärkning",
+                        "typ": "Läckage",
+                        "beskrivning": "Fuktgenomträngning inifrån dörrlisten på förardörren."
+                    },
+                    {
+                        "id": 16,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Genomrostning inifrån listen på förardörren."
+                    },
+                    {
+                        "id": 17,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Kraftiga rostskador längs nederkanten av förardörrens dörrblad."
+                    },
+                    {
+                        "id": 18,
+                        "kategori": "Anmärkning",
+                        "typ": "Dåligt arbete",
+                        "beskrivning": "Bristfällig svetsning vid dörrinsteget (endast punktsvetsat och ej färdigställt)."
+                    },
+                    {
+                        "id": 19,
+                        "kategori": "Anmärkning",
+                        "typ": "Dåligt arbete",
+                        "beskrivning": "Bristfälligt svetsarbete bakom vänster framhjul (endast övermålat)."
+                    },
+                    {
+                        "id": 20,
+                        "kategori": "Anmärkning",
+                        "typ": "Lacksläpp",
+                        "beskrivning": "Lacksläpp under det främre fönstret på bodelen."
+                    },
+                    {
+                        "id": 21,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Mindre rostgenomslag under det främre fönstret på bodelen."
+                    },
+                    {
+                        "id": 22,
+                        "kategori": "Anmärkning",
+                        "typ": "Montering",
+                        "beskrivning": "Fönstret verkar sitta löst och behöver spännas om."
+                    },
+                    {
+                        "id": 23,
+                        "kategori": "Anmärkning",
+                        "typ": "Spricka",
+                        "beskrivning": "Kraftig spricka i plastdetaljen framför fönstret."
+                    },
+                    {
+                        "id": 24,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Rostgenomslag vid den nedre skärmkanten framför bakdäcket."
+                    },
+                    {
+                        "id": 25,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Rostangrepp vid skärmfästet ovanför bakdäcket."
+                    },
+                    {
+                        "id": 26,
+                        "kategori": "Anmärkning",
+                        "typ": "Lack/Rost",
+                        "beskrivning": "Lacksläpp och rostangrepp på vänster bakdel."
+                    },
+                    {
+                        "id": 27,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Rostgenomslag i den vertikala sömmen baktill."
+                    },
+                    {
+                        "id": 28,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost/Fukt",
+                        "position": "Insida över förardörr",
+                        "beskrivning": "Fuktinslag och genomrostning i balken ovanför förardörren (insida), misstänkt läckage från takskarven."
+                    },
+                    {
+                        "id": 29,
+                        "kategori": "Positivt",
+                        "typ": "Material",
+                        "beskrivning": "Stålet i förardörren bedöms fortfarande vara relativt solitt trots rostskador."
+                    },
+                    {
+                        "id": 30,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Överkant och sidor runt bodelsfönstret ser bra ut."
+                    },
+                    {
+                        "id": 31,
+                        "kategori": "Positivt",
+                        "typ": "Funktion",
+                        "beskrivning": "Bodelsfönstret går att stänga ordentligt."
+                    },
+                    {
+                        "id": 32,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Elintaget ser bra ut och saknar rost."
+                    }
+                ]
+            },
+            {
+                "område_id": 3,
+                "namn": "Baksidan",
+                "punkter": [
+                    {
+                        "id": 33,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Rostgenomslag precis ovanför bakfönstret."
+                    },
+                    {
+                        "id": 34,
+                        "kategori": "Anmärkning",
+                        "typ": "Sprickor",
+                        "beskrivning": "Lack som spruckit ovanför bakfönstret."
+                    },
+                    {
+                        "id": 35,
+                        "kategori": "Anmärkning",
+                        "typ": "Lacksläpp",
+                        "beskrivning": "Lacksläpp under bakfönstret."
+                    },
+                    {
+                        "id": 36,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Kraftigt rostangrepp på profilstål (troligen fäste för box), verkar vara obehandlat."
+                    },
+                    {
+                        "id": 37,
+                        "kategori": "Anmärkning",
+                        "typ": "Saknad del",
+                        "beskrivning": "Skruvar saknas till vänster baklykta."
+                    },
+                    {
+                        "id": 38,
+                        "kategori": "Anmärkning",
+                        "typ": "Lacksläpp",
+                        "beskrivning": "Omfattande lacksläpp runt vänster baklykta."
+                    },
+                    {
+                        "id": 39,
+                        "kategori": "Anmärkning",
+                        "typ": "Dold skada",
+                        "beskrivning": "Gummitejp döljer okänt skick i nederkant (möjligtvis bortskuret material), bör inspekteras."
+                    },
+                    {
+                        "id": 40,
+                        "kategori": "Anmärkning",
+                        "typ": "Dåligt arbete",
+                        "beskrivning": "Bristfälliga svetsar vid igensvetsad dörr/lucka."
+                    },
+                    {
+                        "id": 41,
+                        "kategori": "Anmärkning",
+                        "typ": "Defekt/Elfel",
+                        "beskrivning": "Positionsljus bak fungerar ej (troligen urkopplat). Endast bromsljus och blinkers fungerar."
+                    },
+                    {
+                        "id": 42,
+                        "kategori": "Anmärkning",
+                        "typ": "Konstruktion",
+                        "beskrivning": "Öppet in mot baklyktorna inifrån, arbetet verkar oavslutat."
+                    },
+                    {
+                        "id": 43,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Bakfönstret bedöms vara i skapligt skick."
+                    }
+                ]
+            },
+            {
+                "område_id": 4,
+                "namn": "Höger sida (Passagerarsida & Skjutdörr)",
+                "punkter": [
+                    {
+                        "id": 44,
+                        "kategori": "Anmärkning",
+                        "typ": "Kosmetisk",
+                        "beskrivning": "Märken efter bensin och avvikande lack vid tanklocket."
+                    },
+                    {
+                        "id": 45,
+                        "kategori": "Anmärkning",
+                        "typ": "Skada",
+                        "beskrivning": "Skrapskador på hjulskärmen orsakade av en feljusterad dörr."
+                    },
+                    {
+                        "id": 46,
+                        "kategori": "Anmärkning",
+                        "typ": "Spackel",
+                        "beskrivning": "Gammalt och fult spackelarbete framför höger bakdäck."
+                    },
+                    {
+                        "id": 47,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Rostgenomslag framför höger bakdäck."
+                    },
+                    {
+                        "id": 48,
+                        "kategori": "Anmärkning",
+                        "typ": "Slitage",
+                        "beskrivning": "Lager och hjul i skjutdörrens skena är utslitna, vilket gör att dörren hänger."
+                    },
+                    {
+                        "id": 49,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Kraftiga rostskador på skjutdörrens nedersta 5-10 cm."
+                    },
+                    {
+                        "id": 50,
+                        "kategori": "Anmärkning",
+                        "typ": "Röta",
+                        "beskrivning": "Konstruktionen i skjutdörrens nederkant är helt rutten och kan behöva bytas."
+                    },
+                    {
+                        "id": 51,
+                        "kategori": "Anmärkning",
+                        "typ": "Fuktskada",
+                        "beskrivning": "Fuktskada på bänkskivan innanför skjutdörren orsakad av läckage."
+                    },
+                    {
+                        "id": 52,
+                        "kategori": "Anmärkning",
+                        "typ": "Skada",
+                        "beskrivning": "Listen runt skjutdörren är trasig och behöver bytas."
+                    },
+                    {
+                        "id": 53,
+                        "kategori": "Anmärkning",
+                        "typ": "Dåligt arbete",
+                        "beskrivning": "Halvfärdig svetslagning bakom höger framhjul."
+                    },
+                    {
+                        "id": 54,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Kraftigt rostgenomslag bakom höger framhjul."
+                    },
+                    {
+                        "id": 55,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Karosspartiet fram till skjutdörren ser bra ut."
+                    },
+                    {
+                        "id": 56,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Det bakre hjulhuset ser helt okej ut utan allvarlig rost."
+                    },
+                    {
+                        "id": 57,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Skjutdörrens överkant, hängning och dörrsteg är i gott skick."
+                    },
+                    {
+                        "id": 58,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Ingen rost noterades vid den nedre glidskenan."
+                    }
+                ]
+            },
+            {
+                "område_id": 5,
+                "namn": "Passagerardörr (Höger fram)",
+                "punkter": [
+                    {
+                        "id": 59,
+                        "kategori": "Anmärkning",
+                        "typ": "Hål/Skada",
+                        "beskrivning": "Hål och skador i plåten vid passagerardörrens insteg, kräver reparation."
+                    },
+                    {
+                        "id": 60,
+                        "kategori": "Anmärkning",
+                        "typ": "Justering",
+                        "beskrivning": "Passagerardörren behöver justeras då vatten rinner in (läcker ej inifrån)."
+                    },
+                    {
+                        "id": 61,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Dörrens överkant och området runt fönstret är i mycket fint skick."
+                    },
+                    {
+                        "id": 62,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Dörren saknar i princip rostangrepp."
+                    },
+                    {
+                        "id": 63,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Gummilisterna bedöms vara i helt okej skick."
+                    }
+                ]
+            },
+            {
+                "område_id": 6,
+                "namn": "Framsidan & Hjulhus fram",
+                "punkter": [
+                    {
+                        "id": 64,
+                        "kategori": "Anmärkning",
+                        "typ": "Dåligt arbete",
+                        "beskrivning": "Bristfällig lagning av golvet i hjulhuset (gammal plåt kvarlämnad)."
+                    },
+                    {
+                        "id": 65,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Rostgenomslag i nederkanten runt framfönstret."
+                    },
+                    {
+                        "id": 66,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost",
+                        "beskrivning": "Rostangrepp vid luftintaget."
+                    },
+                    {
+                        "id": 67,
+                        "kategori": "Anmärkning",
+                        "typ": "Kosmetisk",
+                        "beskrivning": "Fult utfört spackelarbete vid blinkers."
+                    },
+                    {
+                        "id": 68,
+                        "kategori": "Anmärkning",
+                        "typ": "Rost/Lack",
+                        "beskrivning": "Rost och lacksläpp som rest sig under vindrutan."
+                    },
+                    {
+                        "id": 69,
+                        "kategori": "Anmärkning",
+                        "typ": "Mekanisk",
+                        "beskrivning": "Fästet till radioantennen sitter löst."
+                    },
+                    {
+                        "id": 70,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Lyktor och blinkers är fria från rost (nyligen restaurerade)."
+                    }
+                ]
+            },
+            {
+                "område_id": 7,
+                "namn": "Underrede",
+                "punkter": [
+                    {
+                        "id": 71,
+                        "kategori": "Anmärkning",
+                        "typ": "Strukturell rost",
+                        "beskrivning": "Kraftiga rostgenomslag på den tvärgående balken efter hjulhuset, bör bytas."
+                    },
+                    {
+                        "id": 72,
+                        "kategori": "Positivt",
+                        "typ": "Skick",
+                        "beskrivning": "Underredet bedöms i övrigt vara i mycket fint skick utan anmärkningar."
+                    }
+                ]
+            },
+            {
+                "område_id": 8,
+                "namn": "Motor & Mekaniskt",
+                "punkter": [
+                    {
+                        "id": 73,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Luftfilter",
+                        "typ": "Otät",
+                        "beskrivning": "Luftfiltrets in- och utgångar är inte täta/låsta. Risk för oren luft pga. öppning för startgas.",
+                        "åtgärd": "Överväg motorbyte eller fullservice."
+                    },
+                    {
+                        "id": 74,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Bränslesystem",
+                        "typ": "Montering",
+                        "beskrivning": "Bränslepump och filterpaket verkar vara 'taffligt' eftermonterat framme i motorrummet (borde sitta bak vid tanken)."
+                    },
+                    {
+                        "id": 75,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Motor/Topplock",
+                        "typ": "Oljeläckage",
+                        "beskrivning": "Motorn är oljig överlag, topplocket är helt neroljat. Synliga tecken på tidigare 'korrigering' vid tändstiften."
+                    },
+                    {
+                        "id": 76,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Luftfilterbox",
+                        "typ": "Rost",
+                        "beskrivning": "Luftfilterlådan i plåt är rostig och bör åtgärdas.",
+                        "åtgärd": "Rostbehandla och måla."
+                    },
+                    {
+                        "id": 77,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Kamrem",
+                        "typ": "Oljig",
+                        "beskrivning": "Kamremmen är hel och utan sprickor, men oljig, vilket bör bevakas."
+                    },
+                    {
+                        "id": 78,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Motorolja",
+                        "typ": "Nivåfel",
+                        "beskrivning": "Oljenivån är något hög, men oljan är fri från bubblor och fukt."
+                    },
+                    {
+                        "id": 79,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Kylarvatten",
+                        "typ": "Smuts",
+                        "beskrivning": "Smuts har samlats på botten av tanken, men kylarvattnet har fin färg."
+                    },
+                    {
+                        "id": 80,
+                        "kategori": "Positivt",
+                        "delkomponent": "Slangar",
+                        "beskrivning": "Samtliga slangar ser fräscha ut och saknar sprickor."
+                    },
+                    {
+                        "id": 81,
+                        "kategori": "Positivt",
+                        "delkomponent": "Oljefilter",
+                        "beskrivning": "Oljefiltret ser ut att vara nyligen bytt."
+                    },
+                    {
+                        "id": 82,
+                        "kategori": "Positivt",
+                        "delkomponent": "Motorgång",
+                        "beskrivning": "Motorn går jämnt och fint, känns trygg att köra."
+                    }
+                ]
+            },
+            {
+                "område_id": 9,
+                "namn": "Elsystem & Elektronik",
+                "punkter": [
+                    {
+                        "id": 83,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Säkringsskåp",
+                        "typ": "Dåligt utfört",
+                        "beskrivning": "Icke fackmannamässiga tillägg i säkringsskåpet, bör göras om."
+                    },
+                    {
+                        "id": 84,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Batterisystem",
+                        "typ": "Felkopplat",
+                        "beskrivning": "Bodel- och motorbatteri är direkt hopkopplade med en switch, vilket innebär risk för urladdning. Kablarna till batterier och startmotor är underdimensionerade.",
+                        "åtgärd": "Bygg om systemet, separera kretsarna och dimensionera om kablaget."
+                    },
+                    {
+                        "id": 85,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Ljudsystem",
+                        "typ": "Kabeldragning",
+                        "beskrivning": "Kabeldragningen till högtalare i dörrar och interiör är slarvigt utförd."
+                    }
+                ]
+            },
+            {
+                "område_id": 10,
+                "namn": "Interiör & Förarhytt",
+                "punkter": [
+                    {
+                        "id": 86,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Instrumentpanel",
+                        "typ": "Ur funktion",
+                        "beskrivning": "Eftermonterade instrument fungerar ej.",
+                        "åtgärd": "Ta bort och återställ."
+                    },
+                    {
+                        "id": 87,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Fläktsystem",
+                        "typ": "Svag funktion",
+                        "beskrivning": "Kupéfläkten har dålig effekt och reglageknappar saknas."
+                    },
+                    {
+                        "id": 88,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Golv/Mattor",
+                        "typ": "Slitage",
+                        "beskrivning": "Golvmattorna är trasiga och golvet vid passagerarsätet är slitet."
+                    },
+                    {
+                        "id": 89,
+                        "kategori": "Anmärkning",
+                        "delkomponent": "Lister",
+                        "typ": "Montering",
+                        "beskrivning": "Lister i interiören är generellt felmonterade eller sitter dåligt."
+                    }
+                ]
+            }
+        ]
+    }
+}

@@ -1,0 +1,237 @@
+{
+  "project_metadata": {
+    "file_name": "Elton prat.m4a",
+    "project_name": "Elton",
+    "vehicle_type": "Volkswagen LT31 (Campervan)",
+    "participants": [
+      {
+        "name": "Joel Kvarnsmyr",
+        "role": "Tekniskt ansvarig",
+        "competence_profile": "Erfaren (tidigare LT31-ägare, totalrenovering, svets, el, VVS), student.",
+        "assets": "Har tillgång till fullutrustat garage på Gotland."
+      },
+      {
+        "name": "Hanna Eriksson",
+        "role": "Ägare & Lärling",
+        "competence_profile": "Nybörjare, vill lära sig alla moment.",
+        "assets": "Ägare av fordonet."
+      }
+    ],
+    "context": {
+      "current_location_status": "Saknar fast garage/verkstad. Verktyg hyrs via Ramirent.",
+      "season_goal": "Körbar bil sommaren (lära känna bilen). Större jobb höst/vinter.",
+      "travel_plans": "Gotland i sommar (semester + arbete)."
+    }
+  },
+  "vehicle_identity": {
+    "make": "Volkswagen",
+    "model": "LT31",
+    "year": 1976,
+    "registration_number": "JSN 398",
+    "engine_origin": "Audi (samma som Audi 100, Porsche 924)",
+    "engine_spec": "75 hk bensin",
+    "ownership_history": "22 ägare, i trafik sedan 1978.",
+    "mileage_data": {
+      "reading": "3 368 mil",
+      "theory": "Mätaren slår om vid 10 000. Verklig sträcka: 13k, 23k eller 33k mil.",
+      "reliability": "Mycket osäker."
+    }
+  },
+  "problems_and_anomalies": {
+    "structural_rust": [
+      {
+        "severity": "Hög",
+        "location": "Balk under höger huvudbalk",
+        "detail": "Utstickare-balk bakom hjulhus (passagerarsida) vid början av skjutdörren."
+      },
+      {
+        "severity": "Hög",
+        "location": "Skjutdörr",
+        "detail": "Kraftig rost, särskilt i nederkant. Behöver sannolikt bytas."
+      },
+      {
+        "severity": "Medium",
+        "location": "Underrede generellt",
+        "detail": "Behov av rostskydd för att klara saltade vägar."
+      }
+    ],
+    "moisture_and_leakage": [
+      {
+        "severity": "Hög",
+        "location": "Förarplats/Dörrbalk",
+        "detail": "Fukt tränger igenom plåten vid balken nära förarstolen."
+      },
+      {
+        "severity": "Hög",
+        "location": "Motor",
+        "detail": "Läcker olja, är allmänt oljig (förväntat för åldern men kräver koll)."
+      }
+    ],
+    "mechanical_engine": [
+      {
+        "issue": "Prestanda",
+        "detail": "Svag motor (75hk), svårt i uppförsbackar, maxfart ca 80 km/h."
+      },
+      {
+        "issue": "Slitage",
+        "detail": "Historik av mycket startgas-användning (risk för skador)."
+      },
+      {
+        "issue": "Okänd status",
+        "detail": "Ingen servicebok. Osäkert skick på kamrem, vattenpump, växellådsolja, nav."
+      }
+    ],
+    "cosmetic_exterior": [
+      {
+        "issue": "Lack",
+        "detail": "Amatörmässigt gjord (5 år sedan, utomhus). Spackel syns, klåparlagningar, släpp."
+      },
+      {
+        "issue": "Estetik",
+        "detail": "Ser slarvigt ut på nära håll."
+      }
+    ],
+    "interior_build": [
+      {
+        "issue": "Isolering",
+        "detail": "Gjord med express-skivor (frigolit) + sprutskum. Slarvigt utfört i fören (spillbitar). Osäker kvalitet i resten av bilen."
+      },
+      {
+        "issue": "Instrumentbräda",
+        "detail": "Fult eftermonterad utrustning, sönderborrad."
+      }
+    ],
+    "electrical_system": [
+      {
+        "severity": "Akut",
+        "issue": "Batterikoppling",
+        "detail": "Start- och bodelsbatteri var ihopkopplade (dödar batterierna). Endast startbatteri inkopplat nu."
+      },
+      {
+        "severity": "Medium",
+        "issue": "Kablage",
+        "detail": "Befintliga kablar är för klena."
+      },
+      {
+        "severity": "Låg",
+        "issue": "Komponenter",
+        "detail": "Gamla 'sockerbitar' och billiga komponenter (Rusta-prylar)."
+      }
+    ]
+  },
+  "questions_and_decisions": {
+    "strategic_decisions": [
+      {
+        "id": "D1",
+        "question": "Ska nuvarande motor renoveras eller köras slut?",
+        "context": "Är det värt att lägga 10-15k på en service (packningar, filter) på en svag bensinmotor, eller spara pengarna till ett motorbyte (diesel/starkare bensin)?",
+        "impact": "Ekonomi och andrahandsvärde."
+      },
+      {
+        "id": "D2",
+        "question": "Ska isoleringen rivas ut?",
+        "context": "Ska man lita på nuvarande isolering eller riva allt för att inspektera rost inifrån och isolera om med Armaflex?",
+        "impact": "Stort jobb (kräver tom bil) vs. risk för rost/fukt."
+      }
+    ],
+    "unknowns": [
+      {
+        "item": "Mätarställning",
+        "status": "Okänd"
+      },
+      {
+        "item": "Isolering i väggar",
+        "status": "Okänd (misstänkt dålig)"
+      },
+      {
+        "item": "Växellådsolja & Nav",
+        "status": "Okänd status"
+      }
+    ]
+  },
+  "ideas_and_upgrades": {
+    "heating": {
+      "item": "Dieselvärmare",
+      "spec": "Vevor 5kW med separat dieseltank (eftersom bilen är bensin)."
+    },
+    "power": {
+      "battery": "Bygga eget LiFePO4-batteri (~300Ah) med lösa celler + BMS.",
+      "solar": "Montera nya paneler (plats finns för minst 2x200W). Befintliga är gamla.",
+      "management": "Konvertera elsystem till Victron-komponenter."
+    },
+    "comfort": {
+      "refrigeration": "Installera kompressorkyl och ev. frys.",
+      "wheels": "Nya året-runt-hjul (redan inköpta)."
+    },
+    "interior": {
+      "dashboard": "Klä in i läder eller byta ut mot begagnad del.",
+      "insulation": "Armaflex (om odoing görs)."
+    }
+  },
+  "action_plan": {
+    "phase_1_immediate_acute": [
+      {
+        "task": "Separera batterisystem",
+        "reason": "Förhindra att startbatteriet dör. Dra ny el.",
+        "status": "Kritisk"
+      },
+      {
+        "task": "Motoranalys & Livsuppehållande service",
+        "reason": "Byta vätskor/filter för att hålla motorn vid liv tills beslut om byte tas.",
+        "status": "Kritisk"
+      },
+      {
+        "task": "Rostskydd underrede",
+        "reason": "Skydda mot vägsalt (ska köras året runt).",
+        "status": "Kritisk"
+      }
+    ],
+    "phase_2_preparation_summer": [
+      {
+        "task": "Montera dieselvärmare",
+        "reason": "Värme för året-runt-bruk."
+      },
+      {
+        "task": "Bygga bodelsbatteri",
+        "reason": "Säkerställa strömförsörjning."
+      },
+      {
+        "task": "Laga fuktinsläpp vid förarstol",
+        "reason": "Stoppa vatteninträngning."
+      }
+    ],
+    "phase_3_long_term_autumn_winter": [
+      {
+        "task": "Åtgärda rostig balk (höger sida)",
+        "reason": "Strukturellt problem."
+      },
+      {
+        "task": "Byta/Laga skjutdörr",
+        "reason": "Kraftig rost."
+      },
+      {
+        "task": "Beslut om motorbyte",
+        "reason": "Beroende på hur nuvarande motor presterar i sommar."
+      },
+      {
+        "task": "Renovering interiör/isolering",
+        "reason": "Om beslut tas att riva ut allt."
+      },
+      {
+        "task": "Lackering/Exteriör fix",
+        "reason": "Kosmetiskt och täthet."
+      }
+    ]
+  },
+  "dependencies_and_blockers": {
+    "logic": "Kan inte göra X om inte Y är klart.",
+    "examples": [
+      "Kan inte isolera om (X) innan beslut om rostlagning inifrån (Y) är taget.",
+      "Kan inte bygga klart elsystem (X) innan batteribygget (Y) är klart."
+    ],
+    "resource_constraints": [
+      "Saknar garage (begränsar stora jobb vintertid).",
+      "Kompetensöverföring (Hanna måste läras upp under arbetets gång)."
+    ]
+  }
+}

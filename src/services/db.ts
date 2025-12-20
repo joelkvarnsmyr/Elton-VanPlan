@@ -1025,3 +1025,110 @@ export const subscribeToProjectFull = (
     unsubShopping();
   };
 };
+
+// --- WAITLIST MANAGEMENT ---
+
+export interface WaitlistEntry {
+  email: string;
+  name?: string;
+  source?: string;
+  timestamp: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approvedAt?: string;
+  notificationSent?: boolean;
+  position?: number;
+}
+
+/**
+ * Add email to waitlist
+ * Returns: { success: boolean, error?: string, position?: number }
+ */
+export const addToWaitlist = async (
+  email: string,
+  additionalData?: { name?: string; source?: string }
+): Promise<{ success: boolean; error?: string; position?: number }> => {
+  try {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return { success: false, error: 'Ogiltig e-postadress' };
+    }
+
+    // Check if email already exists
+    const waitlistRef = doc(db, 'waitlist', email);
+    const existingEntry = await getDoc(waitlistRef);
+
+    if (existingEntry.exists()) {
+      const data = existingEntry.data() as WaitlistEntry;
+      return {
+        success: false,
+        error: 'Du står redan på väntelistan!',
+        position: data.position
+      };
+    }
+
+    // Get current waitlist count for position
+    const waitlistCollection = collection(db, 'waitlist');
+    const snapshot = await getDocs(waitlistCollection);
+    const position = snapshot.size + 1;
+
+    // Create new waitlist entry
+    const newEntry: WaitlistEntry = {
+      email,
+      name: additionalData?.name,
+      source: additionalData?.source,
+      timestamp: new Date().toISOString(),
+      status: 'pending',
+      position
+    };
+
+    await setDoc(waitlistRef, newEntry);
+
+    console.log('✅ Added to waitlist:', email, 'Position:', position);
+
+    return {
+      success: true,
+      position
+    };
+  } catch (error: any) {
+    console.error('❌ Error adding to waitlist:', error);
+    return {
+      success: false,
+      error: error.message || 'Kunde inte lägga till i väntelistan'
+    };
+  }
+};
+
+/**
+ * Get user's position in waitlist
+ */
+export const getWaitlistPosition = async (email: string): Promise<number | null> => {
+  try {
+    const waitlistRef = doc(db, 'waitlist', email);
+    const entry = await getDoc(waitlistRef);
+
+    if (entry.exists()) {
+      const data = entry.data() as WaitlistEntry;
+      return data.position || null;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error getting waitlist position:', error);
+    return null;
+  }
+};
+
+/**
+ * Check if email is on waitlist
+ */
+export const isEmailOnWaitlist = async (email: string): Promise<boolean> => {
+  try {
+    const waitlistRef = doc(db, 'waitlist', email);
+    const entry = await getDoc(waitlistRef);
+    return entry.exists();
+  } catch (error) {
+    console.error('Error checking waitlist:', error);
+    return false;
+  }
+};

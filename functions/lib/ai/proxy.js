@@ -30,7 +30,37 @@ const functionDeclarations = [
                 phase: { type: genai_1.Type.STRING, description: 'Project phase' },
                 priority: { type: genai_1.Type.STRING, enum: ['Hög', 'Medel', 'Låg'], description: 'Priority level' },
                 sprint: { type: genai_1.Type.STRING, description: 'Sprint name' },
-                subtasks: { type: genai_1.Type.ARRAY, items: { type: genai_1.Type.STRING }, description: 'Checklist items' }
+                subtasks: { type: genai_1.Type.ARRAY, items: { type: genai_1.Type.STRING }, description: 'Checklist items' },
+                difficultyLevel: { type: genai_1.Type.STRING, enum: ['beginner', 'intermediate', 'expert'], description: 'Skill level required' },
+                requiredTools: { type: genai_1.Type.ARRAY, items: { type: genai_1.Type.STRING }, description: 'Tools needed for this task' },
+                blockers: {
+                    type: genai_1.Type.ARRAY,
+                    items: {
+                        type: genai_1.Type.OBJECT,
+                        properties: {
+                            reason: { type: genai_1.Type.STRING, description: 'Why this task is blocked' },
+                            blockedBy: { type: genai_1.Type.STRING, description: 'Task title that must complete first' }
+                        },
+                        required: ['reason']
+                    },
+                    description: 'Tasks or issues blocking this task'
+                },
+                decisionOptions: {
+                    type: genai_1.Type.ARRAY,
+                    items: {
+                        type: genai_1.Type.OBJECT,
+                        properties: {
+                            title: { type: genai_1.Type.STRING, description: 'Option title' },
+                            description: { type: genai_1.Type.STRING, description: 'What this option entails' },
+                            costRange: { type: genai_1.Type.STRING, description: 'Cost range for this option' },
+                            pros: { type: genai_1.Type.ARRAY, items: { type: genai_1.Type.STRING }, description: 'Advantages' },
+                            cons: { type: genai_1.Type.ARRAY, items: { type: genai_1.Type.STRING }, description: 'Disadvantages' },
+                            recommended: { type: genai_1.Type.BOOLEAN, description: 'Is this your recommended option?' }
+                        },
+                        required: ['title', 'description']
+                    },
+                    description: 'Decision alternatives for the user to choose from'
+                }
             },
             required: ['title', 'description', 'phase']
         }
@@ -72,7 +102,24 @@ const functionDeclarations = [
                 name: { type: genai_1.Type.STRING, description: 'Item name' },
                 category: { type: genai_1.Type.STRING, description: 'Category' },
                 estimatedCost: { type: genai_1.Type.NUMBER, description: 'Estimated cost in SEK' },
-                quantity: { type: genai_1.Type.STRING, description: 'Quantity' }
+                quantity: { type: genai_1.Type.STRING, description: 'Quantity' },
+                linkedTaskId: { type: genai_1.Type.STRING, description: 'ID or title keywords of related task' },
+                options: {
+                    type: genai_1.Type.ARRAY,
+                    items: {
+                        type: genai_1.Type.OBJECT,
+                        properties: {
+                            store: { type: genai_1.Type.STRING, description: 'Store name (e.g. Biltema, Autodoc, Jula)' },
+                            price: { type: genai_1.Type.NUMBER, description: 'Price in SEK' },
+                            shippingCost: { type: genai_1.Type.NUMBER, description: 'Shipping cost in SEK (0 if pickup)' },
+                            url: { type: genai_1.Type.STRING, description: 'Direct product URL' },
+                            inStock: { type: genai_1.Type.BOOLEAN, description: 'Is item in stock?' },
+                            deliveryTimeDays: { type: genai_1.Type.NUMBER, description: 'Delivery time in days (0 = pickup today)' }
+                        },
+                        required: ['store', 'price']
+                    },
+                    description: 'Vendor options with prices and availability - use this to help user compare where to buy!'
+                }
             },
             required: ['name']
         }

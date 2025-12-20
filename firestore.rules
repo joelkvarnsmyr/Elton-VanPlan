@@ -151,5 +151,23 @@ service cloud.firestore {
         allow read, write: if parentHasAccess();
       }
     }
+
+    // ===========================
+    // WAITLIST
+    // ===========================
+    // Public waitlist - anyone can join, but cannot read
+    // This prevents enumeration attacks while allowing signups
+    match /waitlist/{email} {
+      // Anyone can add themselves to waitlist (with email validation)
+      allow create: if request.auth == null &&
+                       request.resource.data.email == email &&
+                       request.resource.data.email is string &&
+                       request.resource.data.email.matches('.*@.*\\..*') &&
+                       request.resource.data.status == 'pending';
+      
+      // No public read access (prevents enumeration)
+      // Admins must use Firebase Console to manage waitlist
+      allow read, update, delete: if false;
+    }
   }
 }

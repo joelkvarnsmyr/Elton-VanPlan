@@ -1,0 +1,88 @@
+{
+    "projectId": "elton-jsn398",
+    "generatedDate": "2025-12-20",
+    "context": "Baserat på detaljerad inspektion och strategidiskussion",
+    "decisions": {
+        "motor": {
+            "decision": "MINIMAL_SERVICE_NOW",
+            "reasoning": "Okänd historik, tidigare startgasanvändning, oljig kamrem. Ej värt att investera 10-15k i omfattande service på en potentiellt svag motor.",
+            "actionNow": "Oljebyte, luftfiltertätning, monitorera förbrukning",
+            "actionFuture": "Utvärdera efter sommarens körning. Planera för eventuellt motorbyte (diesel eller starkare bensin) höst/vinter.",
+            "decidedDate": "2025-12-20"
+        },
+        "doors": {
+            "decision": "REPLACE_WITH_USED",
+            "reasoning": "Både skjutdörr och förardörr har för omfattande rostskador för att reparera ekonomiskt. 1300 LT-bilar kvar i trafik, regelbunden skrotning ger tillgång till begagnade delar.",
+            "actionNow": "Börja leta begagnade dörrar (Blocket, tyska eBay Kleinanzeigen, LT-forum)",
+            "actionFuture": "Byt båda dörrarna när lämpliga hittas",
+            "decidedDate": "2025-12-20"
+        },
+        "roofLeak": {
+            "decision": "TEMPORARY_SEAL_NOW",
+            "reasoning": "Stoppa aktivt vattenläckage innan sommaren. Ordentlig reparation kräver mer tid och garage.",
+            "actionNow": "Sikaflex-tätning av takskarv vid förardörren",
+            "actionFuture": "Ordentlig rostbehandling och tätning höst/vinter med garage",
+            "decidedDate": "2025-12-20"
+        },
+        "roofHatch": {
+            "decision": "REPLACE_WITH_MODERN",
+            "reasoning": "Befintlig lucka har rostig ram, dåliga tätningar. Ny modern lucka ger säker tätning och bättre ventilation.",
+            "recommendation": "Fiamma Vent/Turbo eller Dometic Mini Heki (40x40cm)",
+            "decidedDate": "2025-12-20"
+        },
+        "awning": {
+            "decision": "REMOVE_FOR_INSPECTION",
+            "reasoning": "Läckage vid markisfästet. Behöver inspekteras för att bedöma skador och täta ordentligt.",
+            "actionNow": "Demontera markis",
+            "actionFuture": "Beslut om återmontering efter inspektion av glasfibertak under fästena",
+            "decidedDate": "2025-12-20"
+        },
+        "insulation": {
+            "decision": "KEEP_FOR_SUMMER_REDO_LATER",
+            "reasoning": "Befintlig isolering i bodelen är acceptabel. Förarhyttsområdet är slarvigt gjort men funktionellt. Vill använda bilen i sommar.",
+            "actionNow": "Lev med befintlig isolering",
+            "actionFuture": "Göra om isolering förarhytt + taklucksområde höst/vinter",
+            "decidedDate": "2025-12-20"
+        },
+        "electrical": {
+            "decision": "TEMPORARY_LIFEPO4_NOW_VICTRON_LATER",
+            "reasoning": "Vill kunna göra enklare utflykter i januari. Bygger fristående LiFePO4-system som senare integreras i komplett Victron-uppsättning.",
+            "actionNow": "Bygg ~300Ah LiFePO4-bodelsbatteri som separat system",
+            "actionFuture": "Komplett Victron-system med MPPT, DC-DC, inverter, nya solpaneler (2x200W)",
+            "decidedDate": "2025-12-20"
+        },
+        "repaint": {
+            "decision": "NOT_YET",
+            "reasoning": "Aktiv rost måste stoppas först. Omlackering på bil med rost under är bortkastade pengar.",
+            "actionNow": "Punktbehandla rostgenomslag, täta läckagepunkter",
+            "actionFuture": "Eventuell lackering om 2-3 år när allt annat är klart",
+            "decidedDate": "2025-12-20"
+        }
+    },
+    "criticalWarnings": [
+        {
+            "id": "gl4-oil",
+            "condition": "Manuell växellåda pre-1990",
+            "title": "⚠️ Varning: Växellådsolja (Gulmetall)",
+            "content": "Gamla manuella växellådor har synkroniseringar av mässing. API GL-5 olja fräter sönder dessa. MÅSTE använda API GL-4!"
+        },
+        {
+            "id": "lt-kingpins",
+            "condition": "VW LT Mk1",
+            "title": "⚠️ Modellspecifikt: Spindelbultar",
+            "content": "Framvagnen har spindelbultar (kingpins) som MÅSTE smörjas var 500:e mil. Om de rostar fast krävs press och värme."
+        },
+        {
+            "id": "interference-engine",
+            "condition": "Audi CH-motor",
+            "title": "⚠️ Varning: Kamrem (Interference)",
+            "content": "Motorn är av typen 'Interference'. Om kamremmen går av krockar kolvar och ventiler = totalhaveri. Okänd historik = hög risk."
+        },
+        {
+            "id": "battery-safety",
+            "condition": "LiFePO4-installation",
+            "title": "⚠️ Batterisäkerhet",
+            "content": "Huvudsäkring MÅSTE sitta inom 30cm från batteripol. Utan säkring = brandrisk vid kortslutning."
+        }
+    ]
+}

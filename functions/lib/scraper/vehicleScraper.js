@@ -156,7 +156,7 @@ function parseSwedishDate(str) {
 async function scrapeCarInfo(regNo) {
     const source = CONFIG.SOURCES.find(s => s.id === 'car_info');
     const url = source.buildUrl(regNo);
-    console.log(`[CarInfo] Fetching: ${url}`);
+    console.log(`📋 Kontrollerar fordon hos car.info...`);
     const response = await fetchWithTimeout(url);
     if (!response.ok) {
         console.log(`[CarInfo] HTTP ${response.status} for ${regNo}`);
@@ -219,10 +219,45 @@ async function scrapeCarInfo(regNo) {
     data.mileageAtInspection = getSpec('Mätarställning') || undefined;
     data.bodyType = getSpec('Kaross') || undefined;
     data.vin = getSpec('Chassinummer (vin)') || undefined;
+    // Motor - Utökad
     data.enginePower = getSpec('Effekt') || undefined;
     data.engineVolume = getSpec('Motorvolym') || undefined;
     data.fuelType = getSpec('Bränsle') || undefined;
+    data.engineCode = getSpec('Motortyp') || getSpec('Motorkod') || undefined;
+    data.cylinders = parseSwedishNumber(getSpec('Cylindrar')) || parseSwedishNumber(getSpec('Antal cylindrar')) || undefined;
+    data.torque = getSpec('Vridmoment') || undefined;
+    data.valveTrain = getSpec('Ventilsystem') || getSpec('Toppventiler') || undefined;
+    data.cooling = getSpec('Kylning') || undefined;
+    // Prestanda
+    const topSpeedStr = getSpec('Topphastighet') || getSpec('Max hastighet');
+    if (topSpeedStr) {
+        data.topSpeed = parseSwedishNumber(topSpeedStr);
+    }
+    data.acceleration = getSpec('0-100 km/h') || getSpec('Acceleration') || undefined;
+    // Bränsleförbrukning
+    const fuelMixed = getSpec('Bränsleförbrukning blandad körning') || getSpec('Förbrukning blandad');
+    const fuelUrban = getSpec('Bränsleförbrukning stad') || getSpec('Förbrukning stad');
+    const fuelHighway = getSpec('Bränsleförbrukning landsväg') || getSpec('Förbrukning landsväg');
+    if (fuelMixed || fuelUrban || fuelHighway) {
+        data.fuelConsumption = {
+            mixed: fuelMixed ? parseFloat(fuelMixed.replace(',', '.')) : undefined,
+            urban: fuelUrban ? parseFloat(fuelUrban.replace(',', '.')) : undefined,
+            highway: fuelHighway ? parseFloat(fuelHighway.replace(',', '.')) : undefined
+        };
+    }
     data.driveType = getSpec('Drivlina') || undefined;
+    // Kapacitet
+    const tankCapStr = getSpec('Bränsletank') || getSpec('Tankvolym');
+    if (tankCapStr) {
+        data.fuelTankCapacity = parseSwedishNumber(tankCapStr);
+    }
+    const cargoVolStr = getSpec('Bagageutrymme') || getSpec('Lastutrymme');
+    if (cargoVolStr) {
+        data.cargoVolume = parseSwedishNumber(cargoVolStr);
+    }
+    // Antal dörrar och passagerare
+    data.doors = parseSwedishNumber(getSpec('Antal dörrar')) || undefined;
+    data.passengers = parseSwedishNumber(getSpec('Antal passagerare')) || parseSwedishNumber(getSpec('Sittplatser')) || undefined;
     const gearbox = getSpec('Växellåda');
     if (gearbox)
         data.gearbox = gearbox;
@@ -249,7 +284,7 @@ async function scrapeCarInfo(regNo) {
     if (data.totalWeight && data.curbWeight) {
         data.loadCapacity = data.totalWeight - data.curbWeight;
     }
-    // Extract mileage history from JavaScript
+    // Extract mileage history from JavaScript - ENHANCED
     try {
         const scriptContent = html.match(/var\s+datasetMileageWithoutUnofficial\s*=\s*(\[[\s\S]*?\]);/);
         if (scriptContent && scriptContent[1]) {
@@ -266,7 +301,8 @@ async function scrapeCarInfo(regNo) {
                     date: entry.label || entry.x,
                     mileage: entry.y || 0,
                     mileageFormatted: entry.mileage_formatted,
-                    type: entry.value_type
+                    type: entry.value_type,
+                    source: entry.value_type?.includes('Besiktning') ? 'Inspection' : 'Service'
                 }));
             }
         }
@@ -274,7 +310,32 @@ async function scrapeCarInfo(regNo) {
     catch (error) {
         console.warn(`[CarInfo] Failed to extract mileage history:`, error);
     }
-    console.log(`[CarInfo] Scraped: ${data.make} ${data.model} (${data.year})`);
+    // Extract equipment/utrustning
+    try {
+        const equipment = [];
+        $('.equipment-list li, .utrustning-list li, .specs-equipment li').each((_, el) => {
+            const $el = $(el);
+            const text = $el.text().trim();
+            if (text) {
+                // Try to categorize
+                let category;
+                if (text.match(/airbag|abs|esp|säkerhet|alarm/i))
+                    category = 'Safety';
+                else if (text.match(/klimat|cruise|navi|stereo|komfort/i))
+                    category = 'Comfort';
+                else if (text.match(/sensor|kamera|display|bluetooth/i))
+                    category = 'Technology';
+                equipment.push({ category, description: text });
+            }
+        });
+        if (equipment.length > 0) {
+            data.equipment = equipment;
+        }
+    }
+    catch (error) {
+        console.warn(`[CarInfo] Failed to extract equipment:`, error);
+    }
+    console.log(`✅ Hittade: ${data.make} ${data.model} (${data.year})`);
     return data;
 }
 /**
@@ -283,7 +344,7 @@ async function scrapeCarInfo(regNo) {
 async function scrapeBiluppgifter(regNo) {
     const source = CONFIG.SOURCES.find(s => s.id === 'biluppgifter');
     const url = source.buildUrl(regNo);
-    console.log(`[Biluppgifter] Fetching: ${url}`);
+    console.log(`📋 Kontrollerar fordon hos biluppgifter.se...`);
     const response = await fetchWithTimeout(url);
     if (response.status === 403) {
         console.log(`[Biluppgifter] Blocked (403) for ${regNo}`);
@@ -368,7 +429,101 @@ async function scrapeBiluppgifter(regNo) {
     data.trailerWeightBraked = parseSwedishNumber(getSpec('Släpvagnsvikt')) || undefined;
     data.tiresFront = getSpec('Däck fram') || undefined;
     data.tiresRear = getSpec('Däck bak') || undefined;
-    console.log(`[Biluppgifter] Scraped: ${data.make} ${data.model} (${data.year})`);
+    // NY: Skatt & Miljö
+    const taxStr = getSpec('Fordonsskatt') || getSpec('Skatt/år') || getSpec('Årlig fordonsskatt');
+    const envClass = getSpec('Miljöklass') || getSpec('Euroklass');
+    const co2Str = getSpec('CO2-utsläpp') || getSpec('Koldioxid');
+    const fuelMixed = getSpec('Bränsleförbrukning blandad') || getSpec('Förbrukning blandad');
+    const fuelUrban = getSpec('Bränsleförbrukning stad') || getSpec('Förbrukning stad');
+    const fuelHighway = getSpec('Bränsleförbrukning landsväg') || getSpec('Förbrukning landsväg');
+    if (taxStr || envClass || co2Str || fuelMixed || fuelUrban || fuelHighway) {
+        data.taxEnvironment = {
+            annualTax: taxStr ? parseSwedishNumber(taxStr) : undefined,
+            environmentalClass: envClass,
+            co2Emissions: co2Str ? parseSwedishNumber(co2Str) : undefined
+        };
+    }
+    if (fuelMixed || fuelUrban || fuelHighway) {
+        data.fuelConsumption = {
+            mixed: fuelMixed ? parseFloat(fuelMixed.replace(',', '.')) : undefined,
+            urban: fuelUrban ? parseFloat(fuelUrban.replace(',', '.')) : undefined,
+            highway: fuelHighway ? parseFloat(fuelHighway.replace(',', '.')) : undefined
+        };
+    }
+    // NY: Tekniska detaljer
+    data.cylinders = parseSwedishNumber(getSpec('Cylindrar')) || parseSwedishNumber(getSpec('Antal cylindrar')) || undefined;
+    data.doors = parseSwedishNumber(getSpec('Antal dörrar')) || undefined;
+    data.passengers = parseSwedishNumber(getSpec('Sittplatser')) || parseSwedishNumber(getSpec('Antal passagerare')) || undefined;
+    const tankCapStr = getSpec('Bränsletank') || getSpec('Tankvolym');
+    if (tankCapStr) {
+        data.fuelTankCapacity = parseSwedishNumber(tankCapStr);
+    }
+    const battCapStr = getSpec('Batterikapacitet');
+    if (battCapStr) {
+        data.batteryCapacity = parseFloat(battCapStr.replace(',', '.'));
+    }
+    // NY: Besiktningshistorik (om tillgänglig på sidan)
+    try {
+        const inspections = [];
+        $('.inspection-history .inspection-item, .besiktning-list .besiktning-item').each((_, inspEl) => {
+            const $insp = $(inspEl);
+            const dateStr = $insp.find('.inspection-date, .besiktning-datum').text().trim();
+            const resultStr = $insp.find('.inspection-result, .besiktning-resultat').text().trim();
+            const mileageStr = $insp.find('.inspection-mileage, .besiktning-mil').text().trim();
+            if (dateStr) {
+                const inspection = {
+                    date: parseSwedishDate(dateStr),
+                    result: resultStr.includes('Godkänd') ? 'Pass' : resultStr.includes('Icke godkänd') ? 'Fail' : resultStr
+                };
+                if (mileageStr) {
+                    inspection.mileage = parseSwedishNumber(mileageStr);
+                }
+                // Extract remarks if available
+                const remarks = [];
+                $insp.find('.inspection-remark, .anmärkning').each((__, remarkEl) => {
+                    const text = $(remarkEl).text().trim();
+                    if (text) {
+                        remarks.push({
+                            description: text,
+                            severity: text.match(/kritisk/i) ? 'Critical' : text.match(/varning/i) ? 'Warning' : 'Advisory'
+                        });
+                    }
+                });
+                if (remarks.length > 0) {
+                    inspection.remarks = remarks;
+                }
+                inspections.push(inspection);
+            }
+        });
+        if (inspections.length > 0) {
+            data.inspectionHistory = inspections;
+        }
+    }
+    catch (error) {
+        console.warn(`[Biluppgifter] Failed to extract inspection history:`, error);
+    }
+    // NY: Ägarhistorik (om tillgänglig)
+    try {
+        const ownership = [];
+        $('.owner-history .owner-item, .ägare-list .ägare-item').each((_, ownerEl) => {
+            const $owner = $(ownerEl);
+            const dateStr = $owner.find('.owner-date, .ägare-datum').text().trim();
+            const typeStr = $owner.find('.owner-type, .ägare-typ').text().trim();
+            if (dateStr) {
+                ownership.push({
+                    changeDate: parseSwedishDate(dateStr),
+                    ownerType: typeStr.match(/företag|bolag/i) ? 'Company' : typeStr.match(/privat/i) ? 'Private' : undefined
+                });
+            }
+        });
+        if (ownership.length > 0) {
+            data.ownershipHistory = ownership;
+        }
+    }
+    catch (error) {
+        console.warn(`[Biluppgifter] Failed to extract ownership history:`, error);
+    }
+    console.log(`✅ Hittade: ${data.make} ${data.model} (${data.year})`);
     return data;
 }
 /**
@@ -380,7 +535,7 @@ async function scrapeBiluppgifter(regNo) {
 async function scrapeTransportstyrelsen(regNo) {
     const source = CONFIG.SOURCES.find(s => s.id === 'transportstyrelsen');
     const url = source.buildUrl(regNo);
-    console.log(`[Transportstyrelsen] Fetching: ${url}`);
+    console.log(`📋 Kontrollerar hos Transportstyrelsen...`);
     const response = await fetchWithTimeout(url);
     if (!response.ok) {
         console.log(`[Transportstyrelsen] HTTP ${response.status} for ${regNo}`);
@@ -439,23 +594,78 @@ async function scrapeTransportstyrelsen(regNo) {
             data.year = parseInt(match[1]);
     }
     const firstRegStr = identity['Första registrering'] || identity['I trafik första gången'] || '';
-    if (firstRegStr)
+    if (firstRegStr) {
         data.firstRegistered = parseSwedishDate(firstRegStr);
+        // Registration history
+        data.registrationHistory = {
+            firstRegistrationSweden: parseSwedishDate(firstRegStr),
+            isImported: identity['Import']?.toLowerCase().includes('ja') || identity['Importerad']?.toLowerCase().includes('ja') || false
+        };
+    }
     data.color = identity['Färg'] || identity['Karosserifärg'] || undefined;
     data.bodyType = identity['Karosseri'] || identity['Karosstyp'] || undefined;
-    // From technical
+    data.doors = parseSwedishNumber(identity['Antal dörrar']) || undefined;
+    data.passengers = parseSwedishNumber(identity['Antal passagerare']) || parseSwedishNumber(identity['Sittplatser']) || undefined;
+    // From technical - EXPANDED
     data.fuelType = technical['Drivmedel'] || technical['Bränsle'] || undefined;
     data.enginePower = technical['Motoreffekt'] || technical['Effekt'] || undefined;
     data.engineVolume = technical['Slagvolym'] || technical['Motorvolym'] || undefined;
+    data.engineCode = technical['Motortyp'] || technical['Motorkod'] || undefined;
+    data.cylinders = parseSwedishNumber(technical['Cylindrar']) || parseSwedishNumber(technical['Antal cylindrar']) || undefined;
     data.gearbox = technical['Växellåda'] || undefined;
+    // Transmission details
+    const gearCountStr = technical['Antal växlar'] || technical['Växlar'];
+    if (gearCountStr) {
+        data.gearCount = parseSwedishNumber(gearCountStr);
+    }
+    const driveStr = technical['Drivning'] || technical['Hjuldrivning'];
+    if (driveStr) {
+        if (driveStr.match(/fyrhjul|4wd|awd/i))
+            data.driveType = 'Fyrhjulsdrift';
+        else if (driveStr.match(/bakhjul|rwd/i))
+            data.driveType = 'Bakhjulsdrift';
+        else if (driveStr.match(/framhjul|fwd/i))
+            data.driveType = 'Framhjulsdrift';
+    }
+    // Weights
     data.curbWeight = parseSwedishNumber(technical['Tjänstevikt']) || undefined;
     data.totalWeight = parseSwedishNumber(technical['Totalvikt']) || undefined;
     data.trailerWeightBraked = parseSwedishNumber(technical['Släpvagnsvikt bromsad']) ||
         parseSwedishNumber(technical['Släpvagnsvikt']) || undefined;
     data.trailerWeightUnbraked = parseSwedishNumber(technical['Släpvagnsvikt obromsad']) || undefined;
+    // Dimensions
     data.length = parseSwedishNumber(technical['Längd']) || undefined;
     data.width = parseSwedishNumber(technical['Bredd']) || undefined;
-    // From inspection
+    data.height = parseSwedishNumber(technical['Höjd']) || undefined;
+    data.wheelbase = parseSwedishNumber(technical['Axelavstånd']) || undefined;
+    // Capacity
+    const tankCapStr = technical['Tankvolym'] || technical['Bränsletank'];
+    if (tankCapStr) {
+        data.fuelTankCapacity = parseSwedishNumber(tankCapStr);
+    }
+    // Environmental & Tax
+    const envClass = technical['Miljöklass'] || technical['Euroklass'];
+    const co2Str = technical['CO2-utsläpp'] || technical['Koldioxidutsläpp'];
+    const taxStr = technical['Fordonsskatt'] || technical['Skatt'];
+    if (envClass || co2Str || taxStr) {
+        data.taxEnvironment = {
+            environmentalClass: envClass,
+            co2Emissions: co2Str ? parseSwedishNumber(co2Str) : undefined,
+            annualTax: taxStr ? parseSwedishNumber(taxStr) : undefined
+        };
+    }
+    // Fuel consumption
+    const fuelMixed = technical['Bränsleförbrukning blandad'] || technical['Förbrukning blandad'];
+    const fuelUrban = technical['Bränsleförbrukning stad'] || technical['Förbrukning stad'];
+    const fuelHighway = technical['Bränsleförbrukning landsväg'] || technical['Förbrukning landsväg'];
+    if (fuelMixed || fuelUrban || fuelHighway) {
+        data.fuelConsumption = {
+            mixed: fuelMixed ? parseFloat(fuelMixed.replace(',', '.')) : undefined,
+            urban: fuelUrban ? parseFloat(fuelUrban.replace(',', '.')) : undefined,
+            highway: fuelHighway ? parseFloat(fuelHighway.replace(',', '.')) : undefined
+        };
+    }
+    // From inspection - EXPANDED
     const lastInspStr = inspection['Senast godkänd'] || inspection['Senaste besiktning'] || '';
     if (lastInspStr)
         data.lastInspection = parseSwedishDate(lastInspStr);
@@ -463,13 +673,86 @@ async function scrapeTransportstyrelsen(regNo) {
     if (nextInspStr)
         data.nextInspection = parseSwedishDate(nextInspStr);
     data.mileageAtInspection = inspection['Mätarställning'] || undefined;
+    // NY: Try to extract inspection history
+    try {
+        const inspections = [];
+        // Look for inspection history table or list
+        $('#ts-besiktningCollapse table tr, #ts-besiktningCollapse .inspection-row').each((_, row) => {
+            const $row = $(row);
+            const cells = $row.find('td');
+            if (cells.length >= 2) {
+                const dateStr = $(cells[0]).text().trim();
+                const resultStr = $(cells[1]).text().trim();
+                const mileageStr = cells.length > 2 ? $(cells[2]).text().trim() : '';
+                const remarksStr = cells.length > 3 ? $(cells[3]).text().trim() : '';
+                if (dateStr && dateStr.match(/\d{4}/)) {
+                    const inspection = {
+                        date: parseSwedishDate(dateStr),
+                        result: resultStr.match(/godk|pass/i) ? 'Pass' : resultStr.match(/ej godk|fail|underk/i) ? 'Fail' : resultStr
+                    };
+                    if (mileageStr) {
+                        inspection.mileage = parseSwedishNumber(mileageStr);
+                    }
+                    if (remarksStr) {
+                        inspection.remarks = [{
+                                description: remarksStr,
+                                severity: remarksStr.match(/kritisk|farlig/i) ? 'Critical' : remarksStr.match(/varning/i) ? 'Warning' : 'Advisory'
+                            }];
+                    }
+                    inspections.push(inspection);
+                }
+            }
+        });
+        // Also try div-based structure
+        $('#ts-besiktningCollapse .besiktning-item, #ts-besiktningCollapse .inspection-item').each((_, item) => {
+            const $item = $(item);
+            const dateStr = $item.find('.datum, .date').text().trim();
+            const resultStr = $item.find('.resultat, .result').text().trim();
+            if (dateStr) {
+                inspections.push({
+                    date: parseSwedishDate(dateStr),
+                    result: resultStr.match(/godk|pass/i) ? 'Pass' : resultStr.match(/ej godk|fail/i) ? 'Fail' : resultStr
+                });
+            }
+        });
+        if (inspections.length > 0) {
+            data.inspectionHistory = inspections;
+        }
+    }
+    catch (error) {
+        console.warn(`[Transportstyrelsen] Failed to extract inspection history:`, error);
+    }
+    // NY: Try to extract ownership history
+    try {
+        const ownership = [];
+        $('#ts-ägarhistorikCollapse table tr, #ts-ownershipCollapse table tr').each((_, row) => {
+            const $row = $(row);
+            const cells = $row.find('td');
+            if (cells.length >= 1) {
+                const dateStr = $(cells[0]).text().trim();
+                const typeStr = cells.length > 1 ? $(cells[1]).text().trim() : '';
+                if (dateStr && dateStr.match(/\d{4}/)) {
+                    ownership.push({
+                        changeDate: parseSwedishDate(dateStr),
+                        ownerType: typeStr.match(/företag|bolag/i) ? 'Company' : typeStr.match(/privat/i) ? 'Private' : undefined
+                    });
+                }
+            }
+        });
+        if (ownership.length > 0) {
+            data.ownershipHistory = ownership;
+        }
+    }
+    catch (error) {
+        console.warn(`[Transportstyrelsen] Failed to extract ownership history:`, error);
+    }
     // Calculate load capacity
     if (data.totalWeight && data.curbWeight) {
         data.loadCapacity = data.totalWeight - data.curbWeight;
     }
     // Log what we found
     const fieldsFound = Object.entries(data).filter(([k, v]) => v !== undefined && k !== 'extras').length;
-    console.log(`[Transportstyrelsen] Scraped: ${data.make || '?'} ${data.model || '?'} (${data.year || '?'}), ${fieldsFound} fields`);
+    console.log(`✅ Hittade: ${data.make || '?'} ${data.model || '?'} (${data.year || '?'}), ${fieldsFound} uppgifter`);
     // Only return if we got meaningful data
     if (!data.make && !data.model && !data.vin) {
         console.log(`[Transportstyrelsen] No meaningful data extracted`);
@@ -485,7 +768,7 @@ async function scrapeTransportstyrelsen(regNo) {
  */
 async function fetchAllSources(regNo) {
     const enabledSources = CONFIG.SOURCES.filter(s => s.enabled);
-    console.log(`[Parallel] Fetching from ${enabledSources.length} sources...`);
+    console.log(`🔍 Söker fordonsdata från ${enabledSources.length} register...`);
     const scraperMap = {
         'car_info': scrapeCarInfo,
         'biluppgifter': scrapeBiluppgifter,
@@ -523,7 +806,7 @@ async function fetchAllSources(regNo) {
     });
     const results = await Promise.all(fetchPromises);
     const successCount = results.filter(r => r.success).length;
-    console.log(`[Parallel] Completed: ${successCount}/${results.length} sources succeeded`);
+    console.log(`✅ Genomsökning klar: ${successCount}/${results.length} register svarade`);
     return results;
 }
 // =============================================================================
@@ -542,7 +825,7 @@ async function aiMergeVehicleData(regNo, sourceResults, apiKey) {
         console.log(`[AI Merge] Only one source, using direct adapter`);
         return adaptToVehicleData(successfulSources[0].data, [successfulSources[0].sourceName]);
     }
-    console.log(`[AI Merge] Merging data from ${successfulSources.length} sources with AI...`);
+    console.log(`🤖 Kombinerar data från ${successfulSources.length} källor...`);
     const ai = new genai_1.GoogleGenAI({ apiKey });
     // Bygg prompt med all data
     const sourcesData = successfulSources.map(s => ({
@@ -635,7 +918,7 @@ RETURNERA JSON enligt detta schema (inga kommentarer, bara valid JSON):
         const merged = JSON.parse(jsonText);
         // Ensure regNo is set correctly
         merged.regNo = regNo;
-        console.log(`[AI Merge] Successfully merged: ${merged.make} ${merged.model}`);
+        console.log(`✅ Färdig: ${merged.make} ${merged.model}`);
         return merged;
     }
     catch (error) {
@@ -719,7 +1002,7 @@ async function getCachedVehicleData(regNo) {
             console.log(`[Cache] Expired for ${regNo}`);
             return null;
         }
-        console.log(`[Cache] Hit for ${regNo}`);
+        console.log(`💾 Laddade sparad data för ${regNo}`);
         return data;
     }
     catch (error) {
@@ -739,7 +1022,7 @@ async function setCachedVehicleData(regNo, vehicleData, sources) {
             scrapedAt: now,
             expiresAt
         });
-        console.log(`[Cache] Saved ${regNo} from ${sources.join(', ')}`);
+        console.log(`💾 Sparade data för ${regNo}`);
     }
     catch (error) {
         console.error(`[Cache] Error saving ${regNo}:`, error);

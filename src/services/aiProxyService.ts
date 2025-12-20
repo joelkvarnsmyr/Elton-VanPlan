@@ -130,21 +130,25 @@ export const sendChatMessage = async (
  * Parse text or image into structured tasks and shopping items
  *
  * @param input - Text to parse
- * @param imageBase64 - Optional image to analyze
+ * @param imageBase64 - Optional image(s) to analyze (single string or array)
  * @param systemInstruction - Optional custom system prompt
  * @param model - Optional model override
  * @returns Parsed tasks and shopping items
  */
 export const parseInput = async (
   input: string,
-  imageBase64?: string,
+  imageBase64?: string | string[],
   systemInstruction?: string,
   model?: string
 ): Promise<ParsedData> => {
   try {
+    // For backwards compatibility, handle both string and array
+    // If array, use only the first image for now (Cloud Function signature needs update for multi-image)
+    const singleImage = Array.isArray(imageBase64) ? imageBase64[0] : imageBase64;
+
     const result = await aiParseFn({
       input,
-      imageBase64,
+      imageBase64: singleImage,
       systemInstruction,
       model
     });

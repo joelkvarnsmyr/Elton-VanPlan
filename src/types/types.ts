@@ -137,6 +137,9 @@ export interface Task {
   buildPhase?: BuildPhase;
   blockers?: TaskBlocker[]; // Tasks blocking this one (with optional reason)
 
+  // Inspection Linking
+  inspectionFindingIds?: string[]; // DetailedInspectionFinding IDs this task addresses
+
   // Timestamps
   created?: string;
   lastModified?: string;
@@ -164,7 +167,7 @@ export interface VendorOption {
 export interface ShoppingItem {
   id: string;
   name: string;
-  category: 'Reservdelar' | 'Kemi & Färg' | 'Verktyg' | 'Inredning' | 'Övrigt';
+  category: 'Reservdelar' | 'Kemi & Färg' | 'Kemi & Tätning' | 'Verktyg' | 'Inredning' | 'El' | 'Motor' | 'Kaross' | 'El - Victron' | 'El - Sol' | 'Rostskydd' | 'Isolering' | 'Övrigt';
   estimatedCost: number;
   actualCost?: number;
   quantity: string;
@@ -384,6 +387,7 @@ export interface UserProfile {
   email: string;
   avatar?: string;
   skillLevel?: UserSkillLevel; // Mechanical skill level for personalized AI guidance
+  favoriteStores?: string[]; // Preferred stores for shopping recommendations (e.g., ['Biltema', 'Jula'])
 }
 
 /**
@@ -415,6 +419,91 @@ export interface InspectionFinding {
   convertedToTaskId?: string;
 }
 
+// --- DETAILED INSPECTION MODULE (for structured inspections) ---
+export interface DetailedInspectionFinding {
+  id: number | string;
+  category: 'Anmärkning' | 'Positivt';
+  type: string; // "Sprickor", "Rost", "Läckage", etc
+  description: string;
+  position?: string; // "Insida över förardörr"
+  detail?: string; // Extended description
+  action?: string; // Recommended action
+  linkedTaskIds?: string[]; // Tasks that address this finding
+  severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+}
+
+export interface DetailedInspectionArea {
+  areaId: number;
+  name: string; // "Taket", "Motor", "Baksidan"
+  findings: DetailedInspectionFinding[];
+  summary?: {
+    negative: number;
+    positive: number;
+  };
+  // UI hints
+  actionLabel?: string; // "TÄTA AKUT", "BYT UT", "SVETSA & SKYDDA"
+  actionPriority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+}
+
+export interface DetailedInspection {
+  id: string;
+  projectId: string;
+  date: string;
+  inspectors: string[];
+  type: string; // "Totalinspektion (Exteriör, Interiör, Mekaniskt)"
+  sourceFiles?: string[]; // Audio/video filenames
+  areas: DetailedInspectionArea[];
+  statistics: {
+    total: number;
+    negative: number;
+    positive: number;
+  };
+}
+
+// --- PROJECT METADATA & CONTEXT ---
+export interface ProjectParticipant {
+  name: string;
+  role: string;
+  competenceProfile?: string;
+  assets?: string;
+}
+
+export interface StrategicDecision {
+  id: string;
+  area: string; // "motor", "doors", "roofLeak", etc
+  decision: string;
+  reasoning: string;
+  actionNow: string;
+  actionFuture: string;
+  decidedDate: string;
+}
+
+export interface ProjectUnknown {
+  item: string;
+  status: string;
+  theory?: string;
+  reliability?: string;
+}
+
+export interface ProjectConstraint {
+  type: 'resource' | 'knowledge' | 'time' | 'access';
+  description: string;
+}
+
+export interface ProjectMetadata {
+  projectId: string;
+  participants: ProjectParticipant[];
+  context?: {
+    location?: string;
+    seasonGoal?: string;
+    travelPlans?: string;
+  };
+  strategicDecisions?: StrategicDecision[];
+  unknowns?: ProjectUnknown[];
+  constraints?: ProjectConstraint[];
+}
+
+
 export interface Project {
   id: string;
   name: string;
@@ -445,7 +534,9 @@ export interface Project {
   shoppingItems: ShoppingItem[];
   serviceLog: ServiceItem[];
   fuelLog: FuelLogItem[];
-  inspections?: InspectionFinding[];
+  inspections?: InspectionFinding[]; // AI-generated findings
+  detailedInspections?: DetailedInspection[]; // Structured inspection reports
+  projectMetadata?: ProjectMetadata; // Context, participants, decisions
   contacts?: Contact[];
   knowledgeArticles?: KnowledgeArticle[];
 
