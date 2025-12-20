@@ -31,7 +31,37 @@ const functionDeclarations: FunctionDeclaration[] = [
         phase: { type: Type.STRING, description: 'Project phase' },
         priority: { type: Type.STRING, enum: ['Hög', 'Medel', 'Låg'], description: 'Priority level' },
         sprint: { type: Type.STRING, description: 'Sprint name' },
-        subtasks: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Checklist items' }
+        subtasks: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Checklist items' },
+        difficultyLevel: { type: Type.STRING, enum: ['beginner', 'intermediate', 'expert'], description: 'Skill level required' },
+        requiredTools: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Tools needed for this task' },
+        blockers: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              reason: { type: Type.STRING, description: 'Why this task is blocked' },
+              blockedBy: { type: Type.STRING, description: 'Task title that must complete first' }
+            },
+            required: ['reason']
+          },
+          description: 'Tasks or issues blocking this task'
+        },
+        decisionOptions: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              title: { type: Type.STRING, description: 'Option title' },
+              description: { type: Type.STRING, description: 'What this option entails' },
+              costRange: { type: Type.STRING, description: 'Cost range for this option' },
+              pros: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Advantages' },
+              cons: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Disadvantages' },
+              recommended: { type: Type.BOOLEAN, description: 'Is this your recommended option?' }
+            },
+            required: ['title', 'description']
+          },
+          description: 'Decision alternatives for the user to choose from'
+        }
       },
       required: ['title', 'description', 'phase']
     }
@@ -73,7 +103,24 @@ const functionDeclarations: FunctionDeclaration[] = [
         name: { type: Type.STRING, description: 'Item name' },
         category: { type: Type.STRING, description: 'Category' },
         estimatedCost: { type: Type.NUMBER, description: 'Estimated cost in SEK' },
-        quantity: { type: Type.STRING, description: 'Quantity' }
+        quantity: { type: Type.STRING, description: 'Quantity' },
+        linkedTaskId: { type: Type.STRING, description: 'ID or title keywords of related task' },
+        options: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              store: { type: Type.STRING, description: 'Store name (e.g. Biltema, Autodoc, Jula)' },
+              price: { type: Type.NUMBER, description: 'Price in SEK' },
+              shippingCost: { type: Type.NUMBER, description: 'Shipping cost in SEK (0 if pickup)' },
+              url: { type: Type.STRING, description: 'Direct product URL' },
+              inStock: { type: Type.BOOLEAN, description: 'Is item in stock?' },
+              deliveryTimeDays: { type: Type.NUMBER, description: 'Delivery time in days (0 = pickup today)' }
+            },
+            required: ['store', 'price']
+          },
+          description: 'Vendor options with prices and availability - use this to help user compare where to buy!'
+        }
       },
       required: ['name']
     }
