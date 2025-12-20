@@ -77,7 +77,7 @@ export const App = () => {
     console.log('🔍 Loading projects for user:', user.uid, user.email);
     setIsLoading(true);
     try {
-      const userProjects = await getProjectsForUser(user.uid);
+      const userProjects = await getProjectsForUser(user.uid, user.email);
       console.log('✅ Found projects:', userProjects.length);
       userProjects.forEach(p => {
         console.log('  📦 Project:', p.name, '(ownerId:', p.ownerId, ')');
@@ -554,10 +554,10 @@ export const App = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowFuelLog(true)} className="p-3 rounded-xl bg-white dark:bg-nordic-charcoal shadow-sm text-slate-400 hover:text-nordic-charcoal dark:hover:text-white transition-colors" title="Bränslelogg">
+            <button onClick={() => setShowFuelLog(true)} className="hidden sm:block p-3 rounded-xl bg-white dark:bg-nordic-charcoal shadow-sm text-slate-400 hover:text-nordic-charcoal dark:hover:text-white transition-colors" title="Bränslelogg">
               <Fuel size={18} />
             </button>
-            <button onClick={() => setShowServiceBook(true)} className="p-3 rounded-xl bg-white dark:bg-nordic-charcoal shadow-sm text-slate-400 hover:text-nordic-charcoal dark:hover:text-white transition-colors" title="Servicebok">
+            <button onClick={() => setShowServiceBook(true)} className="hidden sm:block p-3 rounded-xl bg-white dark:bg-nordic-charcoal shadow-sm text-slate-400 hover:text-nordic-charcoal dark:hover:text-white transition-colors" title="Servicebok">
               <BookOpen size={18} />
             </button>
             <button onClick={() => setShowMembers(true)} className="p-3 rounded-xl bg-white dark:bg-nordic-charcoal shadow-sm text-slate-400 hover:text-nordic-charcoal dark:hover:text-white transition-colors" title="Team & Medlemmar">
