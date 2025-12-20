@@ -59,27 +59,31 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
     setNewItemCost('');
   };
 
-  // Apply filters
-  let filteredItems = filterByTaskId
+  // Apply task filter first
+  const filteredItems = filterByTaskId
     ? items.filter(i => i.linkedTaskId === filterByTaskId)
     : items;
+
+  // Get all unique categories from items (to handle categories not in our predefined list)
+  const allCategoriesFromItems = Array.from(new Set(filteredItems.map(i => i.category || 'Övrigt')));
+  const allCategories = Array.from(new Set([...categories, ...allCategoriesFromItems]));
 
   // Group by category
   const itemsByCategory = useMemo(() => {
     const categoryMap = new Map<string, ShoppingItem[]>();
 
-    // If a specific category is selected, only show that category
-    const categoriesToShow = activeFilter === 'Alla' ? categories : [activeFilter];
+    // When "Alla" is selected, show all categories. Otherwise filter.
+    const categoriesToShow = activeFilter === 'Alla' ? allCategories : [activeFilter];
 
     categoriesToShow.forEach(cat => {
-      const categoryItems = filteredItems.filter(item => item.category === cat);
+      const categoryItems = filteredItems.filter(item => (item.category || 'Övrigt') === cat);
       if (categoryItems.length > 0) {
         categoryMap.set(cat, categoryItems);
       }
     });
 
     return Array.from(categoryMap.entries());
-  }, [filteredItems, activeFilter, categories]);
+  }, [filteredItems, activeFilter, allCategories]);
 
   return (
     <div className="min-h-screen bg-[#f5f3f0] pb-20">
