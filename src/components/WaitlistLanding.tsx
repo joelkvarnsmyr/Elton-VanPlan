@@ -86,11 +86,7 @@ export const WaitlistLanding: React.FC = () => {
             <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white border-b border-stone-200 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <img src={symbolLogo} alt="VanPlan" className="h-8 w-auto" />
-                        <h1 className="font-serif font-bold text-xl text-stone-800 tracking-tight">The VanPlan</h1>
-                        <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 bg-stone-100 text-stone-500 rounded-full">
-                            Beta
-                        </span>
+                        <img src={newLogo} alt="VanPlan" className="h-8 w-auto" />
                     </div>
                     <button
                         onClick={() => setShowLogin(true)}
@@ -125,7 +121,7 @@ export const WaitlistLanding: React.FC = () => {
                     </h2>
 
                     <p className="text-xl md:text-2xl text-stone-600 mb-12 max-w-2xl mx-auto leading-relaxed font-light">
-                        Din digitala kompis för vanlife-bygget. Mjuka värden möter hård fakta – från inspiration till besiktning.
+                        Slipp kaoset - verktyget för renovering, fix och full koll som tar drömmen från uppfarten ut i friheten.
                     </p>
 
                     <div className="max-w-md mx-auto">
@@ -212,7 +208,7 @@ export const WaitlistLanding: React.FC = () => {
                 <div className="max-w-4xl mx-auto">
                     <div className="text-center mb-12">
                         <div className="flex items-center justify-center gap-3 mb-6">
-                            <img src={eltonLogo} alt="Elton" className="h-12 w-auto opacity-80" />
+                            <img src={eltonLogo} alt="VanPlan" className="h-12 w-auto opacity-80" />
                             <span className="text-rose-500 font-medium tracking-wider text-sm uppercase">Vår Resa</span>
                         </div>
                         <h3 className="text-3xl md:text-5xl font-serif text-stone-800 mb-6">
