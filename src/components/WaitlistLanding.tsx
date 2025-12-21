@@ -254,46 +254,93 @@ export const WaitlistLanding: React.FC = () => {
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <FeatureCard
                             icon={<Camera className="text-white" size={24} />}
-                            title="Din bil, din data – automatiskt"
-                            description="Fota registreringsskylten så hämtar vi all teknisk data. AI:n vet direkt om du har en LT31 från '76 eller en modern Sprinter, och anpassar råden därefter."
+                            title="Automatisk fordonsdata"
+                            description="Ta kort på registreringsskylten eller ange regnummer – vi hämtar automatiskt alla fordonsdata: modell, årsmodell, vikt, tekniska specifikationer."
                             color="indigo"
                         />
                         <FeatureCard
-                            icon={<BookOpen className="text-white" size={24} />}
-                            title="AI som projektledare"
-                            description="Från köpbesiktning till färdig camper. Fota rostangreppet eller motorn – AI analyserar, varnar för fallgropar och skapar en steg-för-steg-plan för hur du fixar det."
+                            icon={<Sparkles className="text-white" size={24} />}
+                            title="AI skriver om uppgifter"
+                            description="Från 'BYTA OLJA' till 'Vill du prova byta olja själv? Då behöver du det här...' AI skapar begripliga checklistor steg för steg."
                             color="purple"
                         />
                         <FeatureCard
-                            icon={<TrendingUp className="text-white" size={24} />}
-                            title="Full koll på budgeten"
-                            description="Sluta leta kvitton i handskfacket. Fota dina utlägg direkt i appen. AI:n läser av produkt, pris och datum och sorterar in det i din budgetkalkyl."
+                            icon={<Camera className="text-white" size={24} />}
+                            title="Köpbesiktning med AI"
+                            description="Ska köpa bil? Få modell-specifik checklista. Fotografera rost, motor – AI analyserar och varnar för dolda problem."
+                            color="rose"
+                        />
+                        <FeatureCard
+                            icon={<FileText className="text-white" size={24} />}
+                            title="Scanna kvitton automatiskt"
+                            description="Fotografera kvitton från bildelar. AI läser produktnamn, pris och datum – allt sparas automatiskt i budgeten."
                             color="emerald"
                         />
                         <FeatureCard
                             icon={<Calendar className="text-white" size={24} />}
-                            title="Aldrig mer missad service"
-                            description="När ska kamremmen bytas? Hur vinterförvarar man bäst? VanPlan håller koll på intervallerna och påminner dig i tid, anpassat efter din bils ålder."
+                            title="Säsongspåminnelser"
+                            description="Vinterförvaring? Vårcheck? AI skapar checklistor baserat på din bil och klimat. Missa aldrig viktiga datum."
                             color="cyan"
+                        />
+                        <FeatureCard
+                            icon={<BookOpen className="text-white" size={24} />}
+                            title="AI som lär sig din bil"
+                            description="Ladda upp verkstadshandbok – AI indexerar den och svarar på frågor specifikt för din modell och årsmodell."
+                            color="amber"
+                        />
+                        <FeatureCard
+                            icon={<ShoppingCart className="text-white" size={24} />}
+                            title="Smarta inköpslistor"
+                            description="AI föreslår exakt vilka delar du behöver baserat på din bil och projekt. Håll koll på budget vs faktisk kostnad."
+                            color="teal"
+                        />
+                        <FeatureCard
+                            icon={<MapPin className="text-white" size={24} />}
+                            title="Hitta rätt verkstad"
+                            description="Få förslag på lokala verkstäder specialiserade på just din bilmodell. Spara kontakter och tidigare service."
+                            color="indigo"
+                        />
+                        <FeatureCard
+                            icon={<TrendingUp className="text-white" size={24} />}
+                            title="Tidslinje & Fasplanering"
+                            description="Dela upp projektet i faser. AI identifierar beroenden – vad måste göras först, vad kan vänta."
+                            color="purple"
+                        />
+                        <FeatureCard
+                            icon={<Database className="text-white" size={24} />}
+                            title="Komplett servicehistorik"
+                            description="Dokumentera varje byte av komponent, varje service, varje milsten. Öka fordonets värde med komplett historik."
+                            color="rose"
                         />
                         <FeatureCard
                             icon={<Users className="text-white" size={24} />}
                             title="Samarbeta i realtid"
-                            description="Bygger ni ihop? Bjud in din partner eller din händige kompis till projektet. Alla ser samma att-göra-lista, inköpsbehov och framsteg."
-                            color="rose"
+                            description="Bjud in partner, vänner eller din verkstad till projektet. Alla ser samma info, kommenterar och uppdaterar."
+                            color="emerald"
+                        />
+                        <FeatureCard
+                            icon={<Cloud className="text-white" size={24} />}
+                            title="Alltid säkert i molnet"
+                            description="All data backupas automatiskt. Tappa telefonen? Inga problem – logga in på ny enhet och fortsätt där du var."
+                            color="cyan"
                         />
                         <FeatureCard
                             icon={<Zap className="text-white" size={24} />}
-                            title="Din vän i nöden"
-                            description="Motorstopp i Danmark? Fota problemet och fråga din AI-assistent. Ladda upp ditt försäkringsbrev så vet appen direkt om bärgningen täcks."
+                            title="Nödsituation? Inga problem"
+                            description="Fastnat i Danmark? Ta bild på problemet, fråga Elton AI. Ladda upp försäkringsavtal – AI berättar om skadan täcks."
                             color="amber"
                         />
                         <FeatureCard
-                            icon={<Database className="text-white" size={24} />}
-                            title="Dokumentation som lönar sig"
-                            description="När det är dags att sälja har du en komplett, sökbar historik över varje skruv och service. Det bygger förtroende och maximerar försäljningspriset."
+                            icon={<GraduationCap className="text-white" size={24} />}
+                            title="Forskningsbaserad projektmetodik"
+                            description="Smarta mål, tydliga uppgifter. AI identifierar beroenden så du gör rätt saker i rätt ordning."
+                            color="teal"
+                        />
+                        <FeatureCard
+                            icon={<TrendingUp className="text-white" size={24} />}
+                            title="Dokumentation ökar värdet"
+                            description="När du säljer kan du visa komplett historik: varje byte, kvitton, milstolpar. Det inger förtroende och motiverar högre pris."
                             color="blue"
-                            fullWidth
                         />
                     </div>
                 </div>
