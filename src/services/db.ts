@@ -407,77 +407,147 @@ export const createProjectFromTemplate = async (
   return newProject;
 };
 
-export const deleteProjectFull = async (projectId: string) => {
-  // Get all sub-collections
-  const tasksSnap = await getDocs(getTasksRef(projectId));
-  const itemsSnap = await getDocs(getShoppingRef(projectId));
-  const serviceLogSnap = await getDocs(getServiceLogRef(projectId));
-  const fuelLogSnap = await getDocs(getFuelLogRef(projectId));
-  const knowledgeSnap = await getDocs(getKnowledgeBaseRef(projectId));
+export const deleteProjectFull = async (projectId: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // Get all sub-collections in parallel
+    const [tasksSnap, itemsSnap, serviceLogSnap, fuelLogSnap, knowledgeSnap, inspectionsSnap] = await Promise.all([
+      getDocs(getTasksRef(projectId)),
+      getDocs(getShoppingRef(projectId)),
+      getDocs(getServiceLogRef(projectId)),
+      getDocs(getFuelLogRef(projectId)),
+      getDocs(getKnowledgeBaseRef(projectId)),
+      getDocs(getInspectionsRef(projectId))
+    ]);
 
-  const batch = writeBatch(db);
+    // Firestore batch limit is 500 operations
+    const MAX_BATCH_SIZE = 450;
+    const allDocs = [
+      ...tasksSnap.docs,
+      ...itemsSnap.docs,
+      ...serviceLogSnap.docs,
+      ...fuelLogSnap.docs,
+      ...knowledgeSnap.docs,
+      ...inspectionsSnap.docs
+    ];
 
-  // Delete all sub-collection documents
-  tasksSnap.forEach((docSnap) => batch.delete(docSnap.ref));
-  itemsSnap.forEach((docSnap) => batch.delete(docSnap.ref));
-  serviceLogSnap.forEach((docSnap) => batch.delete(docSnap.ref));
-  fuelLogSnap.forEach((docSnap) => batch.delete(docSnap.ref));
-  knowledgeSnap.forEach((docSnap) => batch.delete(docSnap.ref));
+    // Process in batches if needed
+    for (let i = 0; i < allDocs.length; i += MAX_BATCH_SIZE) {
+      const batch = writeBatch(db);
+      const chunk = allDocs.slice(i, i + MAX_BATCH_SIZE);
+      chunk.forEach((docSnap) => batch.delete(docSnap.ref));
+      await batch.commit();
+    }
 
-  // Delete chat history if exists
-  const chatRef = doc(db, 'projects', projectId, 'chat', 'history');
-  batch.delete(chatRef);
+    // Final batch: delete chat history and project document
+    const finalBatch = writeBatch(db);
+    const chatRef = doc(db, 'projects', projectId, 'chat', 'history');
+    finalBatch.delete(chatRef);
+    finalBatch.delete(getProjectRef(projectId));
+    await finalBatch.commit();
 
-  // Delete project document
-  batch.delete(getProjectRef(projectId));
-
-  await batch.commit();
+    console.log(`Successfully deleted project ${projectId} and all subcollections`);
+    return { success: true };
+  } catch (error) {
+    console.error(`Error deleting project ${projectId}:`, error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error during project deletion'
+    };
+  }
 };
 
 // --- SERVICE LOG (Sub-collection) ---
 
 export const getServiceLog = async (projectId: string): Promise<ServiceItem[]> => {
-  const querySnapshot = await getDocs(getServiceLogRef(projectId));
-  return querySnapshot.docs.map(doc => doc.data() as ServiceItem);
+  try {
+    const querySnapshot = await getDocs(getServiceLogRef(projectId));
+    return querySnapshot.docs.map(doc => doc.data() as ServiceItem);
+  } catch (error) {
+    console.error(`Error fetching service log for project ${projectId}:`, error);
+    return [];
+  }
 };
 
-export const addServiceEntry = async (projectId: string, entry: Omit<ServiceItem, 'id'>) => {
-  const docRef = await addDoc(getServiceLogRef(projectId), entry);
-  await updateDoc(docRef, { id: docRef.id });
-  return { ...entry, id: docRef.id } as ServiceItem;
+export const addServiceEntry = async (projectId: string, entry: Omit<ServiceItem, 'id'>): Promise<ServiceItem | null> => {
+  try {
+    // Create doc reference first to get ID atomically
+    const docRef = doc(getServiceLogRef(projectId));
+    const entryWithId: ServiceItem = { ...entry, id: docRef.id } as ServiceItem;
+    await setDoc(docRef, entryWithId);
+    return entryWithId;
+  } catch (error) {
+    console.error(`Error adding service entry to project ${projectId}:`, error);
+    return null;
+  }
 };
 
-export const updateServiceEntry = async (projectId: string, entryId: string, updates: Partial<ServiceItem>) => {
-  const entryRef = doc(getServiceLogRef(projectId), entryId);
-  await updateDoc(entryRef, updates);
+export const updateServiceEntry = async (projectId: string, entryId: string, updates: Partial<ServiceItem>): Promise<boolean> => {
+  try {
+    const entryRef = doc(getServiceLogRef(projectId), entryId);
+    await updateDoc(entryRef, updates);
+    return true;
+  } catch (error) {
+    console.error(`Error updating service entry ${entryId}:`, error);
+    return false;
+  }
 };
 
-export const deleteServiceEntry = async (projectId: string, entryId: string) => {
-  const entryRef = doc(getServiceLogRef(projectId), entryId);
-  await deleteDoc(entryRef);
+export const deleteServiceEntry = async (projectId: string, entryId: string): Promise<boolean> => {
+  try {
+    const entryRef = doc(getServiceLogRef(projectId), entryId);
+    await deleteDoc(entryRef);
+    return true;
+  } catch (error) {
+    console.error(`Error deleting service entry ${entryId}:`, error);
+    return false;
+  }
 };
 
 // --- FUEL LOG (Sub-collection) ---
 
 export const getFuelLog = async (projectId: string): Promise<FuelLogItem[]> => {
-  const querySnapshot = await getDocs(getFuelLogRef(projectId));
-  return querySnapshot.docs.map(doc => doc.data() as FuelLogItem);
+  try {
+    const querySnapshot = await getDocs(getFuelLogRef(projectId));
+    return querySnapshot.docs.map(doc => doc.data() as FuelLogItem);
+  } catch (error) {
+    console.error(`Error fetching fuel log for project ${projectId}:`, error);
+    return [];
+  }
 };
 
-export const addFuelEntry = async (projectId: string, entry: Omit<FuelLogItem, 'id'>) => {
-  const docRef = await addDoc(getFuelLogRef(projectId), entry);
-  await updateDoc(docRef, { id: docRef.id });
-  return { ...entry, id: docRef.id } as FuelLogItem;
+export const addFuelEntry = async (projectId: string, entry: Omit<FuelLogItem, 'id'>): Promise<FuelLogItem | null> => {
+  try {
+    // Create doc reference first to get ID atomically
+    const docRef = doc(getFuelLogRef(projectId));
+    const entryWithId: FuelLogItem = { ...entry, id: docRef.id } as FuelLogItem;
+    await setDoc(docRef, entryWithId);
+    return entryWithId;
+  } catch (error) {
+    console.error(`Error adding fuel entry to project ${projectId}:`, error);
+    return null;
+  }
 };
 
-export const updateFuelEntry = async (projectId: string, entryId: string, updates: Partial<FuelLogItem>) => {
-  const entryRef = doc(getFuelLogRef(projectId), entryId);
-  await updateDoc(entryRef, updates);
+export const updateFuelEntry = async (projectId: string, entryId: string, updates: Partial<FuelLogItem>): Promise<boolean> => {
+  try {
+    const entryRef = doc(getFuelLogRef(projectId), entryId);
+    await updateDoc(entryRef, updates);
+    return true;
+  } catch (error) {
+    console.error(`Error updating fuel entry ${entryId}:`, error);
+    return false;
+  }
 };
 
-export const deleteFuelEntry = async (projectId: string, entryId: string) => {
-  const entryRef = doc(getFuelLogRef(projectId), entryId);
-  await deleteDoc(entryRef);
+export const deleteFuelEntry = async (projectId: string, entryId: string): Promise<boolean> => {
+  try {
+    const entryRef = doc(getFuelLogRef(projectId), entryId);
+    await deleteDoc(entryRef);
+    return true;
+  } catch (error) {
+    console.error(`Error deleting fuel entry ${entryId}:`, error);
+    return false;
+  }
 };
 
 // Legacy batch update (kept for backwards compatibility during migration)
@@ -539,24 +609,48 @@ export const updateProject = async (projectId: string, updates: Partial<Project>
 // --- KNOWLEDGE BASE (Sub-collection) ---
 
 export const getKnowledgeBase = async (projectId: string): Promise<KnowledgeArticle[]> => {
-  const querySnapshot = await getDocs(getKnowledgeBaseRef(projectId));
-  return querySnapshot.docs.map(doc => doc.data() as KnowledgeArticle);
+  try {
+    const querySnapshot = await getDocs(getKnowledgeBaseRef(projectId));
+    return querySnapshot.docs.map(doc => doc.data() as KnowledgeArticle);
+  } catch (error) {
+    console.error(`Error fetching knowledge base for project ${projectId}:`, error);
+    return [];
+  }
 };
 
-export const addKnowledgeArticle = async (projectId: string, article: Omit<KnowledgeArticle, 'id'>) => {
-  const docRef = await addDoc(getKnowledgeBaseRef(projectId), article);
-  await updateDoc(docRef, { id: docRef.id });
-  return { ...article, id: docRef.id } as KnowledgeArticle;
+export const addKnowledgeArticle = async (projectId: string, article: Omit<KnowledgeArticle, 'id'>): Promise<KnowledgeArticle | null> => {
+  try {
+    // Create doc reference first to get ID atomically
+    const docRef = doc(getKnowledgeBaseRef(projectId));
+    const articleWithId: KnowledgeArticle = { ...article, id: docRef.id } as KnowledgeArticle;
+    await setDoc(docRef, articleWithId);
+    return articleWithId;
+  } catch (error) {
+    console.error(`Error adding knowledge article to project ${projectId}:`, error);
+    return null;
+  }
 };
 
-export const updateKnowledgeArticle = async (projectId: string, articleId: string, updates: Partial<KnowledgeArticle>) => {
-  const articleRef = doc(getKnowledgeBaseRef(projectId), articleId);
-  await updateDoc(articleRef, updates);
+export const updateKnowledgeArticle = async (projectId: string, articleId: string, updates: Partial<KnowledgeArticle>): Promise<boolean> => {
+  try {
+    const articleRef = doc(getKnowledgeBaseRef(projectId), articleId);
+    await updateDoc(articleRef, updates);
+    return true;
+  } catch (error) {
+    console.error(`Error updating knowledge article ${articleId}:`, error);
+    return false;
+  }
 };
 
-export const deleteKnowledgeArticle = async (projectId: string, articleId: string) => {
-  const articleRef = doc(getKnowledgeBaseRef(projectId), articleId);
-  await deleteDoc(articleRef);
+export const deleteKnowledgeArticle = async (projectId: string, articleId: string): Promise<boolean> => {
+  try {
+    const articleRef = doc(getKnowledgeBaseRef(projectId), articleId);
+    await deleteDoc(articleRef);
+    return true;
+  } catch (error) {
+    console.error(`Error deleting knowledge article ${articleId}:`, error);
+    return false;
+  }
 };
 
 export const updateVehicleData = async (projectId: string, data: Partial<VehicleData>) => {
@@ -786,22 +880,20 @@ export const clearChatHistory = async (projectId: string) => {
 // --- DEPENDENCY ENGINE (BLOCKERS) ---
 
 /**
- * Check if a task is blocked by other tasks
+ * Check if a task is blocked by other tasks (optimized version)
+ * Uses provided tasks array to avoid N+1 queries
  * Returns: { blocked: boolean, blockedBy: Task[] }
  */
-export const getTaskBlockers = async (
-  projectId: string,
-  taskId: string
-): Promise<{ blocked: boolean; blockedBy: Task[] }> => {
-  const allTasks = await getTasks(projectId);
-  const currentTask = allTasks.find(t => t.id === taskId);
-
-  if (!currentTask || !currentTask.blockers || currentTask.blockers.length === 0) {
+export const checkTaskBlockers = (
+  task: Task,
+  allTasks: Task[]
+): { blocked: boolean; blockedBy: Task[] } => {
+  if (!task.blockers || task.blockers.length === 0) {
     return { blocked: false, blockedBy: [] };
   }
 
   // Extract taskIds from blockers (supports both new TaskBlocker[] and legacy string[] format)
-  const blockerIds = currentTask.blockers.map(b => typeof b === 'string' ? b : b.taskId);
+  const blockerIds = task.blockers.map(b => typeof b === 'string' ? b : b.taskId);
 
   const blockedBy = allTasks.filter(t =>
     blockerIds.includes(t.id) && t.status !== 'Klart'
@@ -814,39 +906,70 @@ export const getTaskBlockers = async (
 };
 
 /**
+ * Check if a task is blocked by other tasks
+ * Returns: { blocked: boolean, blockedBy: Task[] }
+ * Note: For bulk operations, use checkTaskBlockers() with pre-fetched tasks to avoid N+1 queries
+ */
+export const getTaskBlockers = async (
+  projectId: string,
+  taskId: string
+): Promise<{ blocked: boolean; blockedBy: Task[] }> => {
+  try {
+    const allTasks = await getTasks(projectId);
+    const currentTask = allTasks.find(t => t.id === taskId);
+
+    if (!currentTask) {
+      return { blocked: false, blockedBy: [] };
+    }
+
+    return checkTaskBlockers(currentTask, allTasks);
+  } catch (error) {
+    console.error(`Error checking blockers for task ${taskId}:`, error);
+    return { blocked: false, blockedBy: [] };
+  }
+};
+
+/**
  * Get all tasks that are currently blocked
+ * Optimized: Single query, O(n) processing
  */
 export const getBlockedTasks = async (projectId: string): Promise<Task[]> => {
-  const allTasks = await getTasks(projectId);
+  try {
+    const allTasks = await getTasks(projectId);
 
-  const blockedTasks = await Promise.all(
-    allTasks.map(async task => {
-      const { blocked } = await getTaskBlockers(projectId, task.id);
-      return blocked ? task : null;
-    })
-  );
-
-  return blockedTasks.filter((t): t is Task => t !== null);
+    // Process all tasks in memory (1 query instead of N+1)
+    return allTasks.filter(task => {
+      const { blocked } = checkTaskBlockers(task, allTasks);
+      return blocked;
+    });
+  } catch (error) {
+    console.error(`Error getting blocked tasks for project ${projectId}:`, error);
+    return [];
+  }
 };
 
 /**
  * Get tasks that can be started now (not blocked)
+ * Optimized: Single query, O(n) processing
  */
 export const getAvailableTasks = async (projectId: string): Promise<Task[]> => {
-  const allTasks = await getTasks(projectId);
+  try {
+    const allTasks = await getTasks(projectId);
 
-  const availableTasks = await Promise.all(
-    allTasks.map(async task => {
+    // Process all tasks in memory (1 query instead of N+1)
+    return allTasks.filter(task => {
+      // Skip completed or in-progress tasks
       if (task.status === 'Klart' || task.status === 'Pågående') {
-        return null; // Already done or in progress
+        return false;
       }
 
-      const { blocked } = await getTaskBlockers(projectId, task.id);
-      return !blocked ? task : null;
-    })
-  );
-
-  return availableTasks.filter((t): t is Task => t !== null);
+      const { blocked } = checkTaskBlockers(task, allTasks);
+      return !blocked;
+    });
+  } catch (error) {
+    console.error(`Error getting available tasks for project ${projectId}:`, error);
+    return [];
+  }
 };
 
 // --- SHOPPING INTELLIGENCE (STORE MODE) ---

@@ -57,22 +57,66 @@ service cloud.firestore {
         return isOwner() || isMember();
       }
 
-      // Check if user is invited (for accepting invites)
-      function isInvited() {
+      // Check if user is invited by UID (more secure than email)
+      function isInvitedByUid() {
         return request.auth != null &&
+               resource.data.invitedUids != null &&
+               request.auth.uid in resource.data.invitedUids;
+      }
+
+      // Check if user is invited by email (legacy - for backwards compatibility)
+      // Note: This is less secure as emails can be changed
+      function isInvitedByEmail() {
+        return request.auth != null &&
+               request.auth.token.email_verified == true &&
                resource.data.invitedEmails != null &&
                request.auth.token.email in resource.data.invitedEmails;
+      }
+
+      // Combined invite check (prefer UID, fallback to verified email)
+      function isInvited() {
+        return isInvitedByUid() || isInvitedByEmail();
       }
 
       // Check if new document claims correct ownership
       function isValidCreate() {
         return request.auth != null && (
-          // New model: user must be in ownerIds
+          // New model: user must be in ownerIds and ownerIds must have at least 1 member
           (request.resource.data.ownerIds != null &&
+           request.resource.data.ownerIds.size() > 0 &&
            request.auth.uid in request.resource.data.ownerIds) ||
           // Legacy: user must be ownerId
           request.resource.data.ownerId == request.auth.uid
         );
+      }
+
+      // Check if update only modifies allowed fields for invited users
+      // Invited users can only accept the invite (add themselves to memberIds, remove from invites)
+      function isValidInviteAcceptance() {
+        let incoming = request.resource.data;
+        let existing = resource.data;
+
+        // The user must be adding themselves to memberIds
+        let addingSelfToMembers = (
+          incoming.memberIds != null &&
+          request.auth.uid in incoming.memberIds
+        );
+
+        // Critical fields must not change
+        let ownerIdsUnchanged = incoming.ownerIds == existing.ownerIds;
+        let primaryOwnerUnchanged = incoming.primaryOwnerId == existing.primaryOwnerId;
+        let ownerIdUnchanged = incoming.ownerId == existing.ownerId;
+
+        // Vehicle and project data must not change
+        let vehicleDataUnchanged = incoming.vehicleData == existing.vehicleData;
+        let nameUnchanged = incoming.name == existing.name;
+
+        return addingSelfToMembers &&
+               ownerIdsUnchanged &&
+               primaryOwnerUnchanged &&
+               ownerIdUnchanged &&
+               vehicleDataUnchanged &&
+               nameUnchanged;
       }
 
       // --- ACCESS RULES ---
@@ -80,11 +124,13 @@ service cloud.firestore {
       // Read: owner, member, or invited user
       allow read: if hasAccess() || isInvited();
 
-      // Create: user must claim ownership
+      // Create: user must claim ownership with at least one owner
       allow create: if isValidCreate();
 
-      // Update: owner, member, or invited user (for accepting invite)
-      allow update: if hasAccess() || isInvited();
+      // Update:
+      // - Owners and members can update freely
+      // - Invited users can ONLY accept the invite (restricted fields)
+      allow update: if hasAccess() || (isInvited() && isValidInviteAcceptance());
 
       // Delete: only primary owner can delete
       allow delete: if isPrimaryOwner();
@@ -158,16 +204,46 @@ service cloud.firestore {
     // Public waitlist - anyone can join, but cannot read
     // This prevents enumeration attacks while allowing signups
     match /waitlist/{email} {
-      // Anyone can add themselves to waitlist (with email validation)
+      // Anyone can add themselves to waitlist (with improved email validation)
       allow create: if request.auth == null &&
                        request.resource.data.email == email &&
                        request.resource.data.email is string &&
-                       request.resource.data.email.matches('.*@.*\\..*') &&
-                       request.resource.data.status == 'pending';
-      
+                       // Improved email regex: must have local part, @, domain, and TLD (2+ chars)
+                       request.resource.data.email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$') &&
+                       request.resource.data.status == 'pending' &&
+                       // Require timestamp for rate limiting analysis
+                       request.resource.data.timestamp != null;
+
       // No public read access (prevents enumeration)
       // Admins must use Firebase Console to manage waitlist
       allow read, update, delete: if false;
+    }
+
+    // ===========================
+    // ANALYTICS (if needed)
+    // ===========================
+    match /analytics/{docId} {
+      // Only authenticated users can write analytics
+      allow create: if request.auth != null;
+      // No one can read (admin only via Console)
+      allow read, update, delete: if false;
+    }
+
+    // ===========================
+    // FEATURE FLAGS
+    // ===========================
+    match /featureFlags/{flagId} {
+      // Anyone can read feature flags (they're public config)
+      allow read: if true;
+      // Only admins can write (via Console)
+      allow write: if false;
+    }
+
+    // ===========================
+    // DENY ALL OTHER PATHS
+    // ===========================
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

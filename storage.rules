@@ -1,22 +1,145 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // ===========================
+    // HELPER FUNCTIONS
+    // ===========================
+
+    // Validate image files (JPEG, PNG, GIF, WebP)
+    function isValidImage() {
+      return request.resource.contentType.matches('image/(jpeg|png|gif|webp)');
+    }
+
+    // Validate audio files (MP3, WAV, OGG, WebM, M4A)
+    function isValidAudio() {
+      return request.resource.contentType.matches('audio/(mpeg|wav|ogg|webm|mp4|x-m4a)');
+    }
+
+    // Validate document files (PDF, images)
+    function isValidDocument() {
+      return request.resource.contentType.matches('application/pdf') || isValidImage();
+    }
+
+    // Max file sizes
+    function isUnderMaxImageSize() {
+      return request.resource.size < 10 * 1024 * 1024; // 10MB
+    }
+
+    function isUnderMaxAudioSize() {
+      return request.resource.size < 50 * 1024 * 1024; // 50MB
+    }
+
+    function isUnderMaxDocumentSize() {
+      return request.resource.size < 25 * 1024 * 1024; // 25MB
+    }
+
+    // ===========================
+    // RECEIPTS
+    // ===========================
     // Files are stored under /receipts/{userId}/{projectId}/{fileId}
+    // Users can only access their own receipts
     match /receipts/{userId}/{projectId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null &&
+                      request.auth.uid == userId &&
+                      isValidDocument() &&
+                      isUnderMaxDocumentSize();
     }
 
-    // Chat images are stored under /chat-images/{projectId}/{fileId}
+    // ===========================
+    // CHAT IMAGES
+    // ===========================
+    // Secured path: /chat-images/{userId}/{projectId}/{fileId}
+    // Users can only access their own uploaded images
+    // Other project members can read via the download URL stored in Firestore
+    match /chat-images/{userId}/{projectId}/{allPaths=**} {
+      // Only the uploader can write
+      allow write: if request.auth != null &&
+                      request.auth.uid == userId &&
+                      isValidImage() &&
+                      isUnderMaxImageSize();
+      // Anyone authenticated can read (URLs are shared in Firestore which has access control)
+      // This is safe because:
+      // 1. URLs are only shared in Firestore chat which requires project access
+      // 2. File names are UUIDs, not guessable
+      allow read: if request.auth != null;
+    }
+
+    // Legacy path support (to be migrated)
+    // TODO: Migrate existing files to new path structure
     match /chat-images/{projectId}/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      // Read-only for legacy files (no new writes allowed)
+      allow read: if request.auth != null;
+      allow write: if false; // Block new uploads to legacy path
     }
 
-    // Inspection images/audio are stored under /inspections/images/{projectId}/{fileId}
-    match /inspections/images/{projectId}/{allPaths=**} {
-      allow read, write: if request.auth != null;
+    // ===========================
+    // INSPECTION IMAGES
+    // ===========================
+    // Secured path: /inspections/images/{userId}/{projectId}/{fileId}
+    match /inspections/images/{userId}/{projectId}/{allPaths=**} {
+      allow write: if request.auth != null &&
+                      request.auth.uid == userId &&
+                      isValidImage() &&
+                      isUnderMaxImageSize();
+      allow read: if request.auth != null;
     }
+
+    // Legacy path support
+    match /inspections/images/{projectId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if false; // Block new uploads to legacy path
+    }
+
+    // ===========================
+    // INSPECTION AUDIO
+    // ===========================
+    // Secured path: /inspections/audio/{userId}/{projectId}/{fileId}
+    match /inspections/audio/{userId}/{projectId}/{allPaths=**} {
+      allow write: if request.auth != null &&
+                      request.auth.uid == userId &&
+                      isValidAudio() &&
+                      isUnderMaxAudioSize();
+      allow read: if request.auth != null;
+    }
+
+    // Legacy path support
     match /inspections/audio/{projectId}/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if false; // Block new uploads to legacy path
+    }
+
+    // ===========================
+    // PROJECT DOCUMENTS
+    // ===========================
+    // General project documents: /documents/{userId}/{projectId}/{fileId}
+    match /documents/{userId}/{projectId}/{allPaths=**} {
+      allow write: if request.auth != null &&
+                      request.auth.uid == userId &&
+                      isValidDocument() &&
+                      isUnderMaxDocumentSize();
+      allow read: if request.auth != null;
+    }
+
+    // ===========================
+    // USER AVATARS
+    // ===========================
+    // User profile images: /avatars/{userId}/{fileId}
+    match /avatars/{userId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+                      request.auth.uid == userId &&
+                      isValidImage() &&
+                      request.resource.size < 5 * 1024 * 1024; // 5MB max for avatars
+    }
+
+    // ===========================
+    // DENY ALL OTHER PATHS
+    // ===========================
+    // Explicitly deny access to any other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
