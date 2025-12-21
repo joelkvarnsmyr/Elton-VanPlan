@@ -253,17 +253,17 @@ export const WaitlistLanding: React.FC = () => {
 
             {/* FUNKTIONER - Apple-Inspired Layout */}
 
-            {/* HERO FEATURE 1: AI som projektledare */}
+            {/* HERO FEATURE 1: Elton som projektledare */}
             <section className="px-6 py-32 bg-gradient-to-br from-purple-50 via-white to-rose-50">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid lg:grid-cols-2 gap-16 items-center">
                         <div>
-                            <span className="text-purple-600 font-semibold text-sm uppercase tracking-wider mb-4 block">Din AI-projektledare</span>
+                            <span className="text-purple-600 font-semibold text-sm uppercase tracking-wider mb-4 block">Din Elton-projektledare</span>
                             <h3 className="text-5xl md:text-6xl font-serif font-bold text-stone-900 mb-6 leading-tight">
                                 Från köpbesiktning till färdig camper.
                             </h3>
                             <p className="text-xl text-stone-600 mb-8 leading-relaxed">
-                                Fota rostangreppet eller motorn – AI analyserar, varnar för fallgropar och skapar en steg-för-steg-plan för hur du fixar det. Som att ha en erfaren mekaniker i fickan.
+                                Fota rostangreppet eller motorn – Elton analyserar, varnar för fallgropar och skapar en steg-för-steg-plan för hur du fixar det. Som att ha en erfaren mekaniker i fickan.
                             </p>
                             <div className="flex gap-4">
                                 <div className="flex items-center gap-2 text-stone-700">
@@ -299,7 +299,7 @@ export const WaitlistLanding: React.FC = () => {
                         <p className="text-lg text-stone-700 leading-relaxed mb-6">
                             Ta kort på registreringsskylten eller ange regnummer – vi hämtar automatiskt alla fordonsdata: modell, årsmodell, vikt, tekniska specifikationer.
                         </p>
-                        <p className="text-sm text-indigo-600 font-semibold">AI vet direkt om du har en LT31 från '76 eller en modern Sprinter →</p>
+                        <p className="text-sm text-indigo-600 font-semibold">Elton vet direkt om du har en LT31 från '76 eller en modern Sprinter →</p>
                     </div>
 
                     {/* Scanna kvitton */}
@@ -311,7 +311,7 @@ export const WaitlistLanding: React.FC = () => {
                             Scanna kvitton automatiskt
                         </h4>
                         <p className="text-lg text-stone-700 leading-relaxed mb-6">
-                            Fotografera kvitton från bildelar. AI läser produktnamn, pris och datum – allt sparas automatiskt i budgeten.
+                            Fotografera kvitton från bildelar. Elton läser produktnamn, pris och datum – allt sparas automatiskt i budgeten.
                         </p>
                         <p className="text-sm text-emerald-600 font-semibold">Sluta leta kvitton i handskfacket →</p>
                     </div>
@@ -333,10 +333,10 @@ export const WaitlistLanding: React.FC = () => {
                                 Undvik dyra misstag innan du köper.
                             </h3>
                             <p className="text-xl text-stone-600 mb-8 leading-relaxed">
-                                Ska köpa bil? Få modell-specifik checklista. Fotografera rost, motor – AI analyserar och varnar för dolda problem.
+                                Ska köpa bil? Få modell-specifik checklista. Fotografera rost, motor – Elton analyserar och varnar för dolda problem.
                             </p>
                             <p className="text-stone-500 italic">
-                                "AI:n upptäckte rostskador som skulle kostat 50 000 kr att laga. Jag tackade nej till köpet."
+                                "Elton upptäckte rostskador som skulle kostat 50 000 kr att laga. Jag tackade nej till köpet."
                             </p>
                         </div>
                     </div>
@@ -358,23 +358,23 @@ export const WaitlistLanding: React.FC = () => {
                     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <CompactFeatureCard
                             icon={<Sparkles className="text-purple-600" size={24} />}
-                            title="AI skriver om uppgifter"
+                            title="Elton skriver om uppgifter"
                             description="Från 'BYTA OLJA' till begripliga steg-för-steg checklistor."
                         />
                         <CompactFeatureCard
                             icon={<Calendar className="text-cyan-600" size={24} />}
                             title="Säsongspåminnelser"
-                            description="Vinterförvaring? Vårcheck? AI skapar checklistor baserat på din bil."
+                            description="Vinterförvaring? Vårcheck? Elton skapar checklistor baserat på din bil."
                         />
                         <CompactFeatureCard
                             icon={<BookOpen className="text-amber-600" size={24} />}
-                            title="AI lär sig din bil"
-                            description="Ladda upp verkstadshandbok – AI svarar på frågor om din modell."
+                            title="Elton lär sig din bil"
+                            description="Ladda upp verkstadshandbok – Elton svarar på frågor om din modell."
                         />
                         <CompactFeatureCard
                             icon={<ShoppingCart className="text-teal-600" size={24} />}
                             title="Smarta inköpslistor"
-                            description="AI föreslår exakt vilka delar du behöver för ditt projekt."
+                            description="Elton föreslår exakt vilka delar du behöver för ditt projekt."
                         />
                         <CompactFeatureCard
                             icon={<MapPin className="text-indigo-600" size={24} />}
@@ -384,7 +384,7 @@ export const WaitlistLanding: React.FC = () => {
                         <CompactFeatureCard
                             icon={<TrendingUp className="text-purple-600" size={24} />}
                             title="Tidslinje & Fasplanering"
-                            description="AI identifierar beroenden – vad måste göras först."
+                            description="Elton identifierar beroenden – vad måste göras först."
                         />
                         <CompactFeatureCard
                             icon={<Cloud className="text-cyan-600" size={24} />}
@@ -452,7 +452,7 @@ export const WaitlistLanding: React.FC = () => {
                         Nödsituation? Inga problem.
                     </h4>
                     <p className="text-xl opacity-90 max-w-2xl mx-auto">
-                        Fastnat i Danmark? Ta bild på problemet, fråga Elton AI. Ladda upp försäkringsavtal – AI berättar om skadan täcks.
+                        Fastnat i Danmark? Ta bild på problemet, fråga Elton. Ladda upp försäkringsavtal – Elton berättar om skadan täcks.
                     </p>
                 </div>
             </section>
