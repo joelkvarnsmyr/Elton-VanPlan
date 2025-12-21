@@ -72,6 +72,7 @@ export const App = () => {
   const [editName, setEditName] = useState('');
   const [editSkillLevel, setEditSkillLevel] = useState<'beginner' | 'intermediate' | 'expert'>('intermediate');
   const [shoppingTaskFilter, setShoppingTaskFilter] = useState<string | undefined>(undefined); // NEW: Filter shopping by task
+  const [taskToView, setTaskToView] = useState<string | null>(null);
 
   const loadUserProjects = async (user: UserProfile) => {
     console.log('🔍 Loading projects for user:', user.uid, user.email);
@@ -633,8 +634,8 @@ export const App = () => {
           </div>
         </div>
         <div className="pb-28 sm:pb-0">
-          {currentView === 'dashboard' && <Dashboard project={activeProject} onPhaseClick={(p) => { setActivePhaseFilter(p); setCurrentView('tasks'); }} />}
-          {currentView === 'tasks' && <TaskBoard tasks={activeProject.tasks} shoppingItems={activeProject.shoppingItems} vehicleData={activeProject.vehicleData} onUpdateTask={handleUpdateTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} initialFilter={activePhaseFilter as any} />}
+          {currentView === 'dashboard' && <Dashboard project={activeProject} onPhaseClick={(p) => { setActivePhaseFilter(p); setCurrentView('tasks'); }} onViewTask={(taskId) => { setTaskToView(taskId); setCurrentView('tasks'); }} onViewShopping={() => setCurrentView('shopping')} />}
+          {currentView === 'tasks' && <TaskBoard tasks={activeProject.tasks} shoppingItems={activeProject.shoppingItems} vehicleData={activeProject.vehicleData} onUpdateTask={handleUpdateTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} initialFilter={activePhaseFilter as any} initialSelectedTaskId={taskToView} />}
           {currentView === 'ai' && <AIAssistant project={activeProject} contacts={activeProject.contacts} userSkillLevel={currentUser?.skillLevel} onAddTask={(t) => handleAddTasks(t as any)} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} onUpdateShoppingItem={handleUpdateShoppingItem} onDeleteShoppingItem={handleDeleteShoppingItem} onUpdateVehicleData={handleUpdateVehicleData} onAddKnowledgeArticle={handleAddKnowledgeArticle} onAddServiceLog={handleAddServiceLog} onAddHistoryEvent={handleAddHistoryEvent} onUpdateProjectMetadata={handleUpdateProjectMetadata} onClose={() => setCurrentView('dashboard')} />}
           {currentView === 'specs' && <VehicleSpecs
             vehicleData={activeProject.vehicleData}

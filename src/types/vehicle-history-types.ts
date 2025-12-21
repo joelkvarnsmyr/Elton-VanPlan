@@ -60,3 +60,23 @@ export interface VehicleStatistics {
     yearRange: string; // e.g., "1975 - 1983"
     lastUpdated: string; // ISO format
 }
+
+/**
+ * Vehicle Maintenance Data
+ * Critical maintenance info and specs
+ */
+export interface HistoryMaintenanceData {
+    fluids: {
+        oilType: string;
+        oilCapacity: string;
+        coolantType: string;
+        gearboxOil: string;
+    };
+    battery: {
+        type: string;
+        cca: number;
+        installed: string;
+    };
+    criticalNotes?: string[];
+    maintenanceNotes?: string;
+}

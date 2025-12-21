@@ -14,9 +14,11 @@ interface TaskDetailModalProps {
     onDelete?: (taskId: string) => void;
     onAskElton?: (taskContext: string) => void;
     onClose: () => void;
+    availablePhases?: string[];
 }
 
-export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleData, shoppingItems, onUpdate, onAddShoppingItem, onDelete, onAskElton, onClose }) => {
+
+export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleData, shoppingItems, onUpdate, onAddShoppingItem, onDelete, onAskElton, onClose, availablePhases }) => {
     const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'decision'>('details');
     const [newComment, setNewComment] = useState('');
     const [newLinkTitle, setNewLinkTitle] = useState('');
@@ -33,7 +35,8 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
             type: 'task',
             task,
             vehicleData,
-            relatedItems: linkedItems
+            relatedItems: linkedItems,
+            availablePhases
         });
     };
 

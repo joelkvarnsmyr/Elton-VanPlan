@@ -1,9 +1,317 @@
 
 import React, { useState, useMemo } from 'react';
 import { ShoppingItem, Task, VendorOption, ShoppingItemStatus, VehicleData, ChatContext } from '@/types/types';
-import { ShoppingBag, Plus, ExternalLink, Circle, CheckCircle2, MessageCircle, X, ChevronDown, Layers, ListTodo, Tags, Store, Trash2 } from 'lucide-react';
+import { ShoppingBag, Plus, ExternalLink, Circle, CheckCircle2, MessageCircle, X, ChevronDown, Layers, ListTodo, Tags, Store, Trash2, Save, Edit2 } from 'lucide-react';
 import { ContextualChat } from './ContextualChat';
 
+// Item Detail/Edit Modal Component
+interface ItemDetailModalProps {
+  item: ShoppingItem;
+  tasks: Task[];
+  categories: string[];
+  vehicleData?: VehicleData;
+  onSave: (item: ShoppingItem) => void;
+  onDelete: () => void;
+  onClose: () => void;
+  onOpenChat: () => void;
+}
+
+const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
+  item,
+  tasks,
+  categories,
+  vehicleData,
+  onSave,
+  onDelete,
+  onClose,
+  onOpenChat
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({
+    name: item.name,
+    estimatedCost: item.estimatedCost || 0,
+    actualCost: item.actualCost || 0,
+    quantity: item.quantity || '1 st',
+    store: item.store || '',
+    category: (item.category || 'Övrigt') as ShoppingItem['category'],
+    url: item.url || '',
+    linkedTaskId: item.linkedTaskId || '',
+    status: item.status || ShoppingItemStatus.RESEARCH
+  });
+
+  const handleSave = () => {
+    onSave({
+      ...item,
+      name: editData.name,
+      estimatedCost: editData.estimatedCost,
+      actualCost: editData.actualCost || undefined,
+      quantity: editData.quantity,
+      store: editData.store || undefined,
+      category: editData.category as ShoppingItem['category'],
+      url: editData.url || undefined,
+      linkedTaskId: editData.linkedTaskId || undefined,
+      status: editData.status
+    });
+    setIsEditing(false);
+  };
+
+  const getTaskName = (taskId?: string) => {
+    if (!taskId) return '';
+    const task = tasks.find(t => t.id === taskId);
+    return task?.title || '';
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div
+        className="bg-white w-full sm:w-[500px] sm:max-h-[85vh] max-h-[90vh] rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-lg text-slate-800">
+              {isEditing ? 'Redigera' : 'Detaljer'}
+            </h3>
+            {!isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"
+                title="Redigera"
+              >
+                <Edit2 size={16} className="text-slate-500" />
+              </button>
+            )}
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full" aria-label="Stäng">
+            <X size={20} className="text-slate-500" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-4 overflow-y-auto max-h-[60vh]">
+          {/* Name */}
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Produktnamn</label>
+            {isEditing ? (
+              <input
+                type="text"
+                value={editData.name}
+                onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              />
+            ) : (
+              <p className="text-base font-medium text-slate-800">{item.name}</p>
+            )}
+          </div>
+
+          {/* Prices */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Estimerat pris</label>
+              {isEditing ? (
+                <input
+                  type="number"
+                  value={editData.estimatedCost}
+                  onChange={(e) => setEditData(prev => ({ ...prev, estimatedCost: parseInt(e.target.value) || 0 }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              ) : (
+                <p className="text-xl font-mono font-bold text-slate-700">{item.estimatedCost || 0} kr</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Faktiskt pris</label>
+              {isEditing ? (
+                <input
+                  type="number"
+                  value={editData.actualCost || ''}
+                  onChange={(e) => setEditData(prev => ({ ...prev, actualCost: parseInt(e.target.value) || 0 }))}
+                  placeholder="0"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              ) : (
+                <p className="text-xl font-mono font-bold text-green-600">{item.actualCost || '–'} kr</p>
+              )}
+            </div>
+          </div>
+
+          {/* Quantity & Category */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Antal</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={editData.quantity}
+                  onChange={(e) => setEditData(prev => ({ ...prev, quantity: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              ) : (
+                <p className="text-sm text-slate-700">{item.quantity || '1 st'}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Kategori</label>
+              {isEditing ? (
+                <select
+                  value={editData.category}
+                  onChange={(e) => setEditData(prev => ({ ...prev, category: e.target.value as ShoppingItem['category'] }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  aria-label="Välj kategori"
+                >
+                  {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+              ) : (
+                <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{item.category}</span>
+              )}
+            </div>
+          </div>
+
+          {/* Store */}
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Butik</label>
+            {isEditing ? (
+              <input
+                type="text"
+                value={editData.store}
+                onChange={(e) => setEditData(prev => ({ ...prev, store: e.target.value }))}
+                placeholder="T.ex. Biltema, Jula..."
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            ) : (
+              <p className="text-sm text-slate-700">{item.store || '–'}</p>
+            )}
+          </div>
+
+          {/* URL */}
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Produktlänk</label>
+            {isEditing ? (
+              <input
+                type="url"
+                value={editData.url}
+                onChange={(e) => setEditData(prev => ({ ...prev, url: e.target.value }))}
+                placeholder="https://..."
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            ) : item.url ? (
+              <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline truncate block">
+                {item.url}
+              </a>
+            ) : (
+              <p className="text-sm text-slate-400">Ingen länk</p>
+            )}
+          </div>
+
+          {/* Linked Task */}
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Kopplad uppgift</label>
+            {isEditing ? (
+              <select
+                value={editData.linkedTaskId}
+                onChange={(e) => setEditData(prev => ({ ...prev, linkedTaskId: e.target.value }))}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="">Ingen koppling</option>
+                {tasks.map(task => <option key={task.id} value={task.id}>{task.title}</option>)}
+              </select>
+            ) : (
+              <p className="text-sm text-blue-600">{getTaskName(item.linkedTaskId) || '–'}</p>
+            )}
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Status</label>
+            {isEditing ? (
+              <select
+                value={editData.status}
+                onChange={(e) => setEditData(prev => ({ ...prev, status: e.target.value as ShoppingItemStatus }))}
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value={ShoppingItemStatus.RESEARCH}>Jämför</option>
+                <option value={ShoppingItemStatus.DECIDED}>Bestämt</option>
+                <option value={ShoppingItemStatus.BOUGHT}>Köpt</option>
+              </select>
+            ) : (
+              <span className={`text-xs font-bold px-2 py-1 rounded-full ${item.checked ? 'bg-green-100 text-green-700'
+                : item.status === ShoppingItemStatus.DECIDED ? 'bg-blue-100 text-blue-700'
+                  : 'bg-amber-100 text-amber-700'
+                }`}>
+                {item.checked ? 'Köpt' : item.status || 'Jämför'}
+              </span>
+            )}
+          </div>
+
+          {/* Vendor Options (view only) */}
+          {!isEditing && item.options && item.options.length > 0 && (
+            <div>
+              <p className="text-xs uppercase text-slate-400 font-bold mb-2">Jämför alternativ</p>
+              <div className="space-y-2">
+                {item.options.map((opt, idx) => (
+                  <div key={idx} className={`p-3 rounded-lg border ${item.selectedOptionId === opt.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">{opt.store}</span>
+                      <span className="font-mono text-sm font-bold">{opt.totalCost} kr</span>
+                    </div>
+                    {opt.shelfLocation && <p className="text-xs text-slate-500 mt-1">📍 {opt.shelfLocation}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-slate-100 flex gap-2 bg-slate-50">
+          {isEditing ? (
+            <>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="flex-1 py-3 bg-slate-200 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-300"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={handleSave}
+                className="flex-1 py-3 bg-green-600 text-white rounded-xl font-medium text-sm hover:bg-green-700 flex items-center justify-center gap-2"
+              >
+                <Save size={16} /> Spara
+              </button>
+            </>
+          ) : (
+            <>
+              {vehicleData && (
+                <button
+                  onClick={onOpenChat}
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 flex items-center justify-center gap-2"
+                >
+                  <MessageCircle size={16} /> Prata med ELTON
+                </button>
+              )}
+              <button
+                onClick={() => setIsEditing(true)}
+                className="py-3 px-4 bg-slate-200 text-slate-700 rounded-xl font-medium text-sm hover:bg-slate-300 flex items-center justify-center gap-2"
+              >
+                <Edit2 size={16} /> Redigera
+              </button>
+              <button
+                onClick={onDelete}
+                className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100"
+                aria-label="Ta bort"
+              >
+                <Trash2 size={18} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ShoppingList Props
 interface ShoppingListProps {
   items: ShoppingItem[];
   tasks?: Task[];
@@ -174,8 +482,8 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
                   key={cat}
                   onClick={() => setActiveFilter(cat)}
                   className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeFilter === cat
-                      ? 'bg-[#2c2c2c] text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    ? 'bg-[#2c2c2c] text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                 >
                   {cat}
@@ -326,132 +634,27 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
         )}
       </div>
 
-      {/* Item Detail Modal */}
+      {/* Item Detail/Edit Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center" onClick={() => setSelectedItem(null)}>
-          <div
-            className="bg-white w-full sm:w-[500px] sm:max-h-[80vh] max-h-[85vh] rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-start justify-between">
-              <div className="flex-1 min-w-0 pr-4">
-                <h3 className="font-bold text-lg text-slate-800 truncate">{selectedItem.name}</h3>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{selectedItem.category}</span>
-                  {selectedItem.store && (
-                    <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">{selectedItem.store}</span>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedItem(null)}
-                className="p-2 hover:bg-slate-100 rounded-full"
-                aria-label="Stäng"
-              >
-                <X size={20} className="text-slate-500" />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto max-h-[60vh]">
-              {/* Price & Status */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-50 rounded-xl p-3">
-                  <p className="text-[10px] uppercase text-slate-400 font-bold">Estimerat</p>
-                  <p className="text-xl font-mono font-bold text-slate-700">{selectedItem.estimatedCost || 0} kr</p>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-3">
-                  <p className="text-[10px] uppercase text-slate-400 font-bold">Faktiskt</p>
-                  <p className="text-xl font-mono font-bold text-green-600">{selectedItem.actualCost || '–'} kr</p>
-                </div>
-              </div>
-
-              {/* Quantity */}
-              <div className="flex items-center justify-between py-2 border-b border-slate-100">
-                <span className="text-sm text-slate-500">Antal</span>
-                <span className="text-sm font-medium text-slate-700">{selectedItem.quantity || '1 st'}</span>
-              </div>
-
-              {/* Status */}
-              <div className="flex items-center justify-between py-2 border-b border-slate-100">
-                <span className="text-sm text-slate-500">Status</span>
-                <span className={`text-xs font-bold px-2 py-1 rounded-full ${selectedItem.checked
-                    ? 'bg-green-100 text-green-700'
-                    : selectedItem.status === ShoppingItemStatus.DECIDED
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'bg-amber-100 text-amber-700'
-                  }`}>
-                  {selectedItem.checked ? 'Köpt' : selectedItem.status || 'Jämför'}
-                </span>
-              </div>
-
-              {/* Linked Task */}
-              {selectedItem.linkedTaskId && (
-                <div className="flex items-center justify-between py-2 border-b border-slate-100">
-                  <span className="text-sm text-slate-500">Kopplad uppgift</span>
-                  <span className="text-sm font-medium text-blue-600 truncate max-w-[200px]">
-                    {getTaskName(selectedItem.linkedTaskId)}
-                  </span>
-                </div>
-              )}
-
-              {/* Vendor Options */}
-              {selectedItem.options && selectedItem.options.length > 0 && (
-                <div>
-                  <p className="text-xs uppercase text-slate-400 font-bold mb-2">Jämför alternativ</p>
-                  <div className="space-y-2">
-                    {selectedItem.options.map((opt, idx) => (
-                      <div key={idx} className={`p-3 rounded-lg border ${selectedItem.selectedOptionId === opt.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-slate-200'
-                        }`}>
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm">{opt.store}</span>
-                          <span className="font-mono text-sm font-bold">{opt.totalCost} kr</span>
-                        </div>
-                        {opt.shelfLocation && (
-                          <p className="text-xs text-slate-500 mt-1">📍 {opt.shelfLocation}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* URL */}
-              {selectedItem.url && (
-                <a
-                  href={selectedItem.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full text-center py-2 bg-slate-100 text-slate-600 rounded-lg text-sm hover:bg-slate-200 transition-colors"
-                >
-                  Öppna produktlänk ↗
-                </a>
-              )}
-            </div>
-
-            {/* Footer Actions */}
-            <div className="p-4 sm:p-5 border-t border-slate-100 flex gap-2">
-              {vehicleData && (
-                <button
-                  onClick={() => { openChatForItem(selectedItem); setSelectedItem(null); }}
-                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 flex items-center justify-center gap-2"
-                >
-                  <MessageCircle size={16} /> Prata med ELTON
-                </button>
-              )}
-              <button
-                onClick={() => { onDelete(selectedItem.id); setSelectedItem(null); }}
-                className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100"
-                aria-label="Ta bort"
-              >
-                <Trash2 size={18} />
-              </button>
-            </div>
-          </div>
-        </div>
+        <ItemDetailModal
+          item={selectedItem}
+          tasks={tasks}
+          categories={categories}
+          vehicleData={vehicleData}
+          onSave={(updated) => {
+            onUpdate(updated);
+            setSelectedItem(updated);
+          }}
+          onDelete={() => {
+            onDelete(selectedItem.id);
+            setSelectedItem(null);
+          }}
+          onClose={() => setSelectedItem(null)}
+          onOpenChat={() => {
+            openChatForItem(selectedItem);
+            setSelectedItem(null);
+          }}
+        />
       )}
 
       {/* Contextual Chat Modal */}

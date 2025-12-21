@@ -1,11 +1,17 @@
 /**
  * AI Service
  *
- * Unified AI service that uses Cloud Functions for all AI operations.
- * API keys are handled securely on the backend.
+ * Unified AI service that uses Firebase Vertex AI SDK directly (Client-side).
+ * This replaces the Cloud Functions proxy to improve stability and performance.
+ * Access control is handled via Firebase App Check and Security Rules.
  */
 
-import { sendChatMessage, parseInput, type ChatResponse } from './aiProxyService';
+import { app } from './firebase';
+import { getAI, getGenerativeModel, GoogleAIBackend, SchemaType } from 'firebase/ai';
+
+// Initialize Firebase AI with Google AI backend
+// mirroring the working setup in firebaseAI.ts
+const ai = getAI(app, { backend: new GoogleAIBackend() });
 
 // ===========================
 // TYPES
@@ -19,6 +25,7 @@ export interface AIResponse<T = string> {
   success: boolean;
   warning?: string;
   errors?: Array<{ provider: string; message: string }>;
+  functionCalls?: Array<{ name: string; args: any }>;
 }
 
 export interface AIConfig {
@@ -30,11 +37,82 @@ export interface AIConfig {
 }
 
 // ===========================
+// HELPER: GET MODEL
+// ===========================
+
+const getModel = (config?: AIConfig) => {
+  return getGenerativeModel(ai, {
+    model: 'gemini-2.5-flash',
+    tools: [
+      // @ts-ignore - googleSearchRetrieval is supported in Vertex AI SDK
+      {
+        googleSearchRetrieval: {
+          disableAttribution: false
+        }
+      },
+      // Project Tools
+      {
+        functionDeclarations: [
+          {
+            name: 'addVehicleHistoryEvent',
+            description: 'Add a significant event to the vehicle history (e.g., service, repair, inspection).',
+            parameters: {
+              type: SchemaType.OBJECT,
+              properties: {
+                date: { type: SchemaType.STRING, description: 'Date of event (ISO format YYYY-MM-DD)' },
+                type: { type: SchemaType.STRING, enum: ['service', 'repair', 'inspection', 'other'], description: 'Type of event' },
+                title: { type: SchemaType.STRING, description: 'Short title of the event' },
+                description: { type: SchemaType.STRING, description: 'Details about the event' },
+                mileage: { type: SchemaType.NUMBER, description: 'Mileage at the time of event (in Swedish mil)' },
+                cost: { type: SchemaType.NUMBER, description: 'Cost of the event in SEK' }
+              },
+              required: ['date', 'type', 'title']
+            }
+          },
+          {
+            name: 'addMileageReading',
+            description: 'Log a new mileage reading.',
+            parameters: {
+              type: SchemaType.OBJECT,
+              properties: {
+                date: { type: SchemaType.STRING, description: 'Date of reading (ISO format YYYY-MM-DD)' },
+                mileage: { type: SchemaType.NUMBER, description: 'Current mileage (in Swedish mil)' },
+                source: { type: SchemaType.STRING, enum: ['user', 'inspection', 'other'], description: 'Source of the reading' }
+              },
+              required: ['date', 'mileage']
+            }
+          },
+          {
+            name: 'updateInspectionFinding',
+            description: 'Update an inspection finding provided in the context.',
+            parameters: {
+              type: SchemaType.OBJECT,
+              properties: {
+                findingId: { type: SchemaType.STRING, description: 'ID of the finding' },
+                newStatus: { type: SchemaType.STRING, enum: ['open', 'fixed', 'ignored'], description: 'New status' },
+                feedback: { type: SchemaType.STRING, description: 'Notes about the update' }
+              },
+              required: ['findingId']
+            }
+          }
+        ]
+      }
+    ],
+    generationConfig: {
+      temperature: config?.temperature ?? 0.7,
+      maxOutputTokens: config?.maxTokens ?? 8192,
+      topK: 40,
+      topP: 0.95,
+    }
+  });
+};
+
+// ===========================
 // AI SERVICE FUNCTIONS
 // ===========================
 
 /**
- * Generate text using AI via Cloud Functions
+ * Generate text using Vertex AI SDK
  */
 export const generateText = async (
   systemPrompt: string,
@@ -42,25 +120,42 @@ export const generateText = async (
   config?: AIConfig
 ): Promise<AIResponse<string>> => {
   try {
-    const response = await sendChatMessage(
-      [],
-      userPrompt,
-      systemPrompt
-    );
+    const model = getModel(config);
+
+    // Combine system and user prompt since SDK doesn't always support system instructions purely in all builds,
+    // but newer SDKs do. To be safe and consistent with simple usage:
+    // We can pass systemInstruction to getGenerativeModel if we want, but here we instantiate per call often.
+    // Actually, getGenerativeModel supports systemInstruction.
+
+    const modelWithSystem = getGenerativeModel(ai, {
+      model: 'gemini-2.5-flash',
+      systemInstruction: systemPrompt,
+      generationConfig: {
+        temperature: config?.temperature ?? 0.7
+      }
+    });
+
+    const result = await modelWithSystem.generateContent(userPrompt);
+    const responseText = result.response.text();
+    const functionCalls = result.response.functionCalls()?.map(call => ({
+      name: call.name,
+      args: call.args
+    }));
 
     return {
-      data: response.text,
+      data: responseText,
+      functionCalls,
       provider: 'gemini',
       success: true
     };
   } catch (error: any) {
     console.error('AI generateText error:', error);
-    throw new Error(error.message || 'AI-tjänster otillgängliga');
+    throw new Error(error.message || 'AI-tjänster otillgängliga (Client SDK)');
   }
 };
 
 /**
- * Generate structured JSON using AI via Cloud Functions
+ * Generate structured JSON using Vertex AI SDK
  */
 export const generateJSON = async <T = any>(
   systemPrompt: string,
@@ -68,30 +163,26 @@ export const generateJSON = async <T = any>(
   config?: AIConfig
 ): Promise<AIResponse<T>> => {
   try {
-    const fullSystemPrompt = systemPrompt + '\n\nVIKTIGT: SVARA MED ENDAST JSON. Ingen extra text.';
+    // Force JSON response via prompt engineering + generation config
+    const model = getGenerativeModel(ai, {
+      model: 'gemini-2.5-flash',
+      systemInstruction: systemPrompt + '\n\nIMPORTANT: Respond with valid JSON only. No markdown formatting.',
+      generationConfig: {
+        responseMimeType: 'application/json', // Force JSON mode
+        temperature: config?.temperature ?? 0.2
+      }
+    });
 
-    const response = await sendChatMessage(
-      [],
-      userPrompt,
-      fullSystemPrompt
-    );
+    const result = await model.generateContent(userPrompt);
+    const responseText = result.response.text();
 
-    // Parse JSON from response
     let data: T;
     try {
-      data = JSON.parse(response.text) as T;
+      data = JSON.parse(responseText) as T;
     } catch {
-      // Try to extract JSON from markdown code block
-      const jsonMatch = response.text.match(/```json\n([\s\S]*?)\n```/) ||
-                       response.text.match(/```\n([\s\S]*?)\n```/) ||
-                       response.text.match(/\{[\s\S]*\}/);
-
-      if (jsonMatch) {
-        const jsonText = jsonMatch[1] || jsonMatch[0];
-        data = JSON.parse(jsonText) as T;
-      } else {
-        throw new Error('Could not parse JSON from response');
-      }
+      // Fallback cleanup if strict JSON mode fails
+      const cleaned = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      data = JSON.parse(cleaned) as T;
     }
 
     return {
@@ -106,22 +197,57 @@ export const generateJSON = async <T = any>(
 };
 
 /**
- * Check AI service availability
+ * Generate text from image and prompt (Multimodal)
+ */
+export const generateWithImage = async (
+  prompt: string,
+  base64Image: string,
+  mimeType: string = 'image/jpeg'
+): Promise<string> => {
+  try {
+    const model = getGenerativeModel(ai, {
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 1024
+      }
+    });
+
+    const imagePart = {
+      inlineData: {
+        data: base64Image,
+        mimeType
+      }
+    };
+
+    const result = await model.generateContent([prompt, imagePart]);
+    return result.response.text();
+
+  } catch (error: any) {
+    console.error('AI Vision error:', error);
+    throw new Error('Kunde inte analysera bild: ' + error.message);
+  }
+};
+
+/**
+ * Check AI service availability -> Simple ping
  */
 export const checkAIAvailability = async (): Promise<{
   gemini: boolean;
   grok: boolean;
 }> => {
   try {
-    await sendChatMessage([], 'ping', 'Respond with pong');
+    const model = getModel();
+    await model.generateContent('ping');
     return { gemini: true, grok: false };
-  } catch {
+  } catch (e) {
+    console.warn('AI Service Check Failed:', e);
     return { gemini: false, grok: false };
   }
 };
 
 /**
- * Legacy function to get AI service - now returns a simple object
+ * Legacy interface for compatibility
  */
 export const getAIService = async () => {
   return {

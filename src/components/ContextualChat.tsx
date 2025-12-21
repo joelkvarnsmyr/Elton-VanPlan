@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChatContext, ContextualChatMessage, ShoppingItem, Task, VendorOption } from '@/types/types';
 import { X, Send, MessageCircle, Sparkles, Loader2, CheckCircle, Plus } from 'lucide-react';
 import { generateText } from '@/services/aiService';
+import { addVehicleHistoryEvent, addMileageReading, updateInspectionFinding } from '@/services/db';
 
 interface ContextualChatProps {
     context: ChatContext;
@@ -23,6 +24,13 @@ const TASK_QUICK_ACTIONS = [
     'Vilka verktyg behöver jag?',
     'Hur lång tid tar detta?',
     'Vad kan gå fel?'
+];
+
+const INSPECTION_QUICK_ACTIONS = [
+    'Hur åtgärdar jag detta?',
+    'Vad kostar det att fixa?',
+    'Är detta kritiskt?',
+    'Vilka delar behöver jag?'
 ];
 
 // Build system prompt for shopping item context
@@ -52,9 +60,11 @@ FORDON:
 ${vehicleData.vin ? `- VIN: ${vehicleData.vin}` : ''}
 
 INSTRUKTIONER:
-- Hjälp användaren hitta bättre priser eller alternativ
-- Föreslå konkreta butiker: Biltema, Jula, Mekonomen, Autodoc
-- Var specifik med artikelnummer och priser när möjligt
+- Hjälp användaren hitta lägsta pris och bäst lämpade produkt oavsett butik
+- ANVÄND SÖKVERKTYG aktivt för att hitta dagsfärska priser och lagerstatus på svenska webbutiker
+- Föreslå fritt bland alla relevanta återförsäljare (t.ex. Amazon, Trodo, Skruvat, specialbutiker, lågprisvaruhus)
+- Begränsa dig INTE till specifika kedjor - prioritera rätt produkt till rätt pris
+- Var specifik med artikelnummer och ungefärliga priser när möjligt
 - Svara alltid på SVENSKA
 
 OM ANVÄNDAREN BER OM PRISJÄMFÖRELSE:
@@ -69,7 +79,8 @@ Ge en mänsklig förklaring följt av strukturerad data i detta format:
       "shippingCost": 0,
       "articleNumber": "80-XXX",
       "shelfLocation": "Gång X, Hylla Y",
-      "inStock": true
+      "inStock": true,
+      "url": "https://www.biltema.se/..."
     }
   ]
 }
@@ -108,7 +119,45 @@ INSTRUKTIONER:
 - Om beginner: förenkla, föreslå verkstad för svåra jobb
 - Om expert: ge tekniska detaljer
 - Föreslå verktyg och material om det behövs
-- Svara alltid på SVENSKA`;
+- Svara alltid på SVENSKA
+
+${context.availablePhases && context.availablePhases.length > 0 ? `
+NUVARANDE FASER I PROJEKTET:
+${context.availablePhases.map(p => `- ${p}`).join('\n')}
+(Använd dessa exakta namn om du ska flytta uppgifter, eller föreslå en ny om det behövs)
+` : ''}`;
+}
+
+// Build system prompt for inspection context
+function buildInspectionPrompt(context: ChatContext): string {
+    const { inspectionFinding, inspectionArea, vehicleData, userSkillLevel } = context;
+    if (!inspectionFinding) return '';
+
+    return `Du är ELTON, en svensk fordonsteknisk AI-assistent. Du hjälper användaren att analysera och åtgärda en anmärkning från fordonsbesiktningen.
+
+INSPEKTIONSANMÄRKNING:
+- Typ: ${inspectionFinding.type}
+- Beskrivning: ${inspectionFinding.description}
+- Område: ${inspectionArea?.name || 'Okänt'}
+- Allvarlighetsgrad: ${inspectionFinding.severity}
+- Position: ${inspectionFinding.position || 'Ej specificerad'}
+${inspectionFinding.action ? `- Föreslagen åtgärd: ${inspectionFinding.action}` : ''}
+
+FORDON:
+- ${vehicleData.make} ${vehicleData.model} (${vehicleData.year})
+- Motor: ${vehicleData.engine?.code || 'Okänd'}
+
+ANVÄNDARE:
+- Skill level: ${userSkillLevel || 'intermediate'}
+
+INSTRUKTIONER:
+- Förklara varför detta är ett problem
+- Ge en steg-för-steg plan för att åtgärda det
+- Uppskatta kostnad och tidsåtgång
+- Föreslå reservdelar om det behövs
+- Om det är "CRITICAL": Varna för säkerhetsrisker
+- Svara alltid på SVENSKA
+`;
 }
 
 export const ContextualChat: React.FC<ContextualChatProps> = ({
@@ -123,11 +172,23 @@ export const ContextualChat: React.FC<ContextualChatProps> = ({
     const [proposedOptions, setProposedOptions] = useState<VendorOption[] | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const quickActions = context.type === 'shopping_item' ? SHOPPING_QUICK_ACTIONS : TASK_QUICK_ACTIONS;
-    const contextTitle = context.type === 'shopping_item' ? context.item?.name : context.task?.title;
+    const quickActions = context.type === 'shopping_item'
+        ? SHOPPING_QUICK_ACTIONS
+        : context.type === 'task'
+            ? TASK_QUICK_ACTIONS
+            : INSPECTION_QUICK_ACTIONS;
+
+    const contextTitle = context.type === 'shopping_item'
+        ? context.item?.name
+        : context.type === 'task'
+            ? context.task?.title
+            : context.inspectionFinding?.type;
+
     const systemPrompt = context.type === 'shopping_item'
         ? buildShoppingItemPrompt(context)
-        : buildTaskPrompt(context);
+        : context.type === 'task'
+            ? buildTaskPrompt(context)
+            : buildInspectionPrompt(context);
 
     // Auto-scroll to bottom
     useEffect(() => {
@@ -141,7 +202,9 @@ export const ContextualChat: React.FC<ContextualChatProps> = ({
             role: 'model',
             content: context.type === 'shopping_item'
                 ? `Hej! Jag kan hjälpa dig med **${context.item?.name}**. Vill du att jag jämför priser, hittar alternativ, eller har du någon specifik fråga?`
-                : `Hej! Jag kan hjälpa dig med uppgiften **"${context.task?.title}"**. Vill du ha tips på hur du tar dig an detta, eller har du specifika frågor?`,
+                : context.type === 'task'
+                    ? `Hej! Jag kan hjälpa dig med uppgiften **"${context.task?.title}"**. Vill du ha tips på hur du tar dig an detta, eller har du specifika frågor?`
+                    : `Hej! Jag ser att du har en anmärkning på **"${context.inspectionFinding?.type}"**. Vill du veta hur du fixar detta eller vad det kostar?`,
             timestamp: new Date().toISOString()
         };
         setMessages([welcomeMessage]);
@@ -150,6 +213,7 @@ export const ContextualChat: React.FC<ContextualChatProps> = ({
     const handleSend = async (message: string) => {
         if (!message.trim() || isLoading) return;
 
+        // Add user message to UI
         const userMessage: ContextualChatMessage = {
             id: `user-${Date.now()}`,
             role: 'user',
@@ -157,19 +221,62 @@ export const ContextualChat: React.FC<ContextualChatProps> = ({
             timestamp: new Date().toISOString()
         };
 
-        setMessages(prev => [...prev, userMessage]);
+        const newMessages = [...messages, userMessage];
+        setMessages(newMessages);
         setInputValue('');
         setIsLoading(true);
 
         try {
-            // Build conversation history for AI
-            const history = messages.map(m => ({
-                role: m.role as 'user' | 'model',
-                content: m.content
-            }));
+            // Build conversation history string for stateless AI
+            // This is a workaround until aiService supports history objects
+            const historyContext = newMessages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
+            const fullPrompt = `${historyContext}\n\n(Respond to the last message, using tools if necessary)`;
 
-            const aiResponse = await generateText(systemPrompt, message);
+            const aiResponse = await generateText(systemPrompt, fullPrompt);
             const responseText = aiResponse.data;
+
+            // Handle Tool Calls
+            if (aiResponse.functionCalls && aiResponse.functionCalls.length > 0) {
+                // Determine Project ID (Assume context has it or use current project)
+                const projectId = 'Elton-VanPlan'; // TODO: Pass projectId in props or context!
+
+                for (const call of aiResponse.functionCalls) {
+                    let toolResult = '';
+                    try {
+                        if (call.name === 'addVehicleHistoryEvent') {
+                            await addVehicleHistoryEvent(projectId, call.args);
+                            toolResult = `Successfully added history event: ${call.args.title}`;
+                        } else if (call.name === 'addMileageReading') {
+                            await addMileageReading(projectId, call.args);
+                            toolResult = `Successfully added mileage: ${call.args.mileage} mil`;
+                        } else if (call.name === 'updateInspectionFinding') {
+                            await updateInspectionFinding(projectId, call.args.findingId, {
+                                status: call.args.newStatus as any,
+                                resolutionNotes: call.args.feedback || call.args.resolutionNotes
+                            });
+                            toolResult = `Successfully updated finding ${call.args.findingId}`;
+                        } else {
+                            toolResult = `Unknown tool: ${call.name}`;
+                        }
+                    } catch (e: any) {
+                        console.error('Tool execution failed:', e);
+                        toolResult = `Error executing ${call.name}: ${e.message}`;
+                    }
+
+                    // Add system message about tool result
+                    const toolMessage: ContextualChatMessage = {
+                        id: `tool-${Date.now()}`,
+                        role: 'model', // Using model role to show it in chat
+                        content: `🛠️ ${toolResult}`,
+                        timestamp: new Date().toISOString()
+                    };
+                    setMessages(prev => [...prev, toolMessage]);
+                }
+                // Determine if we should generate a new text response after tool use?
+                // Ideally yes, but for now we let the tool result stand or user can follow up.
+                // Or we could trigger another generateText calls with the result included.
+            }
+
 
             // Parse JSON if present (for vendor options)
             const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
@@ -179,16 +286,16 @@ export const ContextualChat: React.FC<ContextualChatProps> = ({
                     if (data.newOptions && Array.isArray(data.newOptions)) {
                         const enrichedOptions = data.newOptions.map((opt: any) => ({
                             id: `vendor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                            store: opt.store,
-                            articleNumber: opt.articleNumber,
+                            store: opt.store || 'Okänd butik',
+                            articleNumber: opt.articleNumber || '',
                             price: opt.price || 0,
                             shippingCost: opt.shippingCost || 0,
                             totalCost: (opt.price || 0) + (opt.shippingCost || 0),
                             currency: 'SEK',
                             deliveryTimeDays: opt.deliveryTimeDays || (opt.shippingCost === 0 ? 0 : 3),
                             inStock: opt.inStock !== false,
-                            shelfLocation: opt.shelfLocation,
-                            url: opt.url,
+                            shelfLocation: opt.shelfLocation || '',
+                            url: opt.url || '',
                             lastPriceCheck: new Date().toISOString()
                         }));
                         setProposedOptions(enrichedOptions);

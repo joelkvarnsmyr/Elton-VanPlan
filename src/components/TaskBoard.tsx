@@ -10,74 +10,46 @@ interface TaskBoardProps {
   onUpdateTask: (task: Task) => void;
   onAddShoppingItem?: (item: Omit<ShoppingItem, 'id'>) => void;
   initialFilter?: string | 'ALL';
+  initialSelectedTaskId?: string | null;
 }
 
-// Helper to check if task is blocked
-const isTaskBlocked = (task: Task, allTasks: Task[]): { blocked: boolean; blockedBy: Task[] } => {
-  if (!task.blockers || task.blockers.length === 0) {
-    return { blocked: false, blockedBy: [] };
-  }
+// ... helper functions
 
-  // Extract taskIds from blockers (supports both new TaskBlocker[] and legacy string[] format)
-  const blockerIds = task.blockers.map(b => typeof b === 'string' ? b : b.taskId);
-
-  const blockedBy = allTasks.filter(t =>
-    blockerIds.includes(t.id) && t.status !== TaskStatus.DONE
-  );
-
-  return {
-    blocked: blockedBy.length > 0,
-    blockedBy
-  };
-};
-
-// Get task type color and icon
-const getTaskTypeInfo = (type?: TaskType) => {
-  switch (type) {
-    case TaskType.MAINTENANCE:
-      return { color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300', icon: Wrench, label: 'Underhåll' };
-    case TaskType.BUILD:
-      return { color: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300', icon: Wrench, label: 'Bygge' };
-    case TaskType.PURCHASE:
-      return { color: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300', icon: ShoppingCart, label: 'Inköp' };
-    case TaskType.ADMIN:
-      return { color: 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/20 dark:text-slate-300', icon: FileText, label: 'Admin' };
-    case TaskType.IDEA:
-      return { color: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300', icon: Lightbulb, label: 'Idé' };
-    default:
-      return { color: 'bg-slate-50 text-slate-600 border-slate-200', icon: FileText, label: 'Uppgift' };
-  }
-};
-
-// Get difficulty icon and color
-const getDifficultyInfo = (level?: DifficultyLevel) => {
-  switch (level) {
-    case 'Easy':
-      return { icon: '🟢', label: 'Lätt', color: 'text-green-600' };
-    case 'Medium':
-      return { icon: '🟡', label: 'Medel', color: 'text-amber-600' };
-    case 'Expert':
-      return { icon: '🔴', label: 'Expert', color: 'text-red-600' };
-    default:
-      return null;
-  }
-};
-
-export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehicleData, onUpdateTask, onAddShoppingItem, initialFilter = 'ALL' }) => {
+export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehicleData, onUpdateTask, onAddShoppingItem, initialFilter = 'ALL', initialSelectedTaskId }) => {
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState<string | 'ALL'>('ALL');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  useEffect(() => {
+    if (initialSelectedTaskId) {
+      const task = tasks.find(t => t.id === initialSelectedTaskId);
+      if (task) {
+        setSelectedTask(task);
+        // Also expand the phase this task belongs to
+        if (task.phase) {
+          setActiveFilter(task.phase);
+          setExpandedPhases(new Set([task.phase]));
+        }
+      }
+    }
+  }, [initialSelectedTaskId, tasks]);
 
   // Derive unique phases from tasks to support dynamic project types
   const phases = useMemo(() => {
     // Get all phases from tasks, filter out undefined, remove duplicates
     const allPhases = Array.from(new Set(tasks.map(t => t.phase).filter(Boolean)));
-    // Sort them? Or keep order? Usually we want them in a specific logical order.
-    // For now, simple sort or just discovery order.
-    return allPhases.sort();
+
+    // Sort phases: Backlog always last, others alphabetically
+    return allPhases.sort((a, b) => {
+      if (a === 'Backlog') return 1;
+      if (b === 'Backlog') return -1;
+      return a.localeCompare(b);
+    });
   }, [tasks]);
 
   useEffect(() => {
+    if (initialSelectedTaskId) return; // Skip default expansion if we are targeting a specific task
+
     setActiveFilter(initialFilter);
     if (initialFilter !== 'ALL' && phases.includes(initialFilter)) {
       setExpandedPhases(new Set([initialFilter]));
@@ -85,7 +57,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
       // Default to expanding the first phase if none selected
       setExpandedPhases(new Set([phases[0]]));
     }
-  }, [initialFilter, phases]);
+  }, [initialFilter, phases, initialSelectedTaskId]);
 
   const togglePhase = (phase: string) => {
     setExpandedPhases(prev => {
@@ -398,6 +370,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
           }}
           onAddShoppingItem={onAddShoppingItem}
           onClose={() => setSelectedTask(null)}
+          availablePhases={phases}
         />
       )}
     </div>

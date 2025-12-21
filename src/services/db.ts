@@ -27,11 +27,11 @@ import {
   FuelLogItem,
   KnowledgeArticle,
   Contact,
-  InspectionFinding
+  InspectionFinding,
+  VehicleHistoryEvent,
+  MileageReading
 } from '@/types/types';
-import {
-  DEMO_PROJECT
-} from '@/constants/constants';
+// DEMO_PROJECT import removed
 
 // --- HELPERS ---
 
@@ -49,79 +49,13 @@ const getInspectionsRef = (projectId: string) => collection(db, 'projects', proj
 
 // --- SEEDING ---
 
+// --- SEEDING ---
+
 export const forceSeedProject = async (userEmail: string, userId: string) => {
-  // Create unique demo project ID for this user
-  const projectId = `demo-elton-${userId}`;
-  console.log(`Seeding database for project ${projectId} and owner: ${userEmail} (${userId})...`);
-
-  const batch = writeBatch(db);
-
-  const projectRef = doc(db, 'projects', projectId);
-  const projectData: Project = {
-    ...DEMO_PROJECT,
-    id: projectId, // Use unique project ID for this user
-    // NEW ownership model
-    ownerIds: [userId],
-    primaryOwnerId: userId,
-    memberIds: [],
-    invitedEmails: [],
-    // Legacy fields
-    ownerId: userId,
-    ownerEmail: userEmail,
-    members: [],
-    // Data
-    created: new Date().toISOString(),
-    lastModified: new Date().toISOString(),
-    isDemo: true,
-    tasks: [],
-    shoppingItems: [],
-    serviceLog: [],
-    fuelLog: [],
-    knowledgeArticles: []
-  };
-  batch.set(projectRef, projectData);
-
-  const tasksRef = getTasksRef(projectId);
-  for (const task of DEMO_PROJECT.tasks) {
-    const taskRef = doc(tasksRef, task.id);
-    batch.set(taskRef, task);
-  }
-
-  const shoppingRef = getShoppingRef(projectId);
-  for (const item of DEMO_PROJECT.shoppingItems) {
-    const itemRef = doc(shoppingRef, item.id);
-    batch.set(itemRef, item);
-  }
-
-  // Seed serviceLog sub-collection (if demo data exists)
-  if (DEMO_PROJECT.serviceLog && DEMO_PROJECT.serviceLog.length > 0) {
-    const serviceLogRef = getServiceLogRef(projectId);
-    for (const entry of DEMO_PROJECT.serviceLog) {
-      const entryRef = doc(serviceLogRef, entry.id);
-      batch.set(entryRef, entry);
-    }
-  }
-
-  // Seed fuelLog sub-collection (if demo data exists)
-  if (DEMO_PROJECT.fuelLog && DEMO_PROJECT.fuelLog.length > 0) {
-    const fuelLogRef = getFuelLogRef(projectId);
-    for (const entry of DEMO_PROJECT.fuelLog) {
-      const entryRef = doc(fuelLogRef, entry.id);
-      batch.set(entryRef, entry);
-    }
-  }
-
-  // Seed knowledgeBase sub-collection (if demo data exists)
-  if (DEMO_PROJECT.knowledgeArticles && DEMO_PROJECT.knowledgeArticles.length > 0) {
-    const knowledgeRef = getKnowledgeBaseRef(projectId);
-    for (const article of DEMO_PROJECT.knowledgeArticles) {
-      const articleRef = doc(knowledgeRef, article.id);
-      batch.set(articleRef, article);
-    }
-  }
-
-  await batch.commit();
-  console.log('Database seeded successfully.');
+  console.log('Seeding demo project from template...');
+  // Use the new template system
+  // We use a fixed template ID project 'template-elton'
+  return createProjectFromTemplate('template-elton', userId, userEmail, 'Elton (Demo)');
 };
 
 // --- USER PROFILE ---
@@ -332,7 +266,8 @@ export const createProject = async (
     isDemo: false,
 
     // User preferences
-    ...(template?.userSkillLevel && { userSkillLevel: template.userSkillLevel }),
+    /* userSkillLevel not in Project type yet
+    ...(template?.userSkillLevel && { userSkillLevel: template.userSkillLevel }), */
     ...(template?.nickname && { nickname: template.nickname })
   };
 
@@ -382,6 +317,90 @@ export const createProject = async (
     }
     await batch.commit();
   }
+
+  return newProject;
+  // ... (existing createProject) ...
+  return newProject;
+};
+
+/**
+ * Create a new project based on a Firestore template
+ * deeply copies all subcollections
+ */
+export const createProjectFromTemplate = async (
+  templateId: string,
+  userId: string,
+  userEmail: string,
+  projectName?: string
+): Promise<Project> => {
+  console.log('🏗️ Creating project from template:', templateId);
+
+  // 1. Fetch Template Data
+  const templateRef = doc(db, 'projects', templateId);
+  const templateSnap = await getDoc(templateRef);
+
+  if (!templateSnap.exists()) {
+    throw new Error(`Template project ${templateId} not found`);
+  }
+
+  const templateData = templateSnap.data() as Project;
+
+  // 2. Create New Project
+  const newProjectRef = doc(collection(db, 'projects'));
+  const projectId = newProjectRef.id;
+
+  const newProject: Project = {
+    ...templateData,
+    id: projectId,
+    name: projectName || templateData.name,
+    ownerIds: [userId],
+    primaryOwnerId: userId,
+    memberIds: [],
+    invitedEmails: [],
+    // Legacy mapping
+    ownerId: userId,
+    ownerEmail: userEmail,
+    members: [],
+
+    // Reset specific fields
+    created: new Date().toISOString(),
+    lastModified: new Date().toISOString(),
+    isDemo: true // Mark as demo/template-derived
+  };
+
+  // 3. Save Project Document
+  const batch = writeBatch(db);
+  batch.set(newProjectRef, newProject);
+
+  // 4. Copy Sub-collections
+  const copyCollection = async (collectionName: string) => {
+    const sourceRef = collection(db, 'projects', templateId, collectionName);
+    const destRef = collection(db, 'projects', projectId, collectionName);
+    const snap = await getDocs(sourceRef);
+
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      const newDocRef = doc(destRef, docSnap.id); // Keep original IDs for internal linking
+      // Update projectId references if they exist
+      if (data.projectId) {
+        data.projectId = projectId;
+      }
+      batch.set(newDocRef, data);
+    });
+    console.log(`   - Copied ${snap.size} documents from ${collectionName}`);
+  };
+
+  await Promise.all([
+    copyCollection('tasks'),
+    copyCollection('shoppingItems'),
+    copyCollection('serviceLog'),
+    copyCollection('fuelLog'),
+    copyCollection('knowledgeBase'),
+    copyCollection('inspections')
+  ]);
+
+  await batch.commit();
+  console.log('✅ Template project created successfully:', projectId);
 
   return newProject;
 };
@@ -512,7 +531,7 @@ export const updateProject = async (projectId: string, updates: Partial<Project>
   await updateDoc(projectRef, {
     ...updates,
     lastModified: new Date().toISOString()
-  });
+  } as any);
 };
 
 // --- KNOWLEDGE BASE (Sub-collection) ---
@@ -542,8 +561,24 @@ export const updateVehicleData = async (projectId: string, data: Partial<Vehicle
   const projectData = await getProject(projectId);
   if (projectData) {
     const updatedVehicleData = { ...projectData.vehicleData, ...data };
-    await updateDoc(getProjectRef(projectId), { vehicleData: updatedVehicleData });
+    await updateDoc(getProjectRef(projectId), { vehicleData: updatedVehicleData } as any);
   }
+};
+
+export const addVehicleHistoryEvent = async (projectId: string, event: VehicleHistoryEvent) => {
+  const projectRef = getProjectRef(projectId);
+  await updateDoc(projectRef, {
+    'vehicleData.historyEvents': arrayUnion(event),
+    lastModified: new Date().toISOString()
+  } as any);
+};
+
+export const addMileageReading = async (projectId: string, reading: MileageReading) => {
+  const projectRef = getProjectRef(projectId);
+  await updateDoc(projectRef, {
+    'vehicleData.mileageHistory': arrayUnion(reading),
+    lastModified: new Date().toISOString()
+  } as any);
 };
 
 // --- INSPECTION FINDINGS ---

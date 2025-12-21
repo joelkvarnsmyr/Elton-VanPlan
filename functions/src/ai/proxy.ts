@@ -13,9 +13,9 @@ import { GoogleGenAI, Type, Schema, FunctionDeclaration, Tool } from '@google/ge
 const geminiApiKey = defineSecret('GEMINI_API_KEY');
 
 // Model configuration
-// Using Gemini 3 Pro Preview for critical tasks (best reasoning model)
-const DEFAULT_MODEL = 'gemini-3-pro-preview';
-const FAST_MODEL = 'gemini-2.5-flash'; // For quick, less critical tasks
+// Using stable models to ensure availability
+const DEFAULT_MODEL = 'gemini-1.5-pro';
+const FAST_MODEL = 'gemini-1.5-flash';
 
 // Tool declarations for the AI assistant
 const functionDeclarations: FunctionDeclaration[] = [
@@ -75,6 +75,7 @@ const functionDeclarations: FunctionDeclaration[] = [
         taskTitleKeywords: { type: Type.STRING, description: 'Keywords to find the task' },
         newStatus: { type: Type.STRING, enum: ['todo', 'in-progress', 'done'], description: 'New status' },
         newPriority: { type: Type.STRING, enum: ['Hög', 'Medel', 'Låg'], description: 'New priority' },
+        newPhase: { type: Type.STRING, description: 'Move task to this phase (use existing phase name if possible)' },
         newSprint: { type: Type.STRING, description: 'Assign to sprint' },
         newTitle: { type: Type.STRING, description: 'New title' },
         newDescription: { type: Type.STRING, description: 'New description' },
@@ -166,6 +167,30 @@ const functionDeclarations: FunctionDeclaration[] = [
     }
   },
   {
+    name: 'renamePhase',
+    description: 'Rename a project phase or merge two phases. Updates all tasks in the old phase to the new phase name.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        oldPhaseName: { type: Type.STRING, description: 'Exact name of the phase to rename' },
+        newPhaseName: { type: Type.STRING, description: 'New name for the phase (if existing, phases will be merged)' }
+      },
+      required: ['oldPhaseName', 'newPhaseName']
+    }
+  },
+  {
+    name: 'bulkDeleteTasks',
+    description: 'Delete multiple tasks, for example to clear an entire phase.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        phase: { type: Type.STRING, description: 'The phase to delete tasks from' },
+        confirm: { type: Type.BOOLEAN, description: 'Must be true to execute' }
+      },
+      required: ['phase', 'confirm']
+    }
+  },
+  {
     name: 'createKnowledgeArticle',
     description: 'Save information to Knowledge Base.',
     parameters: {
@@ -177,6 +202,48 @@ const functionDeclarations: FunctionDeclaration[] = [
         tags: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'Tags' }
       },
       required: ['title', 'content']
+    }
+  },
+  {
+    name: 'updateInspectionFinding',
+    description: 'Update an inspection finding (status, severity, or add feedback).',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        findingId: { type: Type.STRING, description: 'ID of the finding to update' },
+        newStatus: { type: Type.STRING, enum: ['open', 'fixed', 'ignored'], description: 'New status' },
+        feedback: { type: Type.STRING, description: 'User feedback or resolution notes' }
+      },
+      required: ['findingId']
+    }
+  },
+  {
+    name: 'addVehicleHistoryEvent',
+    description: 'Add a significant event to the vehicle history (e.g., service, repair, inspection).',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        date: { type: Type.STRING, description: 'Date of event (ISO format YYYY-MM-DD)' },
+        type: { type: Type.STRING, enum: ['service', 'repair', 'inspection', 'other'], description: 'Type of event' },
+        title: { type: Type.STRING, description: 'Short title of the event' },
+        description: { type: Type.STRING, description: 'Details about the event' },
+        mileage: { type: Type.NUMBER, description: 'Mileage at the time of event (in Swedish mil)' },
+        cost: { type: Type.NUMBER, description: 'Cost of the event in SEK' }
+      },
+      required: ['date', 'type', 'title']
+    }
+  },
+  {
+    name: 'addMileageReading',
+    description: 'Log a new mileage reading.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        date: { type: Type.STRING, description: 'Date of reading (ISO format YYYY-MM-DD)' },
+        mileage: { type: Type.NUMBER, description: 'Current mileage (in Swedish mil)' },
+        source: { type: Type.STRING, enum: ['user', 'inspection', 'other'], description: 'Source of the reading' }
+      },
+      required: ['date', 'mileage']
     }
   }
 ];
@@ -234,7 +301,7 @@ export const aiChat = onCall(
     maxInstances: 10,
     timeoutSeconds: 120,
     memory: '512MiB',
-    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
+    cors: true
   },
   async (request: CallableRequest<ChatRequest>) => {
     // Verify authentication
@@ -322,7 +389,7 @@ export const aiParse = onCall(
     maxInstances: 10,
     timeoutSeconds: 60,
     memory: '256MiB',
-    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
+    cors: true
   },
   async (request: CallableRequest<ParseRequest>) => {
     if (!request.auth) {
@@ -605,7 +672,7 @@ export const aiToolResponse = onCall(
     maxInstances: 10,
     timeoutSeconds: 60,
     memory: '256MiB',
-    cors: ['http://localhost:3000', 'http://localhost:5173', 'https://eltonvanplan.web.app', 'https://eltonvanplan.firebaseapp.com']
+    cors: true
   },
   async (request: CallableRequest<{
     history: ChatMessage[];

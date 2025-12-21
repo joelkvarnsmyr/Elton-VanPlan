@@ -7,6 +7,10 @@ import { sv } from 'date-fns/locale';
 import { Contacts } from './Contacts';
 import { WorkshopFinder } from './WorkshopFinder';
 import { getLocationWithFallback, createManualLocation } from '@/services/location';
+import { VehicleTimeline } from './history/VehicleTimeline';
+import { MileageChart } from './history/MileageChart';
+import { PriceHistoryChart } from './history/PriceHistoryChart';
+import { VehicleStatsCard } from './history/VehicleStatsCard';
 
 interface VehicleSpecsProps {
     vehicleData: VehicleData;
@@ -274,6 +278,27 @@ export const VehicleSpecs: React.FC<VehicleSpecsProps> = ({
                             <Row label="Antal Ägare" value={vehicleData.history.owners} />
                             <Row label="Första Trafik" value={vehicleData.regDate} />
                         </Card>
+                    </div>
+
+                    {/* NEW: Combined History & Statistics Section */}
+                    <div className="space-y-6 pt-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-2">
+                                <MileageChart data={vehicleData.mileageHistory || []} />
+                            </div>
+                            <div>
+                                {vehicleData.statistics && <VehicleStatsCard stats={vehicleData.statistics} />}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div>
+                                <PriceHistoryChart data={vehicleData.priceHistory || []} />
+                            </div>
+                            <div>
+                                <VehicleTimeline events={vehicleData.historyEvents || []} />
+                            </div>
+                        </div>
                     </div>
 
                     {vehicleData.expertAnalysis && (

@@ -204,13 +204,15 @@ export async function fetchVehicleByRegNo(regNo: string): Promise<VehicleAPIResp
   };
 }
 
+import { generateJSON, generateWithImage } from './aiService';
+
 // ===========================
 // BLOCKET AD PARSING
 // ===========================
 
 /**
  * Parse a Blocket vehicle ad and extract vehicle data
- * Uses AI (Gemini) to understand unstructured ad text
+ * Uses AI (Gemini) to understand unstructured ad text and context
  */
 export async function parseBlocketAd(url: string): Promise<VehicleAPIResponse> {
   try {
@@ -223,17 +225,38 @@ export async function parseBlocketAd(url: string): Promise<VehicleAPIResponse> {
       };
     }
 
-    // TODO: Implement actual scraping/parsing
-    // Options:
-    // 1. Use Puppeteer/Playwright to scrape the page
-    // 2. Use Gemini AI to parse the HTML/text
-    // 3. Use Blocket API if available
+    console.log('Parsing Blocket ad via Gemini:', url);
 
-    console.warn('Blocket parsing not yet implemented');
+    const systemPrompt = `You are an expert vehicle data extractor. 
+Your task is to extract vehicle technical details from a given advertisement URL/Text.
+You have access to Google Search to retrieve the content of the URL.
+Return the data in a cleaner JSON format matching this structure:
+{
+ "regNo": "ABC 123", (if found)
+ "make": "Volvo",
+ "model": "V70",
+ "year": 2010,
+ "price": 120000,
+ "description": "Short summary"
+}`;
+
+    const response = await generateJSON<Partial<VehicleData> & { price?: number }>(
+      systemPrompt,
+      `Extract vehicle data from this ad: ${url}`,
+      { temperature: 0.1 }
+    );
+
+    if (response.success && response.data) {
+      return {
+        success: true,
+        data: response.data,
+        source: 'manual' // AI extracted behaves like manual entry for safety
+      };
+    }
 
     return {
       success: false,
-      error: 'Blocket-parsing kommer snart! För tillfället, kopiera texten manuellt.',
+      error: 'Kunde inte tolka annonsen',
       source: 'manual'
     };
 
@@ -252,18 +275,27 @@ export async function parseBlocketAd(url: string): Promise<VehicleAPIResponse> {
 // ===========================
 
 /**
- * Extract registration number from vehicle image using OCR
- * Supports: License plate photos, registration documents
- */
+* Extract registration number from vehicle image using OCR (Gemini Vision)
+*/
 export async function extractRegNoFromImage(imageBase64: string): Promise<string | null> {
   try {
-    // TODO: Implement Google Vision API OCR
-    // const visionClient = new ImageAnnotatorClient();
-    // const [result] = await visionClient.textDetection(imageBase64);
-    // const text = result.textAnnotations?.[0]?.description;
-    // const regNoMatch = text.match(/[A-Z]{3}\s?\d{2}[A-Z0-9]/); // Swedish pattern
+    const prompt = "Extract the Swedish vehicle registration number from this image. Return ONLY the number (e.g. ABC 123) without any extra text. If no registration number is visible, return 'NOT_FOUND'.";
 
-    console.warn('OCR not yet implemented. Requires Google Vision API setup.');
+    // Clean base64 string (remove data:image/jpeg;base64, prefix if present)
+    const cleanBase64 = imageBase64.split(',')[1] || imageBase64;
+
+    const text = await generateWithImage(prompt, cleanBase64);
+
+    if (text.includes('NOT_FOUND')) return null;
+
+    // Clean up result
+    const regNo = text.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+    // Validate format (Simple check)
+    if (regNo.length >= 6) {
+      // Format as ABC 123
+      return regNo.slice(0, 3) + ' ' + regNo.slice(3);
+    }
 
     return null;
 
@@ -278,23 +310,15 @@ export async function extractRegNoFromImage(imageBase64: string): Promise<string
 // ===========================
 
 /**
- * Enrich partial vehicle data with additional information
- * Useful when user provides minimal info (e.g., just make/model/year)
- */
+* Enrich partial vehicle data with additional information
+*/
 export async function enrichVehicleData(partialData: Partial<VehicleData>): Promise<Partial<VehicleData>> {
-  // If we have a reg number, try to fetch full data
   if (partialData.regNo) {
     const result = await fetchVehicleByRegNo(partialData.regNo);
     if (result.success && result.data) {
       return { ...partialData, ...result.data };
     }
   }
-
-  // TODO: Add make/model-based enrichment
-  // - Fetch typical specs for this model
-  // - Get common dimensions/weights
-  // - Add expert tips
-
   return partialData;
 }
 
@@ -302,98 +326,27 @@ export async function enrichVehicleData(partialData: Partial<VehicleData>): Prom
 // VALIDATION
 // ===========================
 
-/**
- * Validate Swedish registration number format
- */
 export function validateSwedishRegNo(regNo: string): boolean {
   const cleaned = regNo.toUpperCase().replace(/\s/g, '');
-
-  // Old format: ABC123 (3 letters + 3 digits)
   const oldFormat = /^[A-Z]{3}\d{3}$/;
-
-  // New format: ABC12D (3 letters + 2 digits + 1 letter/digit)
   const newFormat = /^[A-Z]{3}\d{2}[A-Z0-9]$/;
-
   return oldFormat.test(cleaned) || newFormat.test(cleaned);
 }
 
-/**
- * Format registration number for display
- */
 export function formatRegNo(regNo: string): string {
   const cleaned = regNo.toUpperCase().replace(/\s/g, '');
-
-  // Add space: ABC 123 or ABC 12D
   if (cleaned.length === 6) {
     return `${cleaned.slice(0, 3)} ${cleaned.slice(3)}`;
   }
-
   return cleaned;
 }
 
 // ===========================
-// MOCK DATA (For Development)
+// MOCK DATA (Legacy/Fallback)
 // ===========================
 
-/**
- * Generate mock vehicle data for testing
- * This should be removed in production
- */
 export function getMockVehicleData(regNo: string): Partial<VehicleData> {
-  // Only return full demo data for the specific demo reg number
-  if (regNo.toUpperCase().replace(/\s/g, '') === 'JSN398') {
-    return {
-      regNo: 'JSN 398',
-      make: 'Volkswagen',
-      model: 'LT 31',
-      year: 1976,
-      prodYear: 1976,
-      regDate: '1978-02-14',
-      status: 'I trafik',
-      bodyType: 'Skåp',
-      passengers: 3,
-      inspection: {
-        last: '2025-08-13',
-        mileage: '10 000 mil',
-        next: '2026-08-13'
-      },
-      engine: {
-        fuel: 'Bensin',
-        power: '75 HK',
-        volume: '2.0L',
-        code: 'CH'
-      },
-      gearbox: 'Manuell 4-växlad',
-      wheels: {
-        drive: 'Bakhjulsdrift (RWD)',
-        tiresFront: '185R14C',
-        tiresRear: '185R14C',
-        boltPattern: '5x160'
-      },
-      dimensions: {
-        length: 5400,
-        width: 1980,
-        height: '2600',
-        wheelbase: 2500
-      },
-      weights: {
-        curb: 2280,
-        total: 3160,
-        load: 880,
-        trailer: 1400,
-        trailerB: 750
-      },
-      vin: 'WVWZZZ2KZXW123456',
-      color: 'Vit',
-      history: {
-        owners: 3,
-        events: 12,
-        lastOwnerChange: '2023-06-28'
-      }
-    };
-  }
-
-  // Generic fallback for other numbers (prevents "LT31 hallucination")
+  // Simplified generic fallback
   return {
     regNo: formatRegNo(regNo),
     make: '',
