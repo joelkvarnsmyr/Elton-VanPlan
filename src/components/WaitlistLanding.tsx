@@ -239,51 +239,61 @@ export const WaitlistLanding: React.FC = () => {
                 </div>
             </section>
 
-            {/* FUNKTIONER (Problem & Lösning) - Mjukare cards */}
+            {/* FUNKTIONER (Problem & Lösning) - Full list with colors */}
             <section className="px-6 py-24 bg-stone-50">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-20">
                         <h3 className="text-3xl md:text-5xl font-serif text-stone-800 mb-6">
-                            Allt samlat. <span className="italic text-rose-500">Äntligen.</span>
+                            Allt du behöver för bygget <span className="italic text-teal-600">&</span> livet på vägen
                         </h3>
+                        <p className="text-xl text-stone-600 max-w-2xl mx-auto font-light">
+                            AI-driven projektledning som förstår just din bil.
+                        </p>
                     </div>
 
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <FeatureCard
-                            icon={<Camera className="text-stone-600" size={24} />}
-                            title="Fota & Förstå"
-                            description="AI ser vad du ser. Fota en del, få veta vad det är och hur du lagar den."
-                            color="rose"
-                        />
-                        <FeatureCard
-                            icon={<BookOpen className="text-stone-600" size={24} />}
-                            title="Din digitala guide"
-                            description="Som en tålmodig vän som alltid har svaret, dygnet runt."
-                            color="teal"
-                        />
-                        <FeatureCard
-                            icon={<TrendingUp className="text-stone-600" size={24} />}
-                            title="Koll på pengarna"
-                            description="Fota kvittot, klart. Budgeten uppdateras automatiskt."
-                            color="amber"
-                        />
-                        <FeatureCard
-                            icon={<Calendar className="text-stone-600" size={24} />}
-                            title="Kom ihåg det viktiga"
-                            description="När ska oljan bytas? Vi håller koll åt dig."
-                            color="cyan"
-                        />
-                        <FeatureCard
-                            icon={<Users className="text-stone-600" size={24} />}
-                            title="Bygg tillsammans"
-                            description="Dela glädjen (och jobbet). Bjud in din partner och se samma plan."
+                            icon={<Camera className="text-white" size={24} />}
+                            title="Din bil, din data – automatiskt"
+                            description="Fota registreringsskylten så hämtar vi all teknisk data. AI:n vet direkt om du har en LT31 från '76 eller en modern Sprinter, och anpassar råden därefter."
                             color="indigo"
                         />
                         <FeatureCard
-                            icon={<Zap className="text-stone-600" size={24} />}
-                            title="Trygghet på vägen"
-                            description="Problem utomlands? Vi hjälper dig att förstå vad som felar."
+                            icon={<BookOpen className="text-white" size={24} />}
+                            title="AI som projektledare"
+                            description="Från köpbesiktning till färdig camper. Fota rostangreppet eller motorn – AI analyserar, varnar för fallgropar och skapar en steg-för-steg-plan för hur du fixar det."
                             color="purple"
+                        />
+                        <FeatureCard
+                            icon={<TrendingUp className="text-white" size={24} />}
+                            title="Full koll på budgeten"
+                            description="Sluta leta kvitton i handskfacket. Fota dina utlägg direkt i appen. AI:n läser av produkt, pris och datum och sorterar in det i din budgetkalkyl."
+                            color="emerald"
+                        />
+                        <FeatureCard
+                            icon={<Calendar className="text-white" size={24} />}
+                            title="Aldrig mer missad service"
+                            description="När ska kamremmen bytas? Hur vinterförvarar man bäst? VanPlan håller koll på intervallerna och påminner dig i tid, anpassat efter din bils ålder."
+                            color="cyan"
+                        />
+                        <FeatureCard
+                            icon={<Users className="text-white" size={24} />}
+                            title="Samarbeta i realtid"
+                            description="Bygger ni ihop? Bjud in din partner eller din händige kompis till projektet. Alla ser samma att-göra-lista, inköpsbehov och framsteg."
+                            color="rose"
+                        />
+                        <FeatureCard
+                            icon={<Zap className="text-white" size={24} />}
+                            title="Din vän i nöden"
+                            description="Motorstopp i Danmark? Fota problemet och fråga din AI-assistent. Ladda upp ditt försäkringsbrev så vet appen direkt om bärgningen täcks."
+                            color="amber"
+                        />
+                        <FeatureCard
+                            icon={<Database className="text-white" size={24} />}
+                            title="Dokumentation som lönar sig"
+                            description="När det är dags att sälja har du en komplett, sökbar historik över varje skruv och service. Det bygger förtroende och maximerar försäljningspriset."
+                            color="blue"
+                            fullWidth
                         />
                     </div>
                 </div>
@@ -352,28 +362,29 @@ interface FeatureCardProps {
     title: string;
     description: string;
     color: 'teal' | 'rose' | 'indigo' | 'amber' | 'emerald' | 'purple' | 'cyan' | 'blue';
+    fullWidth?: boolean;
 }
 
-const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, color }) => {
+const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, color, fullWidth }) => {
     const colorClasses = {
-        teal: 'bg-teal-50',
-        rose: 'bg-rose-50',
-        indigo: 'bg-indigo-50',
-        amber: 'bg-amber-50',
-        emerald: 'bg-emerald-50',
-        purple: 'bg-purple-50',
-        cyan: 'bg-cyan-50',
-        blue: 'bg-blue-50'
+        teal: 'bg-teal-500 shadow-teal-200',
+        rose: 'bg-rose-500 shadow-rose-200',
+        indigo: 'bg-indigo-500 shadow-indigo-200',
+        amber: 'bg-amber-500 shadow-amber-200',
+        emerald: 'bg-emerald-500 shadow-emerald-200',
+        purple: 'bg-purple-500 shadow-purple-200',
+        cyan: 'bg-cyan-500 shadow-cyan-200',
+        blue: 'bg-blue-500 shadow-blue-200'
     };
 
     return (
-        <div className={`p-8 rounded-[2rem] bg-white border border-stone-50 hover:shadow-lg hover:shadow-stone-100 transition-all hover:-translate-y-1`}>
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 ${colorClasses[color]}`}>
+        <div className={`p-8 rounded-3xl bg-white border border-stone-100 hover:shadow-xl hover:shadow-stone-100 transition-all hover:-translate-y-1 ${fullWidth ? 'md:col-span-2 lg:col-span-3 lg:flex lg:items-center lg:gap-8' : ''}`}>
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg ${colorClasses[color]} ${fullWidth ? 'lg:mb-0 lg:flex-shrink-0' : ''}`}>
                 {icon}
             </div>
             <div>
-                <h4 className="font-serif text-xl text-stone-800 mb-3">{title}</h4>
-                <p className="text-stone-600 leading-relaxed font-light text-sm">{description}</p>
+                <h4 className="font-bold text-xl text-stone-900 mb-3">{title}</h4>
+                <p className="text-stone-600 leading-relaxed font-light">{description}</p>
             </div>
         </div>
     );
