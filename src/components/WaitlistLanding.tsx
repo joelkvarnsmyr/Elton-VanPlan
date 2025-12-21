@@ -167,43 +167,40 @@ export const WaitlistLanding: React.FC = () => {
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-8">
-                        {/* Nybörjare */}
-                        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-stone-100 hover:shadow-xl hover:shadow-rose-100/50 transition-all hover:-translate-y-1">
-                            <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mb-6">
-                                <Sparkles size={28} strokeWidth={1.5} />
+                        {/* Nybörjare - Pink/Rose */}
+                        <div className="bg-gradient-to-br from-pink-100 to-rose-100 p-8 rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-rose-200/50 transition-all hover:-translate-y-1 border border-rose-200/50">
+                            <div className="w-14 h-14 bg-white/80 backdrop-blur text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-md">
+                                <Sparkles size={28} strokeWidth={2} />
                             </div>
-                            <h4 className="text-2xl font-serif text-stone-800 mb-3">Drömmaren</h4>
-                            <p className="text-stone-600 leading-relaxed mb-4">
+                            <h4 className="text-2xl font-serif font-bold text-stone-900 mb-3">Drömmaren</h4>
+                            <p className="text-stone-700 leading-relaxed mb-4">
                                 Aldrig hållit i en skiftnyckel? Ingen fara. Vi översätter verkstadsspråk till ren svenska och guidar dig tryggt framåt.
                             </p>
-                            <span className="text-sm font-medium text-rose-500">Perfekt för nybörjare</span>
+                            <span className="text-sm font-bold text-rose-700">Perfekt för nybörjare</span>
                         </div>
 
-                        {/* Hemmamekaniker */}
-                        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-stone-100 hover:shadow-xl hover:shadow-teal-100/50 transition-all hover:-translate-y-1 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-teal-50 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150"></div>
-                            <div className="relative z-10">
-                                <div className="w-14 h-14 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center mb-6">
-                                    <Wrench size={28} strokeWidth={1.5} />
-                                </div>
-                                <h4 className="text-2xl font-serif text-stone-800 mb-3">Fixaren</h4>
-                                <p className="text-stone-600 leading-relaxed mb-4">
-                                    Få struktur på kaoset. Inköpslistor som skapar sig själva och en budget som faktiskt håller.
-                                </p>
-                                <span className="text-sm font-medium text-teal-600">För dig som vill ha ordning</span>
+                        {/* Hemmamekaniker - Green/Teal */}
+                        <div className="bg-gradient-to-br from-green-100 to-teal-100 p-8 rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-teal-200/50 transition-all hover:-translate-y-1 border border-teal-200/50">
+                            <div className="w-14 h-14 bg-white/80 backdrop-blur text-teal-600 rounded-2xl flex items-center justify-center mb-6 shadow-md">
+                                <Wrench size={28} strokeWidth={2} />
                             </div>
+                            <h4 className="text-2xl font-serif font-bold text-stone-900 mb-3">Fixaren</h4>
+                            <p className="text-stone-700 leading-relaxed mb-4">
+                                Få struktur på kaoset. Inköpslistor som skapar sig själva och en budget som faktiskt håller.
+                            </p>
+                            <span className="text-sm font-bold text-teal-700">För dig som vill ha ordning</span>
                         </div>
 
-                        {/* Expert */}
-                        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-stone-100 hover:shadow-xl hover:shadow-amber-100/50 transition-all hover:-translate-y-1">
-                            <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-6">
-                                <Zap size={28} strokeWidth={1.5} />
+                        {/* Expert - Blue/Cyan */}
+                        <div className="bg-gradient-to-br from-blue-100 to-cyan-100 p-8 rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-cyan-200/50 transition-all hover:-translate-y-1 border border-cyan-200/50">
+                            <div className="w-14 h-14 bg-white/80 backdrop-blur text-cyan-600 rounded-2xl flex items-center justify-center mb-6 shadow-md">
+                                <Zap size={28} strokeWidth={2} />
                             </div>
-                            <h4 className="text-2xl font-serif text-stone-800 mb-3">Proffset</h4>
-                            <p className="text-stone-600 leading-relaxed mb-4">
+                            <h4 className="text-2xl font-serif font-bold text-stone-900 mb-3">Proffset</h4>
+                            <p className="text-stone-700 leading-relaxed mb-4">
                                 Dokumentera varje skruv för att maxa värdet. Din digitala servicebok som imponerar på både köpare och besiktning.
                             </p>
-                            <span className="text-sm font-medium text-amber-600">Maximalt värde</span>
+                            <span className="text-sm font-bold text-cyan-700">Maximalt värde</span>
                         </div>
                     </div>
                 </div>
@@ -237,6 +234,19 @@ export const WaitlistLanding: React.FC = () => {
                         <p>
                             Det hjälper oss att bryta ner det omöjliga berget till hanterbara steg och ger en tydlig strategi, så att man vågar ta sig an jobbet med självförtroende oavsett kunskapsnivå. VanPlan är kartan som gör att du går från att drömma på Pinterest till att faktiskt vrida om nyckeln – oavsett om du är proffs eller aldrig hållit i en skiftnyckel förut. Vi gör drömmen genomförbar, en skruv i taget.
                         </p>
+
+                        {/* Signatures */}
+                        <div className="flex items-center justify-center gap-12 pt-8 mt-8 border-t border-stone-200">
+                            <div className="text-center">
+                                <p className="text-4xl text-stone-600 mb-1" style={{ fontFamily: "'Dancing Script', cursive" }}>Joel</p>
+                                <p className="text-xs text-stone-400 uppercase tracking-wider">Teknik & Struktur</p>
+                            </div>
+                            <div className="w-px h-12 bg-stone-200"></div>
+                            <div className="text-center">
+                                <p className="text-4xl text-stone-600 mb-1" style={{ fontFamily: "'Pacifico', cursive" }}>Hanna</p>
+                                <p className="text-xs text-stone-400 uppercase tracking-wider">Design & Vision</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
