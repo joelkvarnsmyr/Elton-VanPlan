@@ -333,10 +333,10 @@ export const WaitlistLanding: React.FC = () => {
                                 Undvik dyra misstag innan du köper.
                             </h3>
                             <p className="text-xl text-stone-600 mb-8 leading-relaxed">
-                                Ska köpa bil? Få modell-specifik checklista. Fotografera rost, motor – Elton analyserar och varnar för dolda problem.
+                                Ska du köpa bil? Få en modell-specifik checklista. Fotografera rost, motor – Elton analyserar och varnar för dolda problem.
                             </p>
                             <p className="text-stone-500 italic">
-                                "Elton upptäckte rostskador som skulle kostat 50 000 kr att laga. Jag tackade nej till köpet."
+                                "Elton upptäckte rostskador som skulle ha kostat 50 000 kr att laga. Jag tackade nej till köpet."
                             </p>
                         </div>
                     </div>
@@ -389,7 +389,7 @@ export const WaitlistLanding: React.FC = () => {
                         <CompactFeatureCard
                             icon={<Cloud className="text-cyan-600" size={24} />}
                             title="Alltid säkert i molnet"
-                            description="All data backupas automatiskt. Tappa telefonen? Inga problem."
+                            description="All data backupas automatiskt. Tappar du telefonen? Inga problem."
                         />
                         <CompactFeatureCard
                             icon={<GraduationCap className="text-teal-600" size={24} />}
@@ -452,7 +452,7 @@ export const WaitlistLanding: React.FC = () => {
                         Nödsituation? Inga problem.
                     </h4>
                     <p className="text-xl opacity-90 max-w-2xl mx-auto">
-                        Fastnat i Danmark? Ta bild på problemet, fråga Elton. Ladda upp försäkringsavtal – Elton berättar om skadan täcks.
+                        Fastnat i Danmark? Ta en bild på problemet och fråga Elton. Ladda upp ditt försäkringsavtal – Elton berättar om skadan täcks.
                     </p>
                 </div>
             </section>
