@@ -81,8 +81,8 @@ export const WaitlistLanding: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-stone-50 font-sans selection:bg-rose-100 selection:text-rose-900">
-            {/* Header - More visible */}
-            <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white border-b border-stone-200 shadow-sm">
+            {/* Header */}
+            <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/80 backdrop-blur-md border-b border-stone-100/50">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-gradient-to-br from-rose-400 to-orange-300 rounded-lg flex items-center justify-center shadow-sm">
@@ -211,32 +211,30 @@ export const WaitlistLanding: React.FC = () => {
 
 
 
-            {/* VÅR HISTORIA - Text with Elton logo, NO IMAGE */}
-            <section className="px-6 py-24 bg-gradient-to-b from-white to-stone-50 overflow-hidden">
-                <div className="max-w-4xl mx-auto">
-                    <div className="text-center mb-12">
-                        <div className="flex items-center justify-center gap-3 mb-6">
-                            <img src={eltonLogo} alt="Elton" className="h-12 w-auto opacity-80" />
-                            <span className="text-rose-500 font-medium tracking-wider text-sm uppercase">Vår Resa</span>
-                        </div>
+            {/* VÅR HISTORIA - Bildfokus */}
+            <section className="px-6 py-24 bg-white overflow-hidden">
+                <div className="max-w-5xl mx-auto">
+                    <div className="text-center mb-16">
+                        <span className="text-rose-500 font-medium tracking-wider text-sm uppercase mb-2 block">Vår Resa</span>
                         <h3 className="text-3xl md:text-5xl font-serif text-stone-800 mb-6">
-                            Från rosthål till <span className="text-rose-500">rullande frihet</span>
+                            Från rostig dröm till äventyr
                         </h3>
+                        <p className="text-xl text-stone-600 max-w-2xl mx-auto font-light">
+                            När vi köpte vår LT31 visste vi ingenting. Nu vet vi att allt går att lösa – med lite hjälp.
+                        </p>
                     </div>
 
-                    <div className="space-y-6 text-lg text-stone-700 leading-relaxed">
-                        <p>
-                            Vad händer när en 25-årig husbilsdröm krockar med en gammal skåpbil, där den ena av oss ser inredningsmagi och den andra ser mekaniska måsten? Vi möttes i en gemensam längtan, men glappet mellan vision och verklighet kändes lika stort som hålet i bilens rostiga balk.
-                        </p>
-                        <p>
-                            Utan en tydlig karta insåg vi snabbt att vi skulle gå vilse bland kablar och isolering. Därför skapade vi VanPlan.
-                        </p>
-                        <p className="border-l-4 border-rose-300 pl-6 italic text-stone-800 bg-rose-50/30 py-4 rounded-r-2xl">
-                            Det blev vår gemensamma tolk som översätter tekniskt kaos till en tydlig, visuell struktur där vi kan mötas.
-                        </p>
-                        <p>
-                            Det hjälper oss att bryta ner det omöjliga berget till hanterbara steg och ger en tydlig strategi, så att man vågar ta sig an jobbet med självförtroende oavsett kunskapsnivå. VanPlan är kartan som gör att du går från att drömma på Pinterest till att faktiskt vrida om nyckeln – oavsett om du är proffs eller aldrig hållit i en skiftnyckel förut. Vi gör drömmen genomförbar, en skruv i taget.
-                        </p>
+                    <div className="relative rounded-[3rem] overflow-hidden shadow-2xl shadow-stone-200 aspect-[16/9] group">
+                        <img
+                            src={hanna2}
+                            alt="Hanna och Vanen"
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-10">
+                            <p className="text-white font-serif text-2xl md:text-3xl italic">
+                                "Vi skapade VanPlan för att vi behövde den själva."
+                            </p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -348,14 +346,14 @@ export const WaitlistLanding: React.FC = () => {
                 </div>
             </section>
 
-            {/* CTA FOOTER */}
+            {/* CTA FOOTER - Clean & Simple */}
             <section className="px-6 py-24 bg-white border-t border-stone-100">
                 <div className="max-w-2xl mx-auto text-center">
                     <h3 className="text-4xl font-serif text-stone-800 mb-6">
-                        Redo att starta motorn?
+                        Börja din resa här
                     </h3>
                     <p className="text-lg text-stone-600 mb-10 font-light">
-                        Bli en av de första att testa VanPlan och ta kontroll över ditt drömprojekt.
+                        Väntelistan är öppen. Kostnadsfritt under betan.
                     </p>
 
                     <form onSubmit={handleSubmit} className="bg-stone-50 p-2 pl-4 rounded-full shadow-lg shadow-stone-100 border border-stone-100 flex items-center gap-2 transition-all focus-within:ring-4 focus-within:ring-rose-500/10 max-w-md mx-auto">
@@ -372,23 +370,19 @@ export const WaitlistLanding: React.FC = () => {
                             disabled={isSubmitting || !email}
                             className="px-8 py-3 bg-stone-800 hover:bg-stone-700 text-white font-medium rounded-full transition-all active:scale-[0.98] flex items-center gap-2 disabled:opacity-50"
                         >
-                            {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : "Gå med nu"}
+                            {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : "Skriv upp mig"}
                         </button>
                     </form>
 
-                    <p className="text-sm text-stone-500 mt-12 mb-4">
-                        Byggt med ❤️ av ett par som vägrade låta rosten krossa drömmen (och lärde sig meka på vägen).
-                    </p>
-                    <p className="text-xs text-stone-300">© 2025 The VanPlan</p>
-
-                    <div className="mt-8 pt-8 border-t border-stone-50 flex justify-center gap-8">
-                        <button onClick={() => setShowFeedback(true)} className="text-xs text-stone-400 hover:text-stone-600 transition-colors">
+                    <div className="mt-16 pt-8 border-t border-stone-50 flex justify-center gap-8">
+                        <button onClick={() => setShowFeedback(true)} className="text-xs text-stone-400 hover:text-stone-600 transition-colors flex items-center gap-2">
                             Rapportera fel
                         </button>
-                        <button onClick={() => setShowPolicy(true)} className="text-xs text-stone-400 hover:text-stone-600 transition-colors">
+                        <button onClick={() => setShowPolicy(true)} className="text-xs text-stone-400 hover:text-stone-600 transition-colors flex items-center gap-2">
                             Villkor
                         </button>
                     </div>
+                    <p className="text-[10px] text-stone-300 mt-4 text-center">© 2025 The VanPlan</p>
                 </div>
             </section>
 
