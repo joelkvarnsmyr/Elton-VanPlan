@@ -86,7 +86,10 @@ export const WaitlistLanding: React.FC = () => {
             <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white border-b border-stone-200 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <img src={newLogo} alt="VanPlan" className="h-8 w-auto" />
+                        <img src={newLogo} alt="VanPlan" className="h-10 w-auto" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 bg-stone-100 text-stone-500 rounded-full">
+                            Beta
+                        </span>
                     </div>
                     <button
                         onClick={() => setShowLogin(true)}
