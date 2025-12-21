@@ -314,8 +314,9 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
 // ShoppingList Props
 interface ShoppingListProps {
   items: ShoppingItem[];
-  tasks?: Task[];
-  vehicleData?: VehicleData;
+  tasks: Task[];
+  vehicleData: VehicleData;
+  projectId: string; // Added prop
   onToggle: (id: string) => void;
   onAdd: (item: Omit<ShoppingItem, 'id'>) => void;
   onUpdate: (item: ShoppingItem) => void;
@@ -330,6 +331,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
   items,
   tasks = [],
   vehicleData,
+  projectId,
   onToggle,
   onAdd,
   onUpdate,
@@ -661,6 +663,7 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
       {chatContext && (
         <ContextualChat
           context={chatContext}
+          projectId={projectId}
           onClose={() => setChatContext(null)}
           onUpdateItem={(updatedItem) => {
             onUpdate(updatedItem);

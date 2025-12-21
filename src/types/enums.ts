@@ -11,7 +11,13 @@ export enum TaskType {
     MAINTENANCE = 'MAINT',   // Reparation & Service (Måste göras)
     BUILD = 'BUILD',         // Vanlife-bygge (Förbättring)
     PURCHASE = 'BUY',        // Rena inköp
-    ADMIN = 'ADMIN'          // Försäkring, Besiktning, Ägarbyte
+    ADMIN = 'ADMIN',          // Försäkring, Besiktning, Ägarbyte
+    REPAIR = 'REPAIR',       // Reparation
+    RESEARCH = 'RESEARCH',   // Research
+    UPGRADE = 'UPGRADE',     // Uppgradering
+    INSPECTION = 'INSPECTION', // Inspektion
+    DIY = 'DIY',             // DIY
+    SERVICE = 'SERVICE'      // Service
 }
 
 // Mekaniska spåret (Bilen) - Prioritet 1

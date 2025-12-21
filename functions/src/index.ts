@@ -31,4 +31,5 @@ export * from './scraper/vehicleScraper';
 
 // Future: Add more function exports here
 // export { userCleanup } from './admin/cleanup';
-// export { webhooks } from './integrations/webhooks';
+// MCP Server (Public AI Interface)
+export { eltonMcp } from './mcp';

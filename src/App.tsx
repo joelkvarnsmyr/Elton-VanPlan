@@ -417,7 +417,7 @@ export const App = () => {
     // Deep merge for nested objects
     for (const key in updates) {
       if (typeof updates[key as keyof VehicleData] === 'object' && updates[key as keyof VehicleData] !== null) {
-        mergedVehicleData[key as keyof VehicleData] = {
+        (mergedVehicleData as any)[key] = {
           ...(activeProject.vehicleData[key as keyof VehicleData] as any),
           ...(updates[key as keyof VehicleData] as any)
         };
@@ -635,7 +635,7 @@ export const App = () => {
         </div>
         <div className="pb-28 sm:pb-0">
           {currentView === 'dashboard' && <Dashboard project={activeProject} onPhaseClick={(p) => { setActivePhaseFilter(p); setCurrentView('tasks'); }} onViewTask={(taskId) => { setTaskToView(taskId); setCurrentView('tasks'); }} onViewShopping={() => setCurrentView('shopping')} />}
-          {currentView === 'tasks' && <TaskBoard tasks={activeProject.tasks} shoppingItems={activeProject.shoppingItems} vehicleData={activeProject.vehicleData} onUpdateTask={handleUpdateTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} initialFilter={activePhaseFilter as any} initialSelectedTaskId={taskToView} />}
+          {currentView === 'tasks' && <TaskBoard tasks={activeProject.tasks} shoppingItems={activeProject.shoppingItems} vehicleData={activeProject.vehicleData} onUpdateTask={handleUpdateTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} initialFilter={activePhaseFilter as any} initialSelectedTaskId={taskToView} projectId={activeProject.id} />}
           {currentView === 'ai' && <AIAssistant project={activeProject} contacts={activeProject.contacts} userSkillLevel={currentUser?.skillLevel} onAddTask={(t) => handleAddTasks(t as any)} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} onUpdateShoppingItem={handleUpdateShoppingItem} onDeleteShoppingItem={handleDeleteShoppingItem} onUpdateVehicleData={handleUpdateVehicleData} onAddKnowledgeArticle={handleAddKnowledgeArticle} onAddServiceLog={handleAddServiceLog} onAddHistoryEvent={handleAddHistoryEvent} onUpdateProjectMetadata={handleUpdateProjectMetadata} onClose={() => setCurrentView('dashboard')} />}
           {currentView === 'specs' && <VehicleSpecs
             vehicleData={activeProject.vehicleData}
@@ -646,7 +646,7 @@ export const App = () => {
             onUpdateLocation={handleUpdateLocation}
             projectType={activeProject.type}
           />}
-          {currentView === 'shopping' && <ShoppingList items={activeProject.shoppingItems} tasks={activeProject.tasks} vehicleData={activeProject.vehicleData} onAdd={(i) => handleAddShoppingItem(i as any)} onDelete={handleDeleteShoppingItem} onToggle={(id) => { const i = activeProject.shoppingItems.find(x => x.id === id); if (i) handleUpdateShoppingItem({ ...i, checked: !i.checked }) }} onUpdate={handleUpdateShoppingItem} onUploadReceipt={handleUploadReceipt} filterByTaskId={shoppingTaskFilter} />}
+          {currentView === 'shopping' && <ShoppingList items={activeProject.shoppingItems} tasks={activeProject.tasks} vehicleData={activeProject.vehicleData} projectId={activeProject.id} onAdd={(i) => handleAddShoppingItem(i as any)} onDelete={handleDeleteShoppingItem} onToggle={(id) => { const i = activeProject.shoppingItems.find(x => x.id === id); if (i) handleUpdateShoppingItem({ ...i, checked: !i.checked }) }} onUpdate={handleUpdateShoppingItem} onUploadReceipt={handleUploadReceipt} filterByTaskId={shoppingTaskFilter} />}
           {currentView === 'inspection' && activeProject.inspections && activeProject.inspections.length > 0 && <InspectionPage inspection={activeProject.inspections[0] as any} tasks={activeProject.tasks} onViewTask={(taskId) => { setCurrentView('tasks'); }} />}
           {currentView === 'scraper' && <TestScraper onClose={() => setCurrentView('dashboard')} />}
         </div>

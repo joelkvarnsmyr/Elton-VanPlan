@@ -1,11 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChatContext, ContextualChatMessage, ShoppingItem, Task, VendorOption } from '@/types/types';
-import { X, Send, MessageCircle, Sparkles, Loader2, CheckCircle, Plus } from 'lucide-react';
+import { MessageCircle, X, Loader2, Sparkles, Plus, Send } from 'lucide-react';
 import { generateText } from '@/services/aiService';
-import { addVehicleHistoryEvent, addMileageReading, updateInspectionFinding } from '@/services/db';
+import { addVehicleHistoryEvent, addMileageReading, updateInspectionFinding, addTask } from '@/services/db';
 
 interface ContextualChatProps {
     context: ChatContext;
+    projectId: string; // Added prop
     onClose: () => void;
     onUpdateItem?: (item: ShoppingItem) => void;
     onUpdateTask?: (task: Task) => void;
@@ -162,6 +163,7 @@ INSTRUKTIONER:
 
 export const ContextualChat: React.FC<ContextualChatProps> = ({
     context,
+    projectId,
     onClose,
     onUpdateItem,
     onUpdateTask
@@ -237,8 +239,8 @@ export const ContextualChat: React.FC<ContextualChatProps> = ({
 
             // Handle Tool Calls
             if (aiResponse.functionCalls && aiResponse.functionCalls.length > 0) {
-                // Determine Project ID (Assume context has it or use current project)
-                const projectId = 'Elton-VanPlan'; // TODO: Pass projectId in props or context!
+                // Use passed projectId
+                // const projectId = 'Elton-VanPlan'; 
 
                 for (const call of aiResponse.functionCalls) {
                     let toolResult = '';
@@ -255,6 +257,14 @@ export const ContextualChat: React.FC<ContextualChatProps> = ({
                                 resolutionNotes: call.args.feedback || call.args.resolutionNotes
                             });
                             toolResult = `Successfully updated finding ${call.args.findingId}`;
+                        } else if (call.name === 'addTask') {
+                            await addTask(projectId, {
+                                ...call.args,
+                                status: 'Ej påbörjad',
+                                created: new Date().toISOString(),
+                                updated: new Date().toISOString()
+                            });
+                            toolResult = `Successfully added task: ${call.args.title}`;
                         } else {
                             toolResult = `Unknown tool: ${call.name}`;
                         }

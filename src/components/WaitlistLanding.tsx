@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { Check, Loader2, ArrowRight, CheckCircle2, X, Sparkles, Wrench, Camera, MessageSquare, ShoppingCart, FileText, MapPin, Calendar, Database, Users, Cloud, TrendingUp, BookOpen, Zap, GraduationCap, Heart, ListChecks } from 'lucide-react';
+import { Check, Loader2, ArrowRight, CheckCircle2, X, Sparkles, Wrench, Camera, MessageSquare, ShoppingCart, FileText, MapPin, Calendar, Database, Users, Cloud, TrendingUp, BookOpen, Zap, GraduationCap, Github, Heart } from 'lucide-react';
 import { addToWaitlist } from '@/services/db';
 import { AuthLanding } from './AuthLanding';
 import eltonLogo from '@/assets/eltonlogo.svg';
+import hanna1 from '@/assets/hanna1.png';
+import hanna2 from '@/assets/hanna2.png';
+import { FeedbackModal } from './modals/FeedbackModal';
+import { PolicyModal } from './modals/PolicyModal';
 
 export const WaitlistLanding: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -12,6 +16,8 @@ export const WaitlistLanding: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [queuePosition, setQueuePosition] = useState<number | null>(null);
     const [showLogin, setShowLogin] = useState(false);
+    const [showFeedback, setShowFeedback] = useState(false);
+    const [showPolicy, setShowPolicy] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -41,449 +47,302 @@ export const WaitlistLanding: React.FC = () => {
 
     if (submitted) {
         return (
-            <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center p-6">
-                <div className="max-w-xl w-full bg-white p-12 rounded-3xl shadow-sm border border-slate-100 text-center">
-                    <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                        <CheckCircle2 size={32} className="text-emerald-600" strokeWidth={2} />
+            <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
+                <div className="max-w-xl w-full bg-white p-12 rounded-[2rem] shadow-xl shadow-stone-200/50 border border-stone-100 text-center">
+                    <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <CheckCircle2 size={32} className="text-green-600" strokeWidth={2} />
                     </div>
 
-                    <h1 className="font-semibold text-2xl text-slate-900 mb-2">
+                    <h1 className="font-serif font-medium text-3xl text-stone-800 mb-2">
                         Du är med! 🎉
                     </h1>
 
-                    <p className="text-slate-600 text-base mb-4">
+                    <p className="text-stone-600 text-lg mb-4">
                         Tack {name || email.split('@')[0]}!
                     </p>
 
                     {queuePosition !== null && (
-                        <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-6 mb-6">
-                            <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-2">Din position</p>
-                            <p className="text-4xl font-bold text-slate-900">#{queuePosition}</p>
+                        <div className="bg-stone-50 rounded-2xl p-6 mb-6">
+                            <p className="text-xs text-stone-500 uppercase tracking-wide font-medium mb-2">Din plats i kön</p>
+                            <p className="text-4xl font-serif font-bold text-stone-800">#{queuePosition}</p>
                         </div>
                     )}
 
-                    <p className="text-slate-500 text-sm">
-                        Vi hör av oss till <span className="font-medium text-slate-700">{email}</span> när det är din tur.
+                    <p className="text-stone-500 text-sm">
+                        Vi hör av oss till <span className="font-medium text-stone-700">{email}</span> när det är din tur.
                     </p>
+                    <button onClick={() => setSubmitted(false)} className="mt-8 text-sm text-stone-400 hover:text-stone-600">
+                        Tillbaka till startsidan
+                    </button>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-white">
-            {/* Header with The VanPlan + Wrench Logo */}
-            <header className="border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-50">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Wrench className="text-slate-800" size={24} strokeWidth={2.5} />
-                        <h1 className="font-bold text-xl text-slate-900">The VanPlan</h1>
-                        <span className="text-xs font-bold uppercase tracking-wider px-2 py-1 bg-rose-100 text-rose-700 rounded-md">
-                            Experiment
+        <div className="min-h-screen bg-stone-50 font-sans selection:bg-rose-100 selection:text-rose-900">
+            {/* Header */}
+            <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/80 backdrop-blur-md border-b border-stone-100/50">
+                <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-rose-400 to-orange-300 rounded-lg flex items-center justify-center shadow-sm">
+                            <Heart className="text-white" size={16} fill="currentColor" />
+                        </div>
+                        <h1 className="font-serif font-bold text-xl text-stone-800 tracking-tight">The VanPlan</h1>
+                        <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 bg-stone-100 text-stone-500 rounded-full">
+                            Beta
                         </span>
                     </div>
                     <button
                         onClick={() => setShowLogin(true)}
-                        className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors"
+                        className="px-5 py-2 text-sm font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-50 rounded-full transition-all"
                     >
                         Logga in
                     </button>
                 </div>
             </header>
 
-            {/* Hero - Gradient Style */}
-            <section className="bg-gradient-to-br from-rose-50 via-white to-teal-50 px-6 py-24 md:py-32">
-                <div className="max-w-4xl mx-auto text-center">
-                    <h2 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 tracking-tight leading-[1.1]">
-                        Hela din resa,<br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-rose-600">smart dokumenterad</span>
+            {/* HERO-SEKTION with Background Image */}
+            <section className="relative min-h-[90vh] flex items-center justify-center pt-20 px-6 overflow-hidden">
+                {/* Background Image with Overlay */}
+                <div className="absolute inset-0 z-0">
+                    <img
+                        src={hanna1}
+                        alt="Background of van life journey"
+                        className="w-full h-full object-cover object-center"
+                    />
+                    <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px]"></div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/40 to-stone-50"></div>
+                </div>
+
+                <div className="max-w-4xl mx-auto text-center relative z-10 mt-10">
+                    <span className="inline-block px-4 py-1.5 rounded-full bg-rose-50 text-rose-600 text-sm font-medium mb-6 border border-rose-100 shadow-sm animate-fade-in-up">
+                        ✨ Gör drömmen till verklighet
+                    </span>
+
+                    <h2 className="text-5xl md:text-7xl font-serif font-medium text-stone-900 mb-8 tracking-tight leading-[1.1] drop-shadow-sm">
+                        Resan är målet.<br />
+                        <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-orange-400">Vi hjälper dig på vägen.</span>
                     </h2>
 
-                    <p className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
-                        För van, husbil, campervan eller skåpbil. Bygg om, förvalta eller bara håll koll. VanPlan har AI-verktyg för både stora projekt och vardagligt underhåll.
+                    <p className="text-xl md:text-2xl text-stone-600 mb-12 max-w-2xl mx-auto leading-relaxed font-light">
+                        Din digitala kompis för vanlife-bygget. Mjuka värden möter hård fakta – från inspiration till besiktning.
                     </p>
 
                     <div className="max-w-md mx-auto">
-                        <form onSubmit={handleSubmit} className="bg-white p-5 rounded-2xl shadow-lg border border-slate-200">
-                            <div className="space-y-3 mb-4">
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="din@epost.se"
-                                    required
-                                    className="w-full px-4 py-3 bg-slate-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/30 text-slate-900 placeholder-slate-400"
-                                />
-
-                                <input
-                                    type="text"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="Ditt namn (valfritt)"
-                                    className="w-full px-4 py-3 bg-slate-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/30 text-slate-900 placeholder-slate-400"
-                                />
-                            </div>
-
-                            {error && (
-                                <div className="mb-4 p-3 bg-red-50 rounded-xl">
-                                    <p className="text-sm text-red-600">{error}</p>
-                                </div>
-                            )}
-
-                            <button
-                                type="submit"
-                                disabled={isSubmitting || !email}
-                                className="w-full py-3 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-teal-500/20"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 className="animate-spin" size={18} />
-                                        Registrerar...
-                                    </>
-                                ) : (
-                                    <>
-                                        Gå med i väntelistan
-                                        <ArrowRight size={18} />
-                                    </>
-                                )}
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </section>
-
-            {/* Skill Levels */}
-            <section className="px-6 py-20 bg-white border-t border-slate-100">
-                <div className="max-w-6xl mx-auto">
-                    <div className="text-center mb-16">
-                        <h3 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-                            För alla, oavsett erfarenhet
-                        </h3>
-                        <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                            VanPlan anpassar sig efter din nivå
-                        </p>
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-6">
-                        <div className="bg-gradient-to-br from-rose-50 to-white p-8 rounded-2xl border border-rose-100">
-                            <GraduationCap className="text-rose-600 mb-4" size={32} />
-                            <h4 className="text-xl font-semibold text-slate-900 mb-3">Nybörjare</h4>
-                            <p className="text-slate-600 mb-4 text-sm leading-relaxed">
-                                Aldrig mekat? Perfekt. AI guidar dig steg för steg och skriver om "BYTA OLJA" till begripliga checklistor.
-                            </p>
-                            <ul className="space-y-2 text-sm text-slate-600">
-                                <li className="flex items-start gap-2">
-                                    <Check size={16} className="text-rose-500 mt-0.5 flex-shrink-0" />
-                                    <span>Steg-för-steg instruktioner</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <Check size={16} className="text-rose-500 mt-0.5 flex-shrink-0" />
-                                    <span>AI förklarar alla termer</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <Check size={16} className="text-rose-500 mt-0.5 flex-shrink-0" />
-                                    <span>Hitta lokala verkstäder</span>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div className="bg-gradient-to-br from-emerald-50 to-white p-8 rounded-2xl border border-emerald-100">
-                            <Wrench className="text-emerald-600 mb-4" size={32} />
-                            <h4 className="text-xl font-semibold text-slate-900 mb-3">Hemmamekaniker</h4>
-                            <p className="text-slate-600 mb-4 text-sm leading-relaxed">
-                                Kan byta olja? Bra! VanPlan hjälper dig ta nästa steg med smarta verktyg.
-                            </p>
-                            <ul className="space-y-2 text-sm text-slate-600">
-                                <li className="flex items-start gap-2">
-                                    <Check size={16} className="text-emerald-600 mt-0.5 flex-shrink-0" />
-                                    <span>Automatiska inköpslistor</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <Check size={16} className="text-emerald-600 mt-0.5 flex-shrink-0" />
-                                    <span>AI hittar rätt bildelar</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <Check size={16} className="text-emerald-600 mt-0.5 flex-shrink-0" />
-                                    <span>Spåra kostnader vs budget</span>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div className="bg-gradient-to-br from-amber-50 to-white p-8 rounded-2xl border border-amber-100">
-                            <Zap className="text-amber-600 mb-4" size={32} />
-                            <h4 className="text-xl font-semibold text-slate-900 mb-3">Expert</h4>
-                            <p className="text-slate-600 mb-4 text-sm leading-relaxed">
-                                Erfaren mekaniker? Använd VanPlan som din digitala verkstad.
-                            </p>
-                            <ul className="space-y-2 text-sm text-slate-600">
-                                <li className="flex items-start gap-2">
-                                    <Check size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
-                                    <span>Detaljerad dokumentation</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <Check size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
-                                    <span>Öka fordonets värde</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <Check size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
-                                    <span>Samarbeta med team</span>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Story - With Elton Logo */}
-            <section className="px-6 py-20 bg-gradient-to-br from-slate-50 to-white border-t border-slate-100">
-                <div className="max-w-3xl mx-auto">
-                    <div className="flex items-center gap-3 mb-8">
-                        <img src={eltonLogo} alt="Elton" className="h-12 w-auto opacity-90" />
-                        <span className="text-sm font-medium uppercase tracking-wider text-slate-400">Vår Historia</span>
-                    </div>
-
-                    <h3 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6">
-                        "Köpte en campervan från '76 och visste knappt var motorhuven satt"
-                    </h3>
-
-                    <div className="space-y-4 text-lg text-slate-600 leading-relaxed">
-                        <p>
-                            Drömmen? Episk roadtrip genom Europa. Verkligheten? En rostig VW från 1976 som lät
-                            som en kaffebryggare när man startade den. Vi hade <span className="text-slate-900 font-medium">noll koll</span> på bilar.
-                        </p>
-
-                        <p>
-                            Frågorna bara växte: <em className="text-slate-700">"Vad är egentligen en tändstift? Varför läcker det olja?
-                                Finns det ens reservdelar till en '76:a?"</em>
-                        </p>
-
-                        <p className="border-l-4 border-teal-300 pl-6 italic text-slate-700 bg-teal-50/50 py-4 rounded-r-xl">
-                            Kvitton överallt. Bilder i telefonen. Anteckningar på servettkuvert.
-                            Verkstadsmannens mobilnummer på en lapp någonstans. <span className="font-medium">Helt kaos.</span>
-                        </p>
-
-                        <p>
-                            Så vi skapade VanPlan för vår egen överlevnad. En plats där <strong className="text-slate-900">AI:n läser
-                                din manual</strong> och svarar på "vad-är-det-här-för-skruv"-frågor. Där alla kvitton, foton
-                            och milstolpar samlas.
-                        </p>
-
-                        <p className="text-slate-900 font-semibold text-xl">
-                            Idag rullar vår '76:a som en dröm 🚐✨
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            {/* Features Grid */}
-            <section className="px-6 py-20 bg-white border-t border-slate-100">
-                <div className="max-w-6xl mx-auto">
-                    <div className="text-center mb-16">
-                        <h3 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-                            För projekt <span className="text-slate-400">&</span> förvaltning
-                        </h3>
-                        <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                            AI hjälper dig med allt från köpbesiktning till säsongsservice
-                        </p>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <FeatureCard
-                            icon={<Camera className="text-teal-600" size={24} />}
-                            title="Automatisk fordonsdata"
-                            description="Ta kort på registreringsskylten eller ange regnummer – vi hämtar automatiskt alla fordonsdata: modell, årsmodell, vikt, tekniska specifikationer."
-                            color="teal"
-                        />
-
-                        <FeatureCard
-                            icon={<ListChecks className="text-rose-600" size={24} />}
-                            title="AI skriver om uppgifter"
-                            description="Från 'BYTA OLJA' till 'Vill du prova byta olja själv? Då behöver du det här...' AI skapar begripliga checklistor steg för steg."
-                            color="rose"
-                        />
-
-                        <FeatureCard
-                            icon={<CheckCircle2 className="text-indigo-600" size={24} />}
-                            title="Köpbesiktning med AI"
-                            description="Ska köpa bil? Få modell-specifik checklista. Fotografera rost, motor – AI analyserar och varnar för dolda problem."
-                            color="indigo"
-                        />
-
-                        <FeatureCard
-                            icon={<FileText className="text-amber-600" size={24} />}
-                            title="Scanna kvitton automatiskt"
-                            description="Fotografera kvitton från bildelar. AI läser produktnamn, pris och datum – allt sparas automatiskt i budgeten."
-                            color="amber"
-                        />
-
-                        <FeatureCard
-                            icon={<Calendar className="text-emerald-600" size={24} />}
-                            title="Säsongspåminnelser"
-                            description="Vinterförvaring? Vårcheck? AI skapar checklistor baserat på din bil och klimat. Missa aldrig viktiga datum."
-                            color="emerald"
-                        />
-
-                        <FeatureCard
-                            icon={<MessageSquare className="text-purple-600" size={24} />}
-                            title="AI som lär sig din bil"
-                            description="Ladda upp verkstadshandbok – AI indexerar den och svarar på frågor specifikt för din modell och årsmodell."
-                            color="purple"
-                        />
-
-                        <FeatureCard
-                            icon={<ShoppingCart className="text-teal-600" size={24} />}
-                            title="Smarta inköpslistor"
-                            description="AI föreslår exakt vilka delar du behöver baserat på din bil och projekt. Håll koll på budget vs faktisk kostnad."
-                            color="teal"
-                        />
-
-                        <FeatureCard
-                            icon={<MapPin className="text-rose-600" size={24} />}
-                            title="Hitta rätt verkstad"
-                            description="Få förslag på lokala verkstäder specialiserade på just din bilmodell. Spara kontakter och tidigare service."
-                            color="rose"
-                        />
-
-                        <FeatureCard
-                            icon={<TrendingUp className="text-indigo-600" size={24} />}
-                            title="Tidslinje & Fasplanering"
-                            description="Dela upp projektet i faser. AI identifierar beroenden – vad måste göras först, vad kan vänta."
-                            color="indigo"
-                        />
-
-                        <FeatureCard
-                            icon={<Database className="text-amber-600" size={24} />}
-                            title="Komplett servicehistorik"
-                            description="Dokumentera varje byte av komponent, varje service, varje milsten. Öka fordonets värde med komplett historik."
-                            color="amber"
-                        />
-
-                        <FeatureCard
-                            icon={<Users className="text-emerald-600" size={24} />}
-                            title="Samarbeta i realtid"
-                            description="Bjud in partner, vänner eller din verkstad till projektet. Alla ser samma info, kommenterar och uppdaterar."
-                            color="emerald"
-                        />
-
-                        <FeatureCard
-                            icon={<Cloud className="text-purple-600" size={24} />}
-                            title="Alltid säkert i molnet"
-                            description="All data backupas automatiskt. Tappa telefonen? Inga problem – logga in på ny enhet och fortsätt där du var."
-                            color="purple"
-                        />
-
-                        <FeatureCard
-                            icon={<Zap className="text-teal-600" size={24} />}
-                            title="Nödsituation? Inga problem"
-                            description="Fastnat i Danmark? Ta bild på problemet, fråga Elton AI. Ladda upp försäkringsavtal – AI berättar om skadan täcks."
-                            color="teal"
-                        />
-
-                        <FeatureCard
-                            icon={<BookOpen className="text-rose-600" size={24} />}
-                            title="Forskningsbaserad projektmetodik"
-                            description="Smarta mål, tydliga uppgit fter. AI identifierar beroenden så du gör rätt saker i rätt ordning."
-                            color="rose"
-                        />
-                    </div>
-                </div>
-            </section>
-
-            {/* Value Prop - Dark */}
-            <section className="px-6 py-20 bg-gradient-to-br from-slate-900 to-slate-800 text-white border-t border-slate-800">
-                <div className="max-w-3xl mx-auto text-center">
-                    <TrendingUp className="mx-auto mb-6 text-teal-400" size={48} />
-                    <h3 className="text-3xl md:text-4xl font-bold mb-6">
-                        Dokumentation ökar värdet
-                    </h3>
-                    <p className="text-lg text-slate-300 mb-8 leading-relaxed">
-                        När du säljer kan du visa komplett historik: varje byte, kvitton, milstolpar.
-                        Det inger förtroende och motiverar högre pris.
-                    </p>
-                    <p className="text-teal-400 font-semibold text-lg">
-                        VanPlan är din investering i framtiden
-                    </p>
-                </div>
-            </section>
-
-            {/* Final CTA */}
-            <section className="px-6 py-20 bg-gradient-to-br from-rose-50 to-white border-t border-slate-100">
-                <div className="max-w-2xl mx-auto text-center">
-                    <h3 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
-                        Redo att börja?
-                    </h3>
-                    <p className="text-lg text-slate-600 mb-8">
-                        Gå med i väntelistan och bli en av de första att testa VanPlan
-                    </p>
-
-                    <form onSubmit={handleSubmit} className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 max-w-md mx-auto">
-                        <div className="space-y-3 mb-4">
+                        <form onSubmit={handleSubmit} className="bg-white/80 backdrop-blur-xl p-2 pl-6 rounded-full shadow-2xl shadow-stone-200/50 border border-white flex items-center gap-2 transition-all hover:scale-[1.01] focus-within:ring-4 focus-within:ring-rose-500/10">
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="din@epost.se"
                                 required
-                                className="w-full px-4 py-3 bg-slate-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/30 text-slate-900 placeholder-slate-400"
+                                className="flex-1 bg-transparent border-none focus:ring-0 text-stone-800 placeholder-stone-400 py-3 text-lg outline-none"
                             />
-
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                placeholder="Ditt namn (valfritt)"
-                                className="w-full px-4 py-3 bg-slate-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/30 text-slate-900 placeholder-slate-400"
-                            />
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={isSubmitting || !email}
-                            className="w-full py-3 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-semibold rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-teal-500/20"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="animate-spin" size={18} />
-                                    Registrerar...
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles size={18} />
-                                    Gå med nu
-                                </>
-                            )}
-                        </button>
-                    </form>
+                            <button
+                                type="submit"
+                                disabled={isSubmitting || !email}
+                                className="px-8 py-4 bg-stone-800 hover:bg-stone-900 text-white font-medium rounded-full transition-all active:scale-[0.95] flex items-center gap-2 disabled:opacity-50 text-lg shadow-lg shadow-stone-900/10"
+                            >
+                                {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : "Gå med"}
+                            </button>
+                        </form>
+                        <p className="text-xs text-stone-500 mt-4 font-medium tracking-wide uppercase">
+                            Gå med 120+ andra drömmare i kön
+                        </p>
+                    </div>
                 </div>
             </section>
 
-            {/* Footer */}
-            <footer className="border-t border-slate-100 bg-white px-6 py-8">
-                <div className="max-w-6xl mx-auto text-center">
-                    <p className="text-sm text-slate-500">
-                        Byggt med ❤️ av ett par som älskar fordon (och lärde sig meka på vägen)
-                    </p>
-                    <p className="text-xs text-slate-400 mt-2">
-                        © 2025 The VanPlan
-                    </p>
-                </div>
-            </footer>
+            {/* MÅLGRUPPER (Nivåer) */}
+            <section className="px-6 py-24 bg-stone-50">
+                <div className="max-w-6xl mx-auto">
+                    <div className="text-center mb-16">
+                        <h3 className="text-3xl md:text-4xl font-serif text-stone-800 mb-4">
+                            För dig, oavsett var du är i resan
+                        </h3>
+                        <p className="text-lg text-stone-600 max-w-2xl mx-auto font-light">
+                            Inga förkunskaper krävs. Bara en vilja att skapa.
+                        </p>
+                    </div>
 
-            {/* Login Modal */}
-            {showLogin && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="relative w-full max-w-6xl max-h-[90vh] overflow-auto bg-white rounded-2xl shadow-2xl">
+                    <div className="grid md:grid-cols-3 gap-8">
+                        {/* Nybörjare */}
+                        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-stone-100 hover:shadow-xl hover:shadow-rose-100/50 transition-all hover:-translate-y-1">
+                            <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mb-6">
+                                <Sparkles size={28} strokeWidth={1.5} />
+                            </div>
+                            <h4 className="text-2xl font-serif text-stone-800 mb-3">Drömmaren</h4>
+                            <p className="text-stone-600 leading-relaxed mb-4">
+                                Aldrig hållit i en skiftnyckel? Ingen fara. Vi översätter verkstadsspråk till ren svenska och guidar dig tryggt framåt.
+                            </p>
+                            <span className="text-sm font-medium text-rose-500">Perfekt för nybörjare</span>
+                        </div>
+
+                        {/* Hemmamekaniker */}
+                        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-stone-100 hover:shadow-xl hover:shadow-teal-100/50 transition-all hover:-translate-y-1 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-teal-50 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150"></div>
+                            <div className="relative z-10">
+                                <div className="w-14 h-14 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center mb-6">
+                                    <Wrench size={28} strokeWidth={1.5} />
+                                </div>
+                                <h4 className="text-2xl font-serif text-stone-800 mb-3">Fixaren</h4>
+                                <p className="text-stone-600 leading-relaxed mb-4">
+                                    Få struktur på kaoset. Inköpslistor som skapar sig själva och en budget som faktiskt håller.
+                                </p>
+                                <span className="text-sm font-medium text-teal-600">För dig som vill ha ordning</span>
+                            </div>
+                        </div>
+
+                        {/* Expert */}
+                        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-stone-100 hover:shadow-xl hover:shadow-amber-100/50 transition-all hover:-translate-y-1">
+                            <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-6">
+                                <Zap size={28} strokeWidth={1.5} />
+                            </div>
+                            <h4 className="text-2xl font-serif text-stone-800 mb-3">Proffset</h4>
+                            <p className="text-stone-600 leading-relaxed mb-4">
+                                Dokumentera varje skruv för att maxa värdet. Din digitala servicebok som imponerar på både köpare och besiktning.
+                            </p>
+                            <span className="text-sm font-medium text-amber-600">Maximalt värde</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+
+            {/* VÅR HISTORIA - Bildfokus */}
+            <section className="px-6 py-24 bg-white overflow-hidden">
+                <div className="max-w-5xl mx-auto">
+                    <div className="text-center mb-16">
+                        <span className="text-rose-500 font-medium tracking-wider text-sm uppercase mb-2 block">Vår Resa</span>
+                        <h3 className="text-3xl md:text-5xl font-serif text-stone-800 mb-6">
+                            Från rostig dröm till äventyr
+                        </h3>
+                        <p className="text-xl text-stone-600 max-w-2xl mx-auto font-light">
+                            När vi köpte vår LT31 visste vi ingenting. Nu vet vi att allt går att lösa – med lite hjälp.
+                        </p>
+                    </div>
+
+                    <div className="relative rounded-[3rem] overflow-hidden shadow-2xl shadow-stone-200 aspect-[16/9] group">
+                        <img
+                            src={hanna2}
+                            alt="Hanna och Vanen"
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-10">
+                            <p className="text-white font-serif text-2xl md:text-3xl italic">
+                                "Vi skapade VanPlan för att vi behövde den själva."
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* FUNKTIONER (Problem & Lösning) - Mjukare cards */}
+            <section className="px-6 py-24 bg-stone-50">
+                <div className="max-w-6xl mx-auto">
+                    <div className="text-center mb-20">
+                        <h3 className="text-3xl md:text-5xl font-serif text-stone-800 mb-6">
+                            Allt samlat. <span className="italic text-rose-500">Äntligen.</span>
+                        </h3>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <FeatureCard
+                            icon={<Camera className="text-stone-600" size={24} />}
+                            title="Fota & Förstå"
+                            description="AI ser vad du ser. Fota en del, få veta vad det är och hur du lagar den."
+                            color="rose"
+                        />
+                        <FeatureCard
+                            icon={<BookOpen className="text-stone-600" size={24} />}
+                            title="Din digitala guide"
+                            description="Som en tålmodig vän som alltid har svaret, dygnet runt."
+                            color="teal"
+                        />
+                        <FeatureCard
+                            icon={<TrendingUp className="text-stone-600" size={24} />}
+                            title="Koll på pengarna"
+                            description="Fota kvittot, klart. Budgeten uppdateras automatiskt."
+                            color="amber"
+                        />
+                        <FeatureCard
+                            icon={<Calendar className="text-stone-600" size={24} />}
+                            title="Kom ihåg det viktiga"
+                            description="När ska oljan bytas? Vi håller koll åt dig."
+                            color="cyan"
+                        />
+                        <FeatureCard
+                            icon={<Users className="text-stone-600" size={24} />}
+                            title="Bygg tillsammans"
+                            description="Dela glädjen (och jobbet). Bjud in din partner och se samma plan."
+                            color="indigo"
+                        />
+                        <FeatureCard
+                            icon={<Zap className="text-stone-600" size={24} />}
+                            title="Trygghet på vägen"
+                            description="Problem utomlands? Vi hjälper dig att förstå vad som felar."
+                            color="purple"
+                        />
+                    </div>
+                </div>
+            </section>
+
+            {/* CTA FOOTER - Clean & Simple */}
+            <section className="px-6 py-24 bg-white border-t border-stone-100">
+                <div className="max-w-2xl mx-auto text-center">
+                    <h3 className="text-4xl font-serif text-stone-800 mb-6">
+                        Börja din resa här
+                    </h3>
+                    <p className="text-lg text-stone-600 mb-10 font-light">
+                        Väntelistan är öppen. Kostnadsfritt under betan.
+                    </p>
+
+                    <form onSubmit={handleSubmit} className="bg-stone-50 p-2 pl-4 rounded-full shadow-lg shadow-stone-100 border border-stone-100 flex items-center gap-2 transition-all focus-within:ring-4 focus-within:ring-rose-500/10 max-w-md mx-auto">
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="din@epost.se"
+                            required
+                            className="flex-1 bg-transparent border-none focus:ring-0 text-stone-800 placeholder-stone-400 py-3"
+                        />
                         <button
-                            onClick={() => setShowLogin(false)}
-                            className="absolute top-4 right-4 z-10 p-2 bg-white/90 hover:bg-white rounded-full shadow-lg transition-all"
-                            aria-label="Stäng"
+                            type="submit"
+                            disabled={isSubmitting || !email}
+                            className="px-8 py-3 bg-stone-800 hover:bg-stone-700 text-white font-medium rounded-full transition-all active:scale-[0.98] flex items-center gap-2 disabled:opacity-50"
                         >
-                            <X size={24} className="text-slate-700" />
+                            {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : "Skriv upp mig"}
+                        </button>
+                    </form>
+
+                    <div className="mt-16 pt-8 border-t border-stone-50 flex justify-center gap-8">
+                        <button onClick={() => setShowFeedback(true)} className="text-xs text-stone-400 hover:text-stone-600 transition-colors flex items-center gap-2">
+                            Rapportera fel
+                        </button>
+                        <button onClick={() => setShowPolicy(true)} className="text-xs text-stone-400 hover:text-stone-600 transition-colors flex items-center gap-2">
+                            Villkor
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-stone-300 mt-4 text-center">© 2025 The VanPlan</p>
+                </div>
+            </section>
+
+            {/* MODALS */}
+            {showLogin && (
+                <div className="fixed inset-0 bg-stone-900/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="relative w-full max-w-6xl max-h-[90vh] overflow-auto bg-white rounded-[2rem] shadow-2xl">
+                        <button onClick={() => setShowLogin(false)} className="absolute top-6 right-6 z-10 p-2 bg-white hover:bg-stone-50 rounded-full shadow-sm transition-all border border-stone-100">
+                            <X size={24} className="text-stone-500" />
                         </button>
                         <AuthLanding onDemo={() => setShowLogin(false)} />
                     </div>
                 </div>
             )}
+
+            {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
+            {showPolicy && <PolicyModal onClose={() => setShowPolicy(false)} />}
         </div>
     );
 };
@@ -492,24 +351,30 @@ interface FeatureCardProps {
     icon: React.ReactNode;
     title: string;
     description: string;
-    color: 'teal' | 'rose' | 'indigo' | 'amber' | 'emerald' | 'purple';
+    color: 'teal' | 'rose' | 'indigo' | 'amber' | 'emerald' | 'purple' | 'cyan' | 'blue';
 }
 
 const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, color }) => {
     const colorClasses = {
-        teal: 'bg-teal-50 border-teal-100 hover:border-teal-200 hover:shadow-teal-100',
-        rose: 'bg-rose-50 border-rose-100 hover:border-rose-200 hover:shadow-rose-100',
-        indigo: 'bg-indigo-50 border-indigo-100 hover:border-indigo-200 hover:shadow-indigo-100',
-        amber: 'bg-amber-50 border-amber-100 hover:border-amber-200 hover:shadow-amber-100',
-        emerald: 'bg-emerald-50 border-emerald-100 hover:border-emerald-200 hover:shadow-emerald-100',
-        purple: 'bg-purple-50 border-purple-100 hover:border-purple-200 hover:shadow-purple-100'
+        teal: 'bg-teal-50',
+        rose: 'bg-rose-50',
+        indigo: 'bg-indigo-50',
+        amber: 'bg-amber-50',
+        emerald: 'bg-emerald-50',
+        purple: 'bg-purple-50',
+        cyan: 'bg-cyan-50',
+        blue: 'bg-blue-50'
     };
 
     return (
-        <div className={`p-6 rounded-2xl border transition-all hover:shadow-lg ${colorClasses[color]}`}>
-            <div className="mb-4">{icon}</div>
-            <h4 className="font-bold text-lg text-slate-900 mb-2">{title}</h4>
-            <p className="text-sm text-slate-600 leading-relaxed">{description}</p>
+        <div className={`p-8 rounded-[2rem] bg-white border border-stone-50 hover:shadow-lg hover:shadow-stone-100 transition-all hover:-translate-y-1`}>
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 ${colorClasses[color]}`}>
+                {icon}
+            </div>
+            <div>
+                <h4 className="font-serif text-xl text-stone-800 mb-3">{title}</h4>
+                <p className="text-stone-600 leading-relaxed font-light text-sm">{description}</p>
+            </div>
         </div>
     );
 };

@@ -94,6 +94,22 @@ const getModel = (config?: AIConfig) => {
               },
               required: ['findingId']
             }
+          },
+          {
+            name: 'addTask',
+            description: 'Add a new task to the project.',
+            parameters: {
+              type: SchemaType.OBJECT,
+              properties: {
+                title: { type: SchemaType.STRING, description: 'Title of the task' },
+                description: { type: SchemaType.STRING, description: 'Description of what needs to be done' },
+                phase: { type: SchemaType.STRING, description: 'Project phase (e.g., "Fas 1: Akut", "Fas 2: Kaross", "Fas 3: System")' },
+                priority: { type: SchemaType.STRING, enum: ['Låg', 'Medel', 'Hög', 'Kritisk'], description: 'Priority level' },
+                estimatedCostMin: { type: SchemaType.NUMBER, description: 'Minimum estimated cost' },
+                estimatedCostMax: { type: SchemaType.NUMBER, description: 'Maximum estimated cost' }
+              },
+              required: ['title', 'phase']
+            }
           }
         ]
       }

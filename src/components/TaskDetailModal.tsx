@@ -12,6 +12,7 @@ interface TaskDetailModalProps {
     onUpdate: (task: Task) => void;
     onAddShoppingItem?: (item: Omit<ShoppingItem, 'id'>) => void;
     onDelete?: (taskId: string) => void;
+    projectId: string; // Added prop
     onAskElton?: (taskContext: string) => void;
     onClose: () => void;
     availablePhases?: string[];
@@ -644,6 +645,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
             {chatContext && (
                 <ContextualChat
                     context={chatContext}
+                    projectId={projectId}
                     onClose={() => setChatContext(null)}
                     onUpdateTask={(updatedTask) => {
                         onUpdate(updatedTask);

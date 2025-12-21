@@ -1,5 +1,6 @@
 
 import { db } from './firebase';
+export { db };
 import {
   collection,
   doc,
@@ -373,9 +374,9 @@ export const createProjectFromTemplate = async (
   batch.set(newProjectRef, newProject);
 
   // 4. Copy Sub-collections
-  const copyCollection = async (collectionName: string) => {
+  const copyCollection = async (collectionName: string, destName?: string) => {
     const sourceRef = collection(db, 'projects', templateId, collectionName);
-    const destRef = collection(db, 'projects', projectId, collectionName);
+    const destRef = collection(db, 'projects', projectId, destName || collectionName);
     const snap = await getDocs(sourceRef);
 
     snap.forEach(docSnap => {
@@ -392,7 +393,8 @@ export const createProjectFromTemplate = async (
 
   await Promise.all([
     copyCollection('tasks'),
-    copyCollection('shoppingItems'),
+    copyCollection('tasks'),
+    copyCollection('shoppingList'), // Was shoppingItems in template, but code expects shoppingList
     copyCollection('serviceLog'),
     copyCollection('fuelLog'),
     copyCollection('knowledgeBase'),
@@ -997,6 +999,20 @@ export const subscribeToShoppingItems = (
 };
 
 /**
+ * Subscribe to inspection findings updates in real-time
+ * Returns an unsubscribe function
+ */
+export const subscribeToInspectionFindings = (
+  projectId: string,
+  callback: (findings: InspectionFinding[]) => void
+): Unsubscribe => {
+  return onSnapshot(getInspectionsRef(projectId), (snapshot) => {
+    const findings = snapshot.docs.map(doc => doc.data() as InspectionFinding);
+    callback(findings);
+  });
+};
+
+/**
  * Subscribe to project metadata updates in real-time
  * Returns an unsubscribe function
  */
@@ -1021,35 +1037,49 @@ export const subscribeToProjectFull = (
   projectId: string,
   callback: (project: Project | null) => void
 ): Unsubscribe => {
+  console.log('🎧 Starting full project subscription:', projectId);
   let projectData: Project | null = null;
   let tasksData: Task[] = [];
   let shoppingData: ShoppingItem[] = [];
+  let inspectionsData: InspectionFinding[] = [];
 
   const merge = () => {
     if (projectData) {
       callback({
         ...projectData,
         tasks: tasksData,
-        shoppingItems: shoppingData
+        shoppingItems: shoppingData,
+        inspections: inspectionsData
       });
+    } else {
+      console.log('⏳ Waiting for project metadata...');
     }
   };
 
   // Subscribe to project metadata
   const unsubProject = subscribeToProject(projectId, (project) => {
+    // console.log('📦 Project update:', project?.id);
     projectData = project;
     merge();
   });
 
   // Subscribe to tasks
   const unsubTasks = subscribeToTasks(projectId, (tasks) => {
+    // console.log('📋 Tasks update:', tasks.length);
     tasksData = tasks;
     merge();
   });
 
   // Subscribe to shopping items
   const unsubShopping = subscribeToShoppingItems(projectId, (items) => {
+    // console.log('🛒 Shopping update:', items.length);
     shoppingData = items;
+    merge();
+  });
+
+  // Subscribe to inspection findings
+  const unsubInspections = subscribeToInspectionFindings(projectId, (findings) => {
+    inspectionsData = findings;
     merge();
   });
 
@@ -1058,6 +1088,7 @@ export const subscribeToProjectFull = (
     unsubProject();
     unsubTasks();
     unsubShopping();
+    unsubInspections();
   };
 };
 

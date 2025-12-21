@@ -60,4 +60,7 @@ export interface Task {
     // Timestamps
     created?: string;
     lastModified?: string;
+
+    // Dependencies
+    dependencies?: string[];
 }
