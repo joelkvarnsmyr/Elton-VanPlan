@@ -233,19 +233,6 @@ export const WaitlistLanding: React.FC = () => {
                         <p>
                             Det hjälper oss att bryta ner det omöjliga berget till hanterbara steg och ger en tydlig strategi, så att man vågar ta sig an jobbet med självförtroende oavsett kunskapsnivå. VanPlan är kartan som gör att du går från att drömma på Pinterest till att faktiskt vrida om nyckeln – oavsett om du är proffs eller aldrig hållit i en skiftnyckel förut. Vi gör drömmen genomförbar, en skruv i taget.
                         </p>
-
-                        {/* Signatures */}
-                        <div className="flex items-center justify-center gap-12 pt-8 mt-8 border-t border-stone-200">
-                            <div className="text-center">
-                                <p className="text-4xl text-stone-600 mb-1" style={{ fontFamily: "'Dancing Script', cursive" }}>Joel</p>
-                                <p className="text-xs text-stone-400 uppercase tracking-wider">Teknik & Struktur</p>
-                            </div>
-                            <div className="w-px h-12 bg-stone-200"></div>
-                            <div className="text-center">
-                                <p className="text-4xl text-stone-600 mb-1" style={{ fontFamily: "'Pacifico', cursive" }}>Hanna</p>
-                                <p className="text-xs text-stone-400 uppercase tracking-wider">Design & Vision</p>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </section>
