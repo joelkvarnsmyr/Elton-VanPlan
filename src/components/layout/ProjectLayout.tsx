@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
+import { useProject } from '@/contexts/ProjectContext';
 import { useProjectFromUrl } from '@/hooks/useProjectFromUrl';
 import { UserProfile } from '@/types/types';
 import { CarLogo } from '../CarLogo';
@@ -24,27 +25,19 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = ({ currentUser }) => 
     const location = useLocation();
     const navigate = useNavigate();
 
-    // Real-time subscription to project updates
+    const { setActiveProject, activeProject } = useProject(); // Import from context
+
+    // Sync project data from URL to Context
     useEffect(() => {
-        if (!project?.id) return;
+        if (project) {
+            console.log('🔄 Syncing project to context:', project.name);
+            setActiveProject(project);
+        }
+    }, [project, setActiveProject]);
 
-        console.log('🔴 Setting up real-time listeners for project:', project.id);
+    const isContextSynced = activeProject?.id === project?.id;
 
-        const unsubscribe = subscribeToProjectFull(project.id, (updatedProject) => {
-            if (updatedProject) {
-                console.log('📡 Real-time update received:', updatedProject.name);
-                // Note: We can't update the project state here directly since it's managed by the hook
-                // The parent App component will handle this via its own subscription
-            }
-        });
-
-        return () => {
-            console.log('🔴 Cleaning up real-time listeners');
-            unsubscribe();
-        };
-    }, [project?.id]);
-
-    if (isLoading) {
+    if (isLoading || (project && !isContextSynced)) {
         return (
             <div className="min-h-screen bg-nordic-ice dark:bg-nordic-dark-bg flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
@@ -89,8 +82,8 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = ({ currentUser }) => 
                 to={to}
                 data-testid={`nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
                 className={`relative flex flex-col items-center justify-center w-14 h-14 sm:w-24 sm:h-16 rounded-xl transition-all duration-300 ${active
-                        ? 'bg-nordic-charcoal dark:bg-teal-600 text-white shadow-lg scale-105'
-                        : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-nordic-dark-bg'
+                    ? 'bg-nordic-charcoal dark:bg-teal-600 text-white shadow-lg scale-105'
+                    : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-nordic-dark-bg'
                     }`}
             >
                 <Icon size={20} strokeWidth={active ? 2.5 : 2} className="mb-1" />

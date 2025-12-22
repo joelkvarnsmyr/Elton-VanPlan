@@ -19,7 +19,7 @@ interface TaskDetailModalProps {
 }
 
 
-export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleData, shoppingItems, onUpdate, onAddShoppingItem, onDelete, onAskElton, onClose, availablePhases }) => {
+export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleData, shoppingItems, onUpdate, onAddShoppingItem, onDelete, onAskElton, onClose, availablePhases, projectId }) => {
     const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'decision'>('details');
     const [newComment, setNewComment] = useState('');
     const [newLinkTitle, setNewLinkTitle] = useState('');
@@ -63,18 +63,24 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
 
         // 1. Find Vehicle Specs
         if (keywords.some(k => 'däck hjul fälg bult'.includes(k))) {
-            context.specs.push({ label: 'Bultmönster', value: vehicleData.wheels.boltPattern });
-            context.specs.push({ label: 'Däckdimension', value: vehicleData.wheels.tiresFront });
+            if (vehicleData.wheels) {
+                context.specs.push({ label: 'Bultmönster', value: vehicleData.wheels.boltPattern });
+                context.specs.push({ label: 'Däckdimension', value: vehicleData.wheels.tiresFront });
+            }
         }
         if (keywords.some(k => 'olja filter service motor'.includes(k))) {
-            context.specs.push({ label: 'Motorolja', value: '10W-40 Mineral' }); // Generic or specific if available
-            context.specs.push({ label: 'Volym', value: vehicleData.engine.volume });
+            if (vehicleData.engine) {
+                context.specs.push({ label: 'Motorolja', value: '10W-40 Mineral' }); // Generic or specific if available
+                context.specs.push({ label: 'Volym', value: vehicleData.engine.volume });
+            }
         }
         if (keywords.some(k => 'växellåda låda växel'.includes(k))) {
             context.specs.push({ label: 'Växellåda', value: vehicleData.gearbox });
         }
         if (keywords.some(k => 'last vikt lasta'.includes(k))) {
-            context.specs.push({ label: 'Max Lastvikt', value: `${vehicleData.weights.load} kg` });
+            if (vehicleData.weights) {
+                context.specs.push({ label: 'Max Lastvikt', value: `${vehicleData.weights.load} kg` });
+            }
         }
 
         // 2. Find Relevant Articles

@@ -25,6 +25,7 @@
     "dotenv": "^17.2.3",
     "firebase": "^12.6.0",
     "fordonsuppgifter-api-wrapper": "^1.0.0",
+    "framer-motion": "^12.23.26",
     "lucide-react": "^0.556.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
