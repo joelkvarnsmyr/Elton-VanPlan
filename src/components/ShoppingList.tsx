@@ -347,6 +347,10 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
   const [selectedItem, setSelectedItem] = useState<ShoppingItem | null>(null);
   const [chatContext, setChatContext] = useState<ChatContext | null>(null);
 
+  // New filter states
+  const [statusFilter, setStatusFilter] = useState<'all' | ShoppingItemStatus>('all');
+  const [phaseFilter, setPhaseFilter] = useState<string>('all');
+
   const categories = ['Reservdelar', 'Kemi & Färg', 'Verktyg', 'Inredning', 'Övrigt'];
 
   const openChatForItem = (item: ShoppingItem) => {
@@ -373,10 +377,43 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
     setNewItemCost('');
   };
 
-  // Apply task filter first
-  const filteredItems = filterByTaskId
-    ? items.filter(i => i.linkedTaskId === filterByTaskId)
-    : items;
+  // Get unique phases from tasks
+  const availablePhases = useMemo(() => {
+    const phases = new Set<string>();
+    tasks.forEach(task => {
+      if (task.phase) phases.add(task.phase);
+      if (task.mechanicalPhase) phases.add(task.mechanicalPhase);
+      if (task.buildPhase) phases.add(task.buildPhase);
+    });
+    return Array.from(phases).sort();
+  }, [tasks]);
+
+  // Apply all filters
+  const filteredItems = useMemo(() => {
+    let filtered = filterByTaskId
+      ? items.filter(i => i.linkedTaskId === filterByTaskId)
+      : items;
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(item => {
+        const itemStatus = item.status || (item.checked ? ShoppingItemStatus.BOUGHT : ShoppingItemStatus.RESEARCH);
+        return itemStatus === statusFilter;
+      });
+    }
+
+    // Phase filter
+    if (phaseFilter !== 'all') {
+      filtered = filtered.filter(item => {
+        if (!item.linkedTaskId) return false;
+        const task = tasks.find(t => t.id === item.linkedTaskId);
+        if (!task) return false;
+        return task.phase === phaseFilter || task.mechanicalPhase === phaseFilter || task.buildPhase === phaseFilter;
+      });
+    }
+
+    return filtered;
+  }, [items, filterByTaskId, statusFilter, phaseFilter, tasks]);
 
   // Get task name by ID
   const getTaskName = (taskId?: string) => {
@@ -474,6 +511,52 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
                 <span className="hidden sm:inline">Butik</span>
               </button>
             </div>
+          </div>
+
+          {/* Filter controls */}
+          <div className="flex flex-col sm:flex-row gap-2 mb-3">
+            {/* Status filter */}
+            <div className="flex-1">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | ShoppingItemStatus)}
+                className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Alla</option>
+                <option value={ShoppingItemStatus.RESEARCH}>🔍 Jämför</option>
+                <option value={ShoppingItemStatus.DECIDED}>✓ Bestämt</option>
+                <option value={ShoppingItemStatus.BOUGHT}>✓ Köpt</option>
+              </select>
+            </div>
+
+            {/* Phase filter */}
+            <div className="flex-1">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Fas</label>
+              <select
+                value={phaseFilter}
+                onChange={(e) => setPhaseFilter(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Alla faser</option>
+                {availablePhases.map(phase => (
+                  <option key={phase} value={phase}>{phase}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Clear filters button */}
+            {(statusFilter !== 'all' || phaseFilter !== 'all') && (
+              <button
+                onClick={() => {
+                  setStatusFilter('all');
+                  setPhaseFilter('all');
+                }}
+                className="self-end px-3 py-1.5 text-xs bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors whitespace-nowrap"
+              >
+                Rensa filter
+              </button>
+            )}
           </div>
 
           {/* Category tabs - horizontal scroll on mobile */}

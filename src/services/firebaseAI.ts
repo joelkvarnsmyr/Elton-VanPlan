@@ -34,7 +34,10 @@ const tools = [{
           title: Schema.string({ description: 'Short title of the task' }),
           description: Schema.string({ description: 'Detailed description' }),
           estimatedCostMax: Schema.number({ description: 'Estimated max cost in SEK' }),
-          phase: Schema.string({ description: 'Project phase' }),
+          phase: Schema.enumString({
+            enum: ['Fas 1: Vår', 'Fas 2: Vår/Sommar', 'Fas 3: Höst/Vinter', 'Backlog'],
+            description: 'Project phase - MUST use exact name from list. Fas 1 = Spring tasks, Fas 2 = Summer driving, Fas 3 = Winter rebuild'
+          }),
           priority: Schema.enumString({ enum: ['Hög', 'Medel', 'Låg'], description: 'Priority level' }),
           sprint: Schema.string({ description: 'Sprint name' }),
         },
@@ -175,6 +178,15 @@ ${currentTasks.map(t => `- ${t.title} (${t.status})`).join('\n')}
 
 === INKÖPSLISTA ===
 ${currentShoppingList.map(i => `- ${i.name} (${i.checked ? 'köpt' : 'att köpa'})`).join('\n')}
+
+=== PROJEKTFASER (ANVÄND EXAKT DESSA NAMN) ===
+Du MÅSTE använda EXAKT dessa fasnamn när du lägger till uppgifter:
+- "Fas 1: Vår" - Akuta åtgärder innan sommaren (batteri, tätning, rost, motorservice)
+- "Fas 2: Vår/Sommar" - Körning och inlärning (taklucka, markis, leta dörrar)
+- "Fas 3: Höst/Vinter" - Större ombyggnad i garage (dörrar, svetsning, elsystem, isolering)
+- "Backlog" - Framtida uppgifter utan specifik fas
+
+VIKTIGT: Använd EXAKT dessa namn. Lägg INTE till extra text som "(Gotland med garage)" eller "– Nu/Januari".
 
 VIKTIGT - VERKTYGSANVÄNDNING:
 - När användaren ger dig uppgifter, inköp, eller data: ANVÄND ALLTID verktygen (addTask, addToShoppingList, etc.)

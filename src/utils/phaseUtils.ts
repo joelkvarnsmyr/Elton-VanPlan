@@ -1,4 +1,5 @@
 
+
 export const normalizePhase = (phaseStr: string | undefined): { id: string, label: string, order: number } => {
     if (!phaseStr) return { id: 'unknown', label: 'Okänd Fas', order: 99 };
 
@@ -7,16 +8,10 @@ export const normalizePhase = (phaseStr: string | undefined): { id: string, labe
     // Specific mapping for "Backlog"
     if (p.includes('backlog')) return { id: 'backlog', label: 'Backlog', order: 90 };
 
-    // Detect numeric phases
-    if (p.includes('fas 1') || p.includes('phase 1')) return { id: 'p1', label: 'Fas 1: Akut & Motor', order: 1 };
-    if (p.includes('fas 2') || p.includes('phase 2')) return { id: 'p2', label: 'Fas 2: Kaross & Rost', order: 2 };
-    if (p.includes('fas 3') || p.includes('phase 3')) return { id: 'p3', label: 'Fas 3: System & Bygge', order: 3 };
-    if (p.includes('fas 4') || p.includes('phase 4')) return { id: 'p4', label: 'Fas 4: Inredning & Finish', order: 4 };
-    if (p.includes('fas 0') || p.includes('phase 0')) return { id: 'p0', label: 'Fas 0: Planering', order: 0 };
-
-    // Fallback for seasonal/other phases
-    if (p.includes('vår') || p.includes('sommar')) return { id: 'season', label: 'Säsong', order: 10 };
-    if (p.includes('höst') || p.includes('vinter')) return { id: 'storage', label: 'Vinterförvaring', order: 11 };
+    // Detect canonical phases - MUST match database exactly
+    if (p.includes('fas 1') || p.includes('vår')) return { id: 'p1', label: 'Fas 1: Vår', order: 1 };
+    if (p.includes('fas 2') || p.includes('sommar')) return { id: 'p2', label: 'Fas 2: Vår/Sommar', order: 2 };
+    if (p.includes('fas 3') || p.includes('höst') || p.includes('vinter')) return { id: 'p3', label: 'Fas 3: Höst/Vinter', order: 3 };
 
     return { id: 'other', label: phaseStr, order: 80 };
 };

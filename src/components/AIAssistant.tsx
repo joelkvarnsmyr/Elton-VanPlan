@@ -8,6 +8,7 @@ import { buildAIContext, getProjectStats } from '@/services/projectExportService
 import { Send, User, Trash2, Car, Video, ArrowLeft, Image as ImageIcon, X, AlertCircle, Camera, Mic, Scan } from 'lucide-react';
 import { Task, ShoppingItem, VehicleData, Project, Contact, InspectionFinding, TaskStatus, Priority, TaskType, MechanicalPhase, CostType } from '@/types/types';
 import { LiveElton } from './LiveElton';
+import { normalizePhaseInput } from '@/utils/phaseNormalizer';
 
 // Helper: Calculate string similarity (Levenshtein distance normalized to 0-1)
 function levenshteinSimilarity(str1: string, str2: string): number {
@@ -485,14 +486,14 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
             title: call.args.title,
             description: call.args.description || '',
             status: TaskStatus.TODO,
-            phase: call.args.phase || 'Fas 0: Inköp & Analys',
+            phase: normalizePhaseInput(call.args.phase) || 'Backlog',
             priority: (call.args.priority as Priority) || Priority.MEDIUM,
             estimatedCostMin: call.args.estimatedCostMin || 0,
             estimatedCostMax: call.args.estimatedCostMax || 0,
             type: TaskType.REPAIR, // Default type
           };
           onAddTask([newTask as any]);
-          results.push({ name: call.name, result: `Added task: "${newTask.title}"` });
+          results.push({ name: call.name, result: `Added task: "${newTask.title}" to phase "${newTask.phase}"` });
         } else if (call.name === 'updateProjectMetadata' && onUpdateProjectMetadata) {
           const { field, value } = call.args;
           onUpdateProjectMetadata(field, value);
@@ -765,8 +766,8 @@ ${diagnosis.severity === 'CRITICAL' ? `⚠️ **KRITISKT** - ${taskCreated ? 'Up
                 {msg.role === 'user' ? <User size={14} /> : <Car size={16} />}
               </div>
               <div className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm flex flex-col gap-2 ${msg.role === 'user'
-                  ? 'bg-nordic-charcoal dark:bg-teal-600 text-white rounded-br-none'
-                  : 'bg-white dark:bg-nordic-dark-surface text-slate-700 dark:text-nordic-dark-text border border-slate-100 dark:border-nordic-charcoal rounded-bl-none'
+                ? 'bg-nordic-charcoal dark:bg-teal-600 text-white rounded-br-none'
+                : 'bg-white dark:bg-nordic-dark-surface text-slate-700 dark:text-nordic-dark-text border border-slate-100 dark:border-nordic-charcoal rounded-bl-none'
                 }`}>
                 {msg.imageUrl && (
                   <img src={msg.imageUrl} alt="Uppladdad bild" className="rounded-lg max-w-full h-auto border border-white/20" />
