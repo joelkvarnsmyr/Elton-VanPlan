@@ -337,11 +337,11 @@ export const WaitlistLandingC: React.FC = () => {
                                 <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-300"></div>
                                 <div className="w-6 h-6 rounded-full border-2 border-white bg-gray-400"></div>
                             </div>
-                            <span><strong>1,200+</strong> i kö</span>
+                            <span><strong>350+</strong> i väntelistan</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Star size={16} className="text-yellow-400 fill-yellow-400" />
-                            <span><strong>4.9/5</strong> betyg</span>
+                            <span><strong>5/5</strong> av betatestare</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Shield size={16} className="text-green-500" />
@@ -571,7 +571,7 @@ export const WaitlistLandingC: React.FC = () => {
                                     { label: "Tid att planera", bad: "Veckor", good: "Minuter" },
                                     { label: "Budgetkontroll", bad: "Gissningar", good: "Exakt på kronan" },
                                     { label: "Expertis", bad: "Google-gissningar", good: "AI-expert 24/7" },
-                                    { label: "Community", bad: "Ensam", good: "120+ byggare" },
+                                    { label: "Community", bad: "Ensam", good: "Sveriges snabbaste växande*" },
                                     { label: "Resultat", bad: "Ofta ofärdigt", good: "Done & Dusted" },
                                 ].map((row, i) => (
                                     <tr key={i} className="hover:bg-stone-50 transition-colors">
@@ -585,6 +585,7 @@ export const WaitlistLandingC: React.FC = () => {
                                 ))}
                             </tbody>
                         </table>
+                        <p className="text-center text-xs text-stone-400 mt-4 mb-4">* Bland digitala verktyg för vanlife-byggen i Sverige.</p>
                     </div>
                 </div>
             </section>

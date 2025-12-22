@@ -117,6 +117,40 @@ const tools = [{
         }
       })
     },
+    {
+      name: 'createPhase',
+      description: 'Create a new project phase from chat. Use this when setting up a new project or restructuring phases.',
+      parameters: Schema.object({
+        properties: {
+          name: Schema.string({ description: 'Phase name (e.g. "Fas 1: Rostbehandling")' }),
+          description: Schema.string({ description: 'Detailed description of what this phase includes' }),
+          order: Schema.number({ description: 'Order number (1, 2, 3...)' }),
+        },
+        optionalProperties: ['description']
+      })
+    },
+    {
+      name: 'setProjectType',
+      description: 'Set the type of the project (Renovation vs Conversion vs Maintenance)',
+      parameters: Schema.object({
+        properties: {
+          type: Schema.enumString({
+            enum: ['renovation', 'conversion', 'maintenance'],
+            description: 'renovation = återställa ursprung, conversion = bygga om (t.ex. camper), maintenance = underhåll'
+          }),
+        }
+      })
+    },
+    {
+      name: 'completeSetup',
+      description: 'Mark the project setup/onboarding as complete. Use this when phases and tasks are created and user is ready.',
+      parameters: Schema.object({
+        properties: {
+          summary: Schema.string({ description: 'Brief summary of what was accomplished during setup' }),
+        },
+        optionalProperties: ['summary']
+      })
+    },
   ]
 }];
 
@@ -224,19 +258,29 @@ export const streamChatMessage = async (
   imageBase64?: string,
   projectName?: string,
   userSkillLevel?: string,
-  projectType?: ProjectType
+  projectType?: ProjectType,
+  customSystemInstruction?: string
 ) => {
   const model = getChatModel();
 
-  // Build system instruction
-  const systemInstruction = buildSystemInstruction(
-    vehicleData,
-    currentTasks,
-    currentShoppingList,
-    projectName,
-    userSkillLevel,
-    projectType
-  );
+  // Build system instruction: Use custom if provided, otherwise build standard
+  let systemInstruction: any;
+
+  if (customSystemInstruction) {
+    systemInstruction = {
+      parts: [{ text: customSystemInstruction }]
+    };
+  } else {
+    systemInstruction = buildSystemInstruction(
+      vehicleData,
+      currentTasks,
+      currentShoppingList,
+      projectName,
+      userSkillLevel,
+      projectType
+    );
+  }
+
 
   // Convert history to Gemini format
   let chatHistory = history.map(msg => ({

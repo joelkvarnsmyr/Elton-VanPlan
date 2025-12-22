@@ -75,6 +75,18 @@ export interface ProjectMetadata {
     constraints?: ProjectConstraint[];
 }
 
+
+export interface Phase {
+    id: string;
+    name: string;
+    description?: string;
+    order: number;
+    createdBy: 'user' | 'ai';
+    createdAt: string;
+}
+
+export type SetupStage = 'initial' | 'defining-goals' | 'creating-phases' | 'adding-tasks' | 'complete';
+
 export interface Project {
     id: string;
     name: string;
@@ -137,7 +149,13 @@ export interface Project {
         source: 'gps' | 'ip' | 'manual';
         lastUpdated: string;
     };
+
+    // === ONBOARDING V2 ===
+    setupComplete?: boolean;
+    setupStage?: SetupStage;
+    phases?: Phase[];
 }
+
 
 export interface ProjectExport {
     meta: ProjectExportMeta;

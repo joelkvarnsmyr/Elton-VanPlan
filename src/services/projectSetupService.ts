@@ -1,7 +1,6 @@
-
-import { Project, ProjectSchema, VehicleData } from '@/types/types';
+import { Project, VehicleData, Phase, ProjectType } from '@/types/types';
 import { db } from '@/services/db';
-import { collection, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, setDoc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 
 export type SetupStage = 'initial' | 'defining-goals' | 'creating-phases' | 'adding-tasks' | 'complete';
 
@@ -33,29 +32,22 @@ export async function createV2Project(
     // Create minimal project structure
     const minimalProject: Partial<Project> = {
         name: aiData.projectName || vehicleDescription.substring(0, 30),
-        description: vehicleDescription,
         // NO projectType yet - decided in chat
         vehicleData: vehicleData,
         tasks: [],
-        shoppingList: [],
+        shoppingItems: [],
         contacts: [],
-        ownerEmail: userEmail,
-        collaborators: [],
-        createdAt: new Date().toISOString(),
+        ownerIds: [userEmail],
+        primaryOwnerId: userEmail,
+        memberIds: [],
+        invitedEmails: [],
+        created: new Date().toISOString(),
         lastModified: new Date().toISOString(),
-        status: 'active',
         // V2 specific fields
         setupComplete: false,
         setupStage: 'initial',
         phases: [] // Empty phases initially
     };
-
-    // Validate against schema (simplified validation since we don't have full data yet)
-    // We'll rely on the existing schema but some required fields might be missing in a skeletal project
-    // So we might need to be careful. However, 'phases' is a new field we need to add to the type definition.
-
-    // Since we haven't updated the Project type definition yet, we'll cast it.
-    // TODO: Update Project type to include setupComplete, setupStage, phases (if making phases dynamic)
 
     try {
         // Save to Firestore
