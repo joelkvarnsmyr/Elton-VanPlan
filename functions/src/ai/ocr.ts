@@ -103,10 +103,12 @@ Om du inte kan hitta ett registreringsnummer, returnera:
 
       const result = await ai.models.generateContent({
         model: DEFAULT_MODEL,
-        contents: [{ role: 'user', parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
-          { text: prompt }
-        ]}]
+        contents: [{
+          role: 'user', parts: [
+            { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+            { text: prompt }
+          ]
+        }]
       });
 
       const text = result.text || "";
@@ -118,9 +120,10 @@ Om du inte kan hitta ett registreringsnummer, returnera:
 
       return JSON.parse(jsonMatch[0]) as LicensePlateResult;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('License plate OCR failed:', error);
-      throw new HttpsError('internal', `OCR failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpsError('internal', `OCR failed: ${message}`);
     }
   }
 );
@@ -181,10 +184,14 @@ VIKTIGT:
 
 SVARA ENDAST MED JSON, inget annat.`;
 
-      const result = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: [{ role: 'user', parts: [
-        { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
-        { text: prompt }
-      ]}] });
+      const result = await ai.models.generateContent({
+        model: DEFAULT_MODEL, contents: [{
+          role: 'user', parts: [
+            { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+            { text: prompt }
+          ]
+        }]
+      });
 
       const text = result.text || "";
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -195,9 +202,10 @@ SVARA ENDAST MED JSON, inget annat.`;
 
       return JSON.parse(jsonMatch[0]) as ReceiptResult;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Receipt OCR failed:', error);
-      throw new HttpsError('internal', `OCR failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpsError('internal', `OCR failed: ${message}`);
     }
   }
 );
@@ -249,10 +257,14 @@ Om du inte hittar något VIN:
   "confidence": 0
 }`;
 
-      const result = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: [{ role: 'user', parts: [
-        { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
-        { text: prompt }
-      ]}] });
+      const result = await ai.models.generateContent({
+        model: DEFAULT_MODEL, contents: [{
+          role: 'user', parts: [
+            { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+            { text: prompt }
+          ]
+        }]
+      });
 
       const text = result.text || "";
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -271,9 +283,10 @@ Om du inte hittar något VIN:
 
       return parsed;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('VIN OCR failed:', error);
-      throw new HttpsError('internal', `OCR failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpsError('internal', `OCR failed: ${message}`);
     }
   }
 );
@@ -323,10 +336,14 @@ Returnera JSON:
 
 SVARA MED ENDAST JSON.`;
 
-      const result = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: [{ role: 'user', parts: [
-        { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
-        { text: prompt }
-      ]}] });
+      const result = await ai.models.generateContent({
+        model: DEFAULT_MODEL, contents: [{
+          role: 'user', parts: [
+            { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+            { text: prompt }
+          ]
+        }]
+      });
 
       const text = result.text || "";
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -337,9 +354,10 @@ SVARA MED ENDAST JSON.`;
 
       return JSON.parse(jsonMatch[0]) as ServiceDocumentResult;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Service document OCR failed:', error);
-      throw new HttpsError('internal', `OCR failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpsError('internal', `OCR failed: ${message}`);
     }
   }
 );
@@ -374,16 +392,21 @@ export const ocrExtractText = onCall(
       const ai = new GoogleGenAI({ apiKey });
       // Model will be used directly via ai.models.generateContent
 
-      const result = await ai.models.generateContent({ model: DEFAULT_MODEL, contents: [{ role: 'user', parts: [
-        { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
-        { text: 'Extrahera all läsbar text från denna bild. Returnera texten i vanligt textformat.' }
-      ]}] });
+      const result = await ai.models.generateContent({
+        model: DEFAULT_MODEL, contents: [{
+          role: 'user', parts: [
+            { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+            { text: 'Extrahera all läsbar text från denna bild. Returnera texten i vanligt textformat.' }
+          ]
+        }]
+      });
 
       return { text: result.text };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Text extraction failed:', error);
-      throw new HttpsError('internal', `OCR failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpsError('internal', `OCR failed: ${message}`);
     }
   }
 );

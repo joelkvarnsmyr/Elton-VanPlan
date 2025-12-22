@@ -484,7 +484,7 @@ async function scrapeCarInfo(regNo: string): Promise<RawVehicleData | null> {
 
             const mileageData = JSON.parse(cleanedJson);
             if (Array.isArray(mileageData) && mileageData.length > 0) {
-                data.mileageHistory = mileageData.map((entry: any) => ({
+                data.mileageHistory = mileageData.map((entry: { label?: string; x?: string; y?: number; mileage_formatted?: string; value_type?: string }) => ({
                     date: entry.label || entry.x,
                     mileage: entry.y || 0,
                     mileageFormatted: entry.mileage_formatted,
@@ -681,7 +681,7 @@ async function scrapeBiluppgifter(regNo: string): Promise<RawVehicleData | null>
             const mileageStr = $insp.find('.inspection-mileage, .besiktning-mil').text().trim();
 
             if (dateStr) {
-                const inspection: any = {
+                const inspection: { date: string; result?: string; mileage?: number; remarks?: Array<{ description: string; severity?: string }> } = {
                     date: parseSwedishDate(dateStr),
                     result: resultStr.includes('Godkänd') ? 'Pass' : resultStr.includes('Icke godkänd') ? 'Fail' : resultStr
                 };
@@ -691,7 +691,7 @@ async function scrapeBiluppgifter(regNo: string): Promise<RawVehicleData | null>
                 }
 
                 // Extract remarks if available
-                const remarks: Array<any> = [];
+                const remarks: Array<{ description: string; severity?: string }> = [];
                 $insp.find('.inspection-remark, .anmärkning').each((__, remarkEl) => {
                     const text = $(remarkEl).text().trim();
                     if (text) {
@@ -719,7 +719,7 @@ async function scrapeBiluppgifter(regNo: string): Promise<RawVehicleData | null>
 
     // NY: Ägarhistorik (om tillgänglig)
     try {
-        const ownership: Array<any> = [];
+        const ownership: Array<{ changeDate: string; ownerType?: string }> = [];
         $('.owner-history .owner-item, .ägare-list .ägare-item').each((_, ownerEl) => {
             const $owner = $(ownerEl);
             const dateStr = $owner.find('.owner-date, .ägare-datum').text().trim();
@@ -933,7 +933,7 @@ async function scrapeTransportstyrelsen(regNo: string): Promise<RawVehicleData |
                 const remarksStr = cells.length > 3 ? $(cells[3]).text().trim() : '';
 
                 if (dateStr && dateStr.match(/\d{4}/)) {
-                    const inspection: any = {
+                    const inspection: { date: string; result?: string; mileage?: number; remarks?: Array<{ description: string; severity?: string; code?: string }>; station?: string } = {
                         date: parseSwedishDate(dateStr),
                         result: resultStr.match(/godk|pass/i) ? 'Pass' : resultStr.match(/ej godk|fail|underk/i) ? 'Fail' : resultStr
                     };
@@ -1058,27 +1058,38 @@ async function fetchAllSources(regNo: string): Promise<SourceResult[]> {
                 data,
                 fetchTimeMs
             };
-        } catch (error: any) {
-            const fetchTimeMs = Date.now() - startTime;
-            console.error(`[${source.name}] Error:`, error.message);
-
+        } catch (error: unknown) {
+            console.error(`[${source.name}] Error:`, error);
+            const message = error instanceof Error ? error.message : 'Unknown error';
             return {
                 sourceId: source.id,
                 sourceName: source.name,
                 success: false,
                 data: null,
-                error: error.message,
-                fetchTimeMs
+                error: message,
+                fetchTimeMs: Date.now() - startTime
             };
         }
+        const fetchTimeMs = Date.now() - startTime;
+        console.error(`[${source.name}] Error:`, error.message);
+
+        return {
+            sourceId: source.id,
+            sourceName: source.name,
+            success: false,
+            data: null,
+            error: error.message,
+            fetchTimeMs
+        };
+    }
     });
 
-    const results = await Promise.all(fetchPromises);
+const results = await Promise.all(fetchPromises);
 
-    const successCount = results.filter(r => r.success).length;
-    console.log(`✅ Genomsökning klar: ${successCount}/${results.length} register svarade`);
+const successCount = results.filter(r => r.success).length;
+console.log(`✅ Genomsökning klar: ${successCount}/${results.length} register svarade`);
 
-    return results;
+return results;
 }
 
 // =============================================================================
@@ -1460,17 +1471,28 @@ export const scrapeVehicleData = onCall(
                 }
             };
 
-        } catch (error: any) {
-            console.error('[Main] CRITICAL ERROR:', error);
+        } catch (error: unknown) {
+            console.error(`[${source.name}] Error:`, error);
+            const message = error instanceof Error ? error.message : 'Unknown error';
             return {
+                sourceId: source.id,
+                sourceName: source.name,
                 success: false,
-                sources: [],
-                vehicleData: null,
-                error: `Serverfel: ${error.message || 'Okänt fel'}`,
-                scrapedAt: new Date().toISOString(),
-                cached: false
+                data: null,
+                error: message,
+                fetchTimeMs: Date.now() - startTime
             };
         }
+        console.error('[Main] CRITICAL ERROR:', error);
+        return {
+            success: false,
+            sources: [],
+            vehicleData: null,
+            error: `Serverfel: ${error.message || 'Okänt fel'}`,
+            scrapedAt: new Date().toISOString(),
+            cached: false
+        };
+    }
     }
 );
 

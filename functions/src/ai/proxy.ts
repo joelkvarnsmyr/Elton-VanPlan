@@ -478,7 +478,7 @@ export const aiParse = onCall(
       // Use fast model for parsing (speed over deep reasoning)
       const modelName = model || FAST_MODEL;
 
-      const parts: any[] = [];
+      const parts: GeminiPart[] = [];
       if (imageBase64) {
         parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } });
         parts.push({ text: 'Analysera denna bild. Identifiera uppgifter och inköpsbehov.' });
@@ -504,9 +504,10 @@ export const aiParse = onCall(
 
       return JSON.parse(jsonText);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('AI Parse Error:', error);
-      throw new HttpsError('internal', `Parse request failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpsError('internal', `Parse request failed: ${message}`);
     }
   }
 );
@@ -562,13 +563,13 @@ export const aiDeepResearch = onCall(
       console.log('🕵️ Agent 1: Detective started...');
       const detectiveStartTime = Date.now();
 
-      const detectiveParts: any[] = [{ text: detectivePrompt }];
+      const detectiveParts: GeminiPart[] = [{ text: detectivePrompt }];
       if (imageBase64) {
         detectiveParts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } });
         console.log('📸 Image included in detective analysis');
       }
 
-      let detectiveData: any = {};
+      let detectiveData: { projectName?: string; vehicleData?: Record<string, unknown> } = {};
 
       try {
         const detectiveResponse = await ai.models.generateContent({
@@ -597,11 +598,13 @@ export const aiDeepResearch = onCall(
           dataPoints: dataPoints
         });
 
-      } catch (detectiveError: any) {
+      } catch (detectiveError: unknown) {
         const detectiveTime = Date.now() - detectiveStartTime;
+        const message = detectiveError instanceof Error ? detectiveError.message : 'Unknown error';
+        const status = (detectiveError as { status?: number }).status;
         console.error(`❌ Detective failed after ${detectiveTime}ms:`, {
-          error: detectiveError.message,
-          status: detectiveError.status
+          error: message,
+          status
         });
         console.warn('🔄 Using fallback data...');
         detectiveData = {
@@ -666,7 +669,7 @@ export const aiDeepResearch = onCall(
 
       return result;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Deep Research Error:', error);
 
       // Return minimal fallback
@@ -742,19 +745,20 @@ export const aiToolResponse = onCall(
         }))
       });
 
-      const response = result;
-      const textParts = response.candidates?.[0]?.content?.parts?.filter((p: any) => p.text) || [];
-      const functionCalls = response.candidates?.[0]?.content?.parts?.filter((p: any) => p.functionCall)?.map((p: any) => p.functionCall) || [];
+      const response = result as GeminiResponse;
+      const textParts = response.candidates?.[0]?.content?.parts?.filter((p): p is GeminiPart => !!p.text) || [];
+      const functionCalls = response.candidates?.[0]?.content?.parts?.filter((p): p is GeminiPart => !!p.functionCall)?.map(p => p.functionCall!) || [];
 
       return {
-        text: textParts.map((p: any) => p.text).join(''),
+        text: textParts.map(p => p.text!).join(''),
         functionCalls,
         finishReason: response.candidates?.[0]?.finishReason
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Tool Response Error:', error);
-      throw new HttpsError('internal', `Tool response failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpsError('internal', `Tool response failed: ${message}`);
     }
   }
 );

@@ -76,8 +76,8 @@ export const onTaskComplete = onDocumentUpdated(
             const blockers = taskData.blockers || [];
 
             // Check if this task has the completed task as a blocker
-            const blockerIndex = blockers.findIndex((b: any) =>
-                b.taskId === completedTaskId || b === completedTaskId
+            const blockerIndex = blockers.findIndex((b: { taskId?: string } | string) =>
+                (typeof b === 'object' && b.taskId === completedTaskId) || b === completedTaskId
             );
 
             if (blockerIndex === -1) {
@@ -85,7 +85,7 @@ export const onTaskComplete = onDocumentUpdated(
             }
 
             // Remove the completed task from blockers
-            const newBlockers = blockers.filter((_: any, i: number) => i !== blockerIndex);
+            const newBlockers = blockers.filter((_: unknown, i: number) => i !== blockerIndex);
 
             const updates: Record<string, any> = {
                 blockers: newBlockers,
@@ -146,8 +146,8 @@ export const onTaskDelete = onDocumentDeleted(
             const blockers = taskData.blockers || [];
 
             // Check if this task has the deleted task as a blocker
-            const blockerIndex = blockers.findIndex((b: any) =>
-                b.taskId === deletedTaskId || b === deletedTaskId
+            const blockerIndex = blockers.findIndex((b: { taskId?: string } | string) =>
+                (typeof b === 'object' && b.taskId === deletedTaskId) || b === deletedTaskId
             );
 
             if (blockerIndex === -1) {
@@ -155,7 +155,7 @@ export const onTaskDelete = onDocumentDeleted(
             }
 
             // Remove the deleted task from blockers
-            const newBlockers = blockers.filter((_: any, i: number) => i !== blockerIndex);
+            const newBlockers = blockers.filter((_: unknown, i: number) => i !== blockerIndex);
 
             const updates: Record<string, any> = {
                 blockers: newBlockers,
