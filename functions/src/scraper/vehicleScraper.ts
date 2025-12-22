@@ -1070,26 +1070,14 @@ async function fetchAllSources(regNo: string): Promise<SourceResult[]> {
                 fetchTimeMs: Date.now() - startTime
             };
         }
-        const fetchTimeMs = Date.now() - startTime;
-        console.error(`[${source.name}] Error:`, error.message);
-
-        return {
-            sourceId: source.id,
-            sourceName: source.name,
-            success: false,
-            data: null,
-            error: error.message,
-            fetchTimeMs
-        };
-    }
     });
 
-const results = await Promise.all(fetchPromises);
+    const results = await Promise.all(fetchPromises);
 
-const successCount = results.filter(r => r.success).length;
-console.log(`✅ Genomsökning klar: ${successCount}/${results.length} register svarade`);
+    const successCount = results.filter(r => r.success).length;
+    console.log(`✅ Genomsökning klar: ${successCount}/${results.length} register svarade`);
 
-return results;
+    return results;
 }
 
 // =============================================================================

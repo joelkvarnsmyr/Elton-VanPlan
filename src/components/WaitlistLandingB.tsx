@@ -41,7 +41,7 @@ export const WaitlistLandingB: React.FC = () => {
     };
 
     if (showLogin) {
-        return <AuthLanding onBack={() => setShowLogin(false)} />;
+        return <AuthLanding />;
     }
 
     if (submitted) {
