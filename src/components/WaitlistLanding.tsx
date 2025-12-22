@@ -145,6 +145,14 @@ export const WaitlistLanding: React.FC = () => {
                                 {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : "Gå med"}
                             </button>
                         </form>
+
+                        {error && (
+                            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
+                                <X className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
+                                <p className="text-sm text-red-700">{error}</p>
+                            </div>
+                        )}
+
                         <p className="text-xs text-stone-500 mt-4 font-medium tracking-wide uppercase">
                             Gå med 120+ andra drömmare i kön
                         </p>
@@ -437,7 +445,7 @@ export const WaitlistLanding: React.FC = () => {
                         Nödsituation? Inga problem.
                     </h4>
                     <p className="text-xl opacity-90 max-w-2xl mx-auto">
-                        Fastnat i Danmark? Ta en bild på problemet och fråga Elton. Ladda upp ditt försäkringsavtal – Elton berättar om skadan täcks.
+                        Fastnat i Danmark? Elton hjälper dig hitta närmaste verkstad, kollar ditt försäkringsavtal för täckning och hyrbilsvillkor, och ger dig rätt telefonnummer att ringa.
                     </p>
                 </div>
             </section>
