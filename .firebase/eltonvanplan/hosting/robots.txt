@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://eltonvanplan.web.app/sitemap.xml

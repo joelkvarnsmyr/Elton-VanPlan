@@ -255,6 +255,29 @@ const tools: Tool[] = [
 
 // --- TYPES ---
 
+interface GeminiPart {
+  text?: string;
+  functionCall?: {
+    name: string;
+    args: Record<string, unknown>;
+  };
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+}
+
+interface GeminiCandidate {
+  content?: {
+    parts?: GeminiPart[];
+  };
+  finishReason?: string;
+}
+
+interface GeminiResponse {
+  candidates?: GeminiCandidate[];
+}
+
 interface ChatMessage {
   role: 'user' | 'model';
   content: string;
@@ -326,7 +349,7 @@ export const aiChat = onCall(
 
       // Map history to new API format
       const historyContents = history.map(h => {
-        const parts: any[] = [{ text: h.content }];
+        const parts: GeminiPart[] = [{ text: h.content }];
         if (h.image) {
           parts.push({
             inlineData: {
@@ -349,7 +372,7 @@ export const aiChat = onCall(
       });
 
       // Prepare message parts
-      const parts: any[] = [{ text: newMessage }];
+      const parts: GeminiPart[] = [{ text: newMessage }];
       if (imageBase64) {
         parts.push({
           inlineData: {
@@ -360,21 +383,22 @@ export const aiChat = onCall(
       }
 
       const result = await chat.sendMessage({ message: parts });
-      const response = result;
+      const response = result as GeminiResponse;
 
       // Extract text and function calls
-      const textParts = response.candidates?.[0]?.content?.parts?.filter((p: any) => p.text) || [];
-      const functionCalls = response.candidates?.[0]?.content?.parts?.filter((p: any) => p.functionCall)?.map((p: any) => p.functionCall) || [];
+      const textParts = response.candidates?.[0]?.content?.parts?.filter((p): p is GeminiPart => !!p.text) || [];
+      const functionCalls = response.candidates?.[0]?.content?.parts?.filter((p): p is GeminiPart => !!p.functionCall)?.map(p => p.functionCall!) || [];
 
       return {
-        text: textParts.map((p: any) => p.text).join(''),
+        text: textParts.map(p => p.text!).join(''),
         functionCalls,
         finishReason: response.candidates?.[0]?.finishReason
       };
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('AI Chat Error:', error);
-      throw new HttpsError('internal', `AI request failed: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpsError('internal', `AI request failed: ${message}`);
     }
   }
 );

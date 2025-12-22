@@ -8,6 +8,7 @@ import { VehicleSpecs } from './components/VehicleSpecs';
 import { ShoppingList } from './components/ShoppingList';
 import { AuthLanding } from './components/AuthLanding';
 import { WaitlistLanding } from './components/WaitlistLanding';
+import { WaitlistLandingB } from './components/WaitlistLandingB';
 import { ProjectSelector } from './components/ProjectSelector';
 import { ProjectMembers } from './components/ProjectMembers';
 import { Roadmap } from './components/Roadmap';
@@ -502,6 +503,11 @@ export const App = () => {
   }
 
   if (!currentUser) {
+    // Simple routing for A/B testing
+    const path = window.location.pathname;
+    if (path === '/landing-b') {
+      return <WaitlistLandingB />;
+    }
     return <WaitlistLanding />;
   }
 
