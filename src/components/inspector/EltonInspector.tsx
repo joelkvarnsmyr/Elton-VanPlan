@@ -7,11 +7,12 @@ import { convertFindingToTask } from '@/services/inspectionMapping';
 
 export interface EltonInspectorProps {
   project: Project;
+  userId: string;
   onAddTask?: (tasks: Task[]) => void;
   onPostAssistantMessage?: (markdown: string) => void;
 }
 
-export const EltonInspector: React.FC<EltonInspectorProps> = ({ project, onAddTask, onPostAssistantMessage }) => {
+export const EltonInspector: React.FC<EltonInspectorProps> = ({ project, userId, onAddTask, onPostAssistantMessage }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [zone, setZone] = useState<'EXTERIOR' | 'ENGINE' | 'UNDERCARRIAGE' | 'INTERIOR'>('EXTERIOR');
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -65,10 +66,10 @@ export const EltonInspector: React.FC<EltonInspectorProps> = ({ project, onAddTa
       let audioUrl: string | undefined;
 
       if (imageBase64) {
-        imageUrl = await uploadInspectionImage(imageBase64, project.id);
+        imageUrl = await uploadInspectionImage(imageBase64, project.id, userId);
       }
       if (audioFile) {
-        audioUrl = await uploadInspectionAudio(audioFile, project.id);
+        audioUrl = await uploadInspectionAudio(audioFile, project.id, userId);
       }
 
       const res = await analyzeInspectionEvidence(project.id, zone, { imageUrl, audioUrl });

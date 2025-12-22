@@ -35,39 +35,41 @@ function levenshteinSimilarity(str1: string, str2: string): number {
 }
 
 interface AIAssistantProps {
-  project: Project; // Changed: Now takes full project for complete context
-  contacts?: Contact[]; // Optional contacts for local recommendations
-  userSkillLevel?: 'beginner' | 'intermediate' | 'expert'; // User's mechanical skill level from profile
-  onAddTask?: (tasks: Task[]) => void;
-  onUpdateTask?: (task: Task) => void;
-  onDeleteTask?: (taskId: string) => void;
-  onAddShoppingItem?: (item: ShoppingItem) => void;
-  onUpdateShoppingItem?: (item: ShoppingItem) => void;
-  onDeleteShoppingItem?: (itemId: string) => void;
-  onUpdateVehicleData?: (vehicleData: Partial<VehicleData>) => void;
-  onAddKnowledgeArticle?: (article: any) => void;
-  onAddServiceLog?: (log: any) => void;
-  onAddHistoryEvent?: (event: any) => void;
-  onUpdateProjectMetadata?: (field: string, value: string) => void;
-  onClose?: () => void;
+    project: Project; // Changed: Now takes full project for complete context
+    userId: string; // Required for secure storage uploads
+    contacts?: Contact[]; // Optional contacts for local recommendations
+    userSkillLevel?: 'beginner' | 'intermediate' | 'expert'; // User's mechanical skill level from profile
+    onAddTask?: (tasks: Task[]) => void;
+    onUpdateTask?: (task: Task) => void;
+    onDeleteTask?: (taskId: string) => void;
+    onAddShoppingItem?: (item: ShoppingItem) => void;
+    onUpdateShoppingItem?: (item: ShoppingItem) => void;
+    onDeleteShoppingItem?: (itemId: string) => void;
+    onUpdateVehicleData?: (vehicleData: Partial<VehicleData>) => void;
+    onAddKnowledgeArticle?: (article: any) => void;
+    onAddServiceLog?: (log: any) => void;
+    onAddHistoryEvent?: (event: any) => void;
+    onUpdateProjectMetadata?: (field: string, value: string) => void;
+    onClose?: () => void;
 }
 
 export const AIAssistant: React.FC<AIAssistantProps> = ({
-  project,
-  contacts = [],
-  userSkillLevel,
-  onAddTask,
-  onUpdateTask,
-  onDeleteTask,
-  onAddShoppingItem,
-  onUpdateShoppingItem,
-  onDeleteShoppingItem,
-  onUpdateVehicleData,
-  onAddKnowledgeArticle,
-  onAddServiceLog,
-  onAddHistoryEvent,
-  onUpdateProjectMetadata,
-  onClose
+    project,
+    userId,
+    contacts = [],
+    userSkillLevel,
+    onAddTask,
+    onUpdateTask,
+    onDeleteTask,
+    onAddShoppingItem,
+    onUpdateShoppingItem,
+    onDeleteShoppingItem,
+    onUpdateVehicleData,
+    onAddKnowledgeArticle,
+    onAddServiceLog,
+    onAddHistoryEvent,
+    onUpdateProjectMetadata,
+    onClose
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -207,10 +209,10 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
       let audioUrl: string | undefined;
 
       if (inspectorImageBase64) {
-        imageUrl = await uploadInspectionImage(inspectorImageBase64, project.id);
+        imageUrl = await uploadInspectionImage(inspectorImageBase64, project.id, userId);
       }
       if (inspectorAudioFile) {
-        audioUrl = await uploadInspectionAudio(inspectorAudioFile, project.id);
+        audioUrl = await uploadInspectionAudio(inspectorAudioFile, project.id, userId);
       }
 
       const finding = await analyzeInspectionEvidence(project.id, inspectorZone, { imageUrl, audioUrl });
@@ -625,7 +627,7 @@ ${diagnosis.severity === 'CRITICAL' ? `⚠️ **KRITISKT** - ${taskCreated ? 'Up
       // Upload image to Firebase Storage if present
       if (userImageBase64) {
         try {
-          imageUrl = await uploadChatImage(userImageBase64, project.id);
+          imageUrl = await uploadChatImage(userImageBase64, project.id, userId);
         } catch (e) {
           console.error('Failed to upload image:', e);
           setError('Kunde inte ladda upp bild');
