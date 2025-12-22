@@ -1466,21 +1466,13 @@ export const scrapeVehicleData = onCall(
                 sourceId: source.id,
                 sourceName: source.name,
                 success: false,
-                data: null,
-                error: message,
-                fetchTimeMs: Date.now() - startTime
+                sources: [],
+                vehicleData: null,
+                error: `Serverfel: ${message}`,
+                scrapedAt: new Date().toISOString(),
+                cached: false
             };
         }
-        console.error('[Main] CRITICAL ERROR:', error);
-        return {
-            success: false,
-            sources: [],
-            vehicleData: null,
-            error: `Serverfel: ${error.message || 'Okänt fel'}`,
-            scrapedAt: new Date().toISOString(),
-            cached: false
-        };
-    }
     }
 );
 
