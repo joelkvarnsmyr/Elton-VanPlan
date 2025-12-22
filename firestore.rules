@@ -155,12 +155,10 @@ service cloud.firestore {
     // ===========================
     // WAITLIST
     // ===========================
-    // Public waitlist - anyone can join, but cannot read
-    // This prevents enumeration attacks while allowing signups
+    // Public waitlist - anyone can join
     match /waitlist/{email} {
-      // Anyone can add themselves to waitlist (with email validation)
-      allow create: if request.auth == null &&
-                       request.resource.data.email == email &&
+      // Anyone can add themselves to waitlist (with or without auth)
+      allow create: if request.resource.data.email == email &&
                        request.resource.data.email is string &&
                        request.resource.data.email.matches('.*@.*\\..*') &&
                        request.resource.data.status == 'pending';

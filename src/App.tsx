@@ -6,7 +6,6 @@ import { AIAssistant } from './components/AIAssistant';
 import { MagicImport } from './components/MagicImport';
 import { VehicleSpecs } from './components/VehicleSpecs';
 import { ShoppingList } from './components/ShoppingList';
-import { AuthLanding } from './components/AuthLanding';
 import { WaitlistLanding } from './components/WaitlistLanding';
 import { WaitlistLandingB } from './components/WaitlistLandingB';
 import { ProjectSelector } from './components/ProjectSelector';
@@ -16,11 +15,14 @@ import { FuelLog } from './components/FuelLog';
 import { ServiceBook } from './components/ServiceBook';
 import { TestScraper } from './components/TestScraper';
 import { InspectionPage } from './components/inspection/InspectionPage';
-import { Task, ShoppingItem, Project, UserProfile, FuelLogItem, ServiceItem, Contact, TaskStatus, VehicleData } from '@/types/types';
-import { LayoutDashboard, CheckSquare, MessageSquareMore, Sparkles, Sun, Moon, Wrench, ShoppingBag, Settings, Lock, Loader2, Database, LogOut, ArrowLeft, User, Save, ChevronLeft, Map, Users, Fuel, BookOpen, ClipboardList } from 'lucide-react';
+import { Task, Project, TaskStatus, VehicleData } from '@/types/types';
+import { LayoutDashboard, CheckSquare, MessageSquareMore, Sparkles, Sun, Moon, Wrench, ShoppingBag, Lock, Loader2, Database, LogOut, Save, ChevronLeft, Map, Users, Fuel, BookOpen, ClipboardList } from 'lucide-react';
+
+// CONTEXTS
+import { UserProvider, ProjectProvider, useUser, useProject } from './contexts';
 
 // FIREBASE IMPORTS
-import { subscribeToAuthChanges, completeLogin, logout } from './services/auth';
+import { completeLogin } from './services/auth';
 import { uploadReceipt } from './services/storage';
 import {
   forceSeedProject,
@@ -30,20 +32,7 @@ import {
   deleteProjectFull,
   getTasks,
   addTask,
-  updateTask,
-  deleteTask,
   getShoppingItems,
-  addShoppingItem,
-  updateShoppingItem,
-  deleteShoppingItem,
-  updateVehicleData,
-  updateContacts,
-  updateProjectLocation,
-  getUserProfile,
-  updateUserProfile,
-  subscribeToProjectFull,
-  subscribeToTasks,
-  subscribeToShoppingItems,
   updateProject
 } from './services/db';
 import { CarLogo } from './components/CarLogo';
@@ -56,10 +45,11 @@ const EltonLogo = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export const App = () => {
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+const AppContent = () => {
+  const { currentUser, isLoading: userLoading, updateProfile, logout } = useUser();
+  const { activeProject, setActiveProject, showToast } = useProject();
+
   const [projects, setProjects] = useState<Project[]>([]);
-  const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState<'dashboard' | 'tasks' | 'ai' | 'specs' | 'shopping' | 'roadmap' | 'scraper' | 'inspection'>('dashboard');
   const [isMagicImportOpen, setIsMagicImportOpen] = useState(false);
@@ -69,24 +59,20 @@ export const App = () => {
   const [showMembers, setShowMembers] = useState(false);
   const [showFuelLog, setShowFuelLog] = useState(false);
   const [showServiceBook, setShowServiceBook] = useState(false);
-  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [editName, setEditName] = useState('');
   const [editSkillLevel, setEditSkillLevel] = useState<'beginner' | 'intermediate' | 'expert'>('intermediate');
-  const [shoppingTaskFilter, setShoppingTaskFilter] = useState<string | undefined>(undefined); // NEW: Filter shopping by task
   const [taskToView, setTaskToView] = useState<string | null>(null);
 
-  const loadUserProjects = async (user: UserProfile) => {
-    console.log('🔍 Loading projects for user:', user.uid, user.email);
+  const loadUserProjects = async () => {
+    if (!currentUser) return;
+    console.log('🔍 Loading projects for user:', currentUser.uid, currentUser.email);
     setIsLoading(true);
     try {
-      const userProjects = await getProjectsForUser(user.uid, user.email);
+      const userProjects = await getProjectsForUser(currentUser.uid, currentUser.email);
       console.log('✅ Found projects:', userProjects.length);
-      userProjects.forEach(p => {
-        console.log('  📦 Project:', p.name, '(ownerId:', p.ownerId, ')');
-      });
       setProjects(userProjects);
       if (userProjects.length === 0) {
-        setActiveProject(null); // No projects, go to selector
+        setActiveProject(null);
       }
     } catch (err) {
       console.error("❌ Error loading projects:", err);
@@ -99,22 +85,48 @@ export const App = () => {
     completeLogin().then(result => {
       if (result.success) showToast("Inloggad!");
     });
-    const unsubscribe = subscribeToAuthChanges(async (user) => {
-      if (user) {
-        const profile = await getUserProfile(user.uid, user.email!);
-        setCurrentUser(profile);
-        setEditName(profile.name);
-        setEditSkillLevel(profile.skillLevel || 'intermediate');
-        await loadUserProjects(profile);
-      } else {
-        setCurrentUser(null);
-        setActiveProject(null);
-        setProjects([]);
-        setIsLoading(false);
-      }
-    });
-    return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      setEditName(currentUser.name);
+      setEditSkillLevel(currentUser.skillLevel || 'intermediate');
+      loadUserProjects();
+    } else {
+      setActiveProject(null);
+      setProjects([]);
+      setIsLoading(false);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+  }, [isDarkMode]);
+
+  const handleLogout = async () => {
+    await logout();
+    setShowSettings(false);
+  };
+
+  const handleUpdateName = async () => {
+    if (!currentUser || !editName.trim()) return;
+    try {
+      await updateProfile({ name: editName });
+      showToast("Namn uppdaterat!");
+    } catch (e) {
+      showToast("Kunde inte spara namn", "error");
+    }
+  };
+
+  const handleUpdateSkillLevel = async () => {
+    if (!currentUser) return;
+    try {
+      await updateProfile({ skillLevel: editSkillLevel });
+      showToast("Erfarenhetsnivå uppdaterad!");
+    } catch (e) {
+      showToast("Kunde inte spara erfarenhetsnivå", "error");
+    }
+  };
 
   const selectProject = async (projectId: string) => {
     setIsLoading(true);
@@ -132,66 +144,13 @@ export const App = () => {
       showToast("Kunde inte ladda projektdata", "error");
     }
     setIsLoading(false);
-  }
-
-  // Real-time subscription to active project
-  useEffect(() => {
-    if (!activeProject?.id) return;
-
-    console.log('🔴 Setting up real-time listeners for project:', activeProject.id);
-
-    const unsubscribe = subscribeToProjectFull(activeProject.id, (updatedProject) => {
-      if (updatedProject) {
-        console.log('📡 Real-time update received:', updatedProject.name);
-        setActiveProject(updatedProject);
-      }
-    });
-
-    return () => {
-      console.log('🔴 Cleaning up real-time listeners');
-      unsubscribe();
-    };
-  }, [activeProject?.id]); // Only re-subscribe when project ID changes
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-  }, [isDarkMode]);
-
-  const handleLogout = async () => {
-    await logout();
-    setShowSettings(false);
-  };
-
-  const handleUpdateName = async () => {
-    if (!currentUser || !editName.trim()) return;
-    try {
-      await updateUserProfile(currentUser.uid, { name: editName });
-      setCurrentUser({ ...currentUser, name: editName });
-      showToast("Namn uppdaterat!");
-    } catch (e) {
-      showToast("Kunde inte spara namn", "error");
-    }
-  };
-
-  const handleUpdateSkillLevel = async () => {
-    if (!currentUser) return;
-    try {
-      await updateUserProfile(currentUser.uid, { skillLevel: editSkillLevel });
-      setCurrentUser({ ...currentUser, skillLevel: editSkillLevel });
-      showToast("Erfarenhetsnivå uppdaterad!");
-    } catch (e) {
-      showToast("Kunde inte spara erfarenhetsnivå", "error");
-    }
   };
 
   const handleCreateProject = async (projectTemplate: Partial<Project>) => {
     if (!currentUser) return;
     setIsLoading(true);
 
-    console.log('🔍 Starting project creation for user:', currentUser.uid, currentUser.email);
-
     try {
-      // 0. If additional notes exist, parse them for extra tasks
       const templateWithNotes = projectTemplate as any;
       if (templateWithNotes.additionalNotes) {
         showToast("🔍 Analyserar dina anteckningar med AI...");
@@ -202,13 +161,12 @@ export const App = () => {
         );
 
         if (extraData.tasks && extraData.tasks.length > 0) {
-          console.log('✨ AI Found extra tasks from notes:', extraData.tasks.length);
           const newTasks = extraData.tasks.map(t => ({
             ...t,
-            id: `note-task-${Date.now()}-${Math.random()}`, // Temporary ID
+            id: `note-task-${Date.now()}-${Math.random()}`,
             status: 'Att göra' as TaskStatus,
             phase: t.phase || 'Fas 0: Inköp & Analys',
-            priority: 'Hög' as any, // User notes are prioritised
+            priority: 'Hög' as any,
             estimatedCostMin: t.estimatedCostMin || 0,
             estimatedCostMax: t.estimatedCostMax || 0,
             actualCost: 0,
@@ -216,7 +174,6 @@ export const App = () => {
             created: new Date().toISOString()
           }));
 
-          // Merge with existing tasks
           projectTemplate.tasks = [
             ...(projectTemplate.tasks || []),
             ...newTasks
@@ -232,26 +189,12 @@ export const App = () => {
         projectTemplate
       );
 
-      console.log('✅ Project created:', newProject.id, newProject.name);
-
-      // Wait for Firestore to index (prevents race condition where project isn't found immediately)
-      console.log('⏳ Waiting for Firestore to index...');
       await new Promise(resolve => setTimeout(resolve, 1000));
-
-      console.log('🔄 Reloading projects for user:', currentUser.uid);
-      await loadUserProjects(currentUser);
-
-      console.log('🎯 Selecting new project:', newProject.id);
+      await loadUserProjects();
       await selectProject(newProject.id);
-
       showToast("Nytt projekt skapat!");
     } catch (error: any) {
       console.error("❌ Failed to create project:", error);
-      console.error("Error details:", {
-        code: error.code,
-        message: error.message
-      });
-
       if (error.code === 'permission-denied') {
         showToast("Åtkomst nekad. Kontrollera behörigheter.", "error");
       } else {
@@ -259,7 +202,7 @@ export const App = () => {
       }
     }
     setIsLoading(false);
-  }
+  };
 
   const handleDeleteProject = async (projectId: string) => {
     if (!confirm("Är du säker på att du vill radera projektet? Detta går inte att ångra.")) return;
@@ -280,31 +223,13 @@ export const App = () => {
     setIsLoading(true);
     try {
       await forceSeedProject(currentUser.email!, currentUser.uid);
-      await loadUserProjects(currentUser);
+      await loadUserProjects();
       showToast("Demoprojekt 'Elton' skapat!");
     } catch (e) {
       console.error(e);
       showToast("Kunde inte skapa demoprojekt", "error");
     }
     setIsLoading(false);
-  };
-
-
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const handleUpdateTask = async (updatedTask: Task) => {
-    if (!activeProject) return;
-    const originalTasks = activeProject.tasks;
-    setActiveProject({ ...activeProject, tasks: activeProject.tasks.map(t => t.id === updatedTask.id ? updatedTask : t) });
-    try {
-      await updateTask(activeProject.id, updatedTask.id, updatedTask);
-    } catch (e) {
-      setActiveProject({ ...activeProject, tasks: originalTasks });
-      showToast("Kunde inte spara uppgift", "error");
-    }
   };
 
   const handleAddTasks = async (newTasks: Omit<Task, 'id'>[]) => {
@@ -323,63 +248,15 @@ export const App = () => {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!activeProject) return;
-    const originalTasks = activeProject.tasks;
-    setActiveProject({ ...activeProject, tasks: activeProject.tasks.filter(t => t.id !== taskId) });
-    try {
-      await deleteTask(activeProject.id, taskId);
-      showToast("Uppgift raderad");
-    } catch (e) {
-      setActiveProject({ ...activeProject, tasks: originalTasks });
-      showToast("Kunde inte radera uppgift", "error");
-    }
-  };
-
-  const handleAddShoppingItem = async (item: Omit<ShoppingItem, 'id'>) => {
-    if (!activeProject) return;
-    try {
-      const newItem = await addShoppingItem(activeProject.id, item);
-      setActiveProject({ ...activeProject, shoppingItems: [...activeProject.shoppingItems, newItem] });
-      showToast(`Lade till ${item.name}`);
-    } catch (e) {
-      showToast("Kunde inte spara vara", "error");
-    }
-  };
-
-  const handleDeleteShoppingItem = async (id: string) => {
-    if (!activeProject) return;
-    const originalItems = activeProject.shoppingItems;
-    setActiveProject({ ...activeProject, shoppingItems: activeProject.shoppingItems.filter(i => i.id !== id) });
-    try {
-      await deleteShoppingItem(activeProject.id, id);
-      showToast("Vara raderad");
-    } catch (e) {
-      setActiveProject({ ...activeProject, shoppingItems: originalItems });
-      showToast("Fel vid radering", "error");
-    }
-  };
-
-  const handleUpdateShoppingItem = async (updatedItem: ShoppingItem) => {
-    if (!activeProject) return;
-    const originalItems = activeProject.shoppingItems;
-    setActiveProject({ ...activeProject, shoppingItems: activeProject.shoppingItems.map(item => item.id === updatedItem.id ? updatedItem : item) });
-    try {
-      await updateShoppingItem(activeProject.id, updatedItem.id, updatedItem);
-    } catch (e) {
-      setActiveProject({ ...activeProject, shoppingItems: originalItems });
-      showToast("Kunde inte uppdatera", "error");
-    }
-  };
-
   const handleUploadReceipt = async (itemId: string, file: File) => {
     if (!activeProject || !currentUser) return;
     try {
       const downloadURL = await uploadReceipt(file, currentUser.uid, activeProject.id, itemId);
       const itemToUpdate = activeProject.shoppingItems.find(i => i.id === itemId);
       if (itemToUpdate) {
+        const { updateShoppingItem } = useProject();
         const updatedItem = { ...itemToUpdate, receiptUrl: downloadURL };
-        await handleUpdateShoppingItem(updatedItem);
+        await updateShoppingItem(updatedItem);
         showToast("Kvitto uppladdat!");
       }
     } catch (error) {
@@ -388,110 +265,7 @@ export const App = () => {
     }
   };
 
-  const handleUpdateContacts = async (updatedContacts: Contact[]) => {
-    if (!activeProject) return;
-    try {
-      await updateContacts(activeProject.id, updatedContacts);
-      setActiveProject({ ...activeProject, contacts: updatedContacts });
-      showToast("Kontakter uppdaterade!");
-    } catch (error) {
-      console.error("Error updating contacts:", error);
-      showToast("Kunde inte uppdatera kontakter", "error");
-    }
-  };
-
-  const handleUpdateLocation = async (location: any) => {
-    if (!activeProject) return;
-    try {
-      await updateProjectLocation(activeProject.id, location);
-      setActiveProject({ ...activeProject, location });
-      showToast("Plats uppdaterad!");
-    } catch (error) {
-      console.error("Error updating location:", error);
-      showToast("Kunde inte uppdatera plats", "error");
-    }
-  };
-
-  const handleUpdateVehicleData = async (updates: Partial<VehicleData>) => {
-    if (!activeProject) return;
-    const mergedVehicleData = { ...activeProject.vehicleData, ...updates };
-    // Deep merge for nested objects
-    for (const key in updates) {
-      if (typeof updates[key as keyof VehicleData] === 'object' && updates[key as keyof VehicleData] !== null) {
-        (mergedVehicleData as any)[key] = {
-          ...(activeProject.vehicleData[key as keyof VehicleData] as any),
-          ...(updates[key as keyof VehicleData] as any)
-        };
-      }
-    }
-    setActiveProject({ ...activeProject, vehicleData: mergedVehicleData });
-    try {
-      await updateProject(activeProject.id, { vehicleData: mergedVehicleData });
-      showToast("Fordonsdata uppdaterad!");
-    } catch (error) {
-      console.error("Error updating vehicle data:", error);
-      setActiveProject(activeProject); // Revert
-      showToast("Kunde inte uppdatera fordonsdata", "error");
-    }
-  };
-
-  const handleAddKnowledgeArticle = async (article: any) => {
-    if (!activeProject) return;
-    const updatedArticles = [...(activeProject.knowledgeArticles || []), article];
-    setActiveProject({ ...activeProject, knowledgeArticles: updatedArticles });
-    try {
-      await updateProject(activeProject.id, { knowledgeArticles: updatedArticles });
-      showToast("Kunskapsartikel tillagd!");
-    } catch (error) {
-      console.error("Error adding knowledge article:", error);
-      setActiveProject(activeProject);
-      showToast("Kunde inte lägga till artikel", "error");
-    }
-  };
-
-  const handleAddServiceLog = async (log: any) => {
-    if (!activeProject) return;
-    const updatedLogs = [...(activeProject.serviceLog || []), log];
-    setActiveProject({ ...activeProject, serviceLog: updatedLogs });
-    try {
-      await updateProject(activeProject.id, { serviceLog: updatedLogs });
-      showToast("Service loggad!");
-    } catch (error) {
-      console.error("Error adding service log:", error);
-      setActiveProject(activeProject);
-      showToast("Kunde inte logga service", "error");
-    }
-  };
-
-  const handleAddHistoryEvent = async (event: any) => {
-    if (!activeProject) return;
-    const updatedHistory = [...(activeProject.historyEvents || []), event];
-    setActiveProject({ ...activeProject, historyEvents: updatedHistory });
-    try {
-      await updateProject(activeProject.id, { historyEvents: updatedHistory });
-      showToast("Händelse tillagd!");
-    } catch (error) {
-      console.error("Error adding history event:", error);
-      setActiveProject(activeProject);
-      showToast("Kunde inte lägga till händelse", "error");
-    }
-  };
-
-  const handleUpdateProjectMetadata = async (field: string, value: string) => {
-    if (!activeProject) return;
-    const updates: any = { [field]: value };
-    setActiveProject({ ...activeProject, ...updates });
-    try {
-      await updateProject(activeProject.id, updates);
-      showToast(`${field === 'nickname' ? 'Smeknamn' : 'Projektnamn'} uppdaterat!`);
-    } catch (error) {
-      console.error("Error updating project metadata:", error);
-      setActiveProject(activeProject);
-      showToast("Kunde inte uppdatera projekt", "error");
-    }
-  };
-
-  if (isLoading && !activeProject) {
+  if (userLoading || (isLoading && !activeProject)) {
     return (
       <div className="min-h-screen bg-nordic-ice dark:bg-nordic-dark-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -503,7 +277,6 @@ export const App = () => {
   }
 
   if (!currentUser) {
-    // Simple routing for A/B testing
     const path = window.location.pathname;
     if (path === '/landing-b') {
       return <WaitlistLandingB />;
@@ -514,7 +287,7 @@ export const App = () => {
   if (currentView === 'roadmap') {
     return <Roadmap onClose={() => {
       if (activeProject) setCurrentView('dashboard');
-      else setActiveProject(null); // Back to selector if no active project
+      else setActiveProject(null);
     }} />;
   }
 
@@ -640,24 +413,15 @@ export const App = () => {
           </div>
         </div>
         <div className="pb-28 sm:pb-0">
-          {currentView === 'dashboard' && <Dashboard project={activeProject} onPhaseClick={(p) => { setActivePhaseFilter(p); setCurrentView('tasks'); }} onViewTask={(taskId) => { setTaskToView(taskId); setCurrentView('tasks'); }} onViewShopping={() => setCurrentView('shopping')} />}
-          {currentView === 'tasks' && <TaskBoard tasks={activeProject.tasks} shoppingItems={activeProject.shoppingItems} vehicleData={activeProject.vehicleData} onUpdateTask={handleUpdateTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} initialFilter={activePhaseFilter as any} initialSelectedTaskId={taskToView} projectId={activeProject.id} />}
-          {currentView === 'ai' && <AIAssistant project={activeProject} contacts={activeProject.contacts} userSkillLevel={currentUser?.skillLevel} onAddTask={(t) => handleAddTasks(t as any)} onUpdateTask={handleUpdateTask} onDeleteTask={handleDeleteTask} onAddShoppingItem={(i) => handleAddShoppingItem(i as any)} onUpdateShoppingItem={handleUpdateShoppingItem} onDeleteShoppingItem={handleDeleteShoppingItem} onUpdateVehicleData={handleUpdateVehicleData} onAddKnowledgeArticle={handleAddKnowledgeArticle} onAddServiceLog={handleAddServiceLog} onAddHistoryEvent={handleAddHistoryEvent} onUpdateProjectMetadata={handleUpdateProjectMetadata} onClose={() => setCurrentView('dashboard')} />}
-          {currentView === 'specs' && <VehicleSpecs
-            vehicleData={activeProject.vehicleData}
-            tasks={activeProject.tasks}
-            contacts={activeProject.contacts || []}
-            projectLocation={activeProject.location ? { city: activeProject.location.city, lat: activeProject.location.coordinates?.lat || 0, lng: activeProject.location.coordinates?.lng || 0 } : undefined}
-            onUpdateContacts={handleUpdateContacts}
-            onUpdateLocation={handleUpdateLocation}
-            projectType={activeProject.type}
-          />}
-          {currentView === 'shopping' && <ShoppingList items={activeProject.shoppingItems} tasks={activeProject.tasks} vehicleData={activeProject.vehicleData} projectId={activeProject.id} onAdd={(i) => handleAddShoppingItem(i as any)} onDelete={handleDeleteShoppingItem} onToggle={(id) => { const i = activeProject.shoppingItems.find(x => x.id === id); if (i) handleUpdateShoppingItem({ ...i, checked: !i.checked }) }} onUpdate={handleUpdateShoppingItem} onUploadReceipt={handleUploadReceipt} filterByTaskId={shoppingTaskFilter} />}
+          {currentView === 'dashboard' && <Dashboard onPhaseClick={(p) => { setActivePhaseFilter(p); setCurrentView('tasks'); }} onViewTask={(taskId) => { setTaskToView(taskId); setCurrentView('tasks'); }} onViewShopping={() => setCurrentView('shopping')} />}
+          {currentView === 'tasks' && <TaskBoard initialFilter={activePhaseFilter as any} initialSelectedTaskId={taskToView} />}
+          {currentView === 'ai' && <AIAssistant onClose={() => setCurrentView('dashboard')} />}
+          {currentView === 'specs' && <VehicleSpecs />}
+          {currentView === 'shopping' && <ShoppingList onUploadReceipt={handleUploadReceipt} />}
           {currentView === 'inspection' && activeProject.inspections && activeProject.inspections.length > 0 && <InspectionPage inspection={activeProject.inspections[0] as any} tasks={activeProject.tasks} onViewTask={(taskId) => { setCurrentView('tasks'); }} />}
           {currentView === 'scraper' && <TestScraper onClose={() => setCurrentView('dashboard')} />}
         </div>
 
-        {/* FOOTER - ROADMAP LINK */}
         {currentView === 'dashboard' && (
           <div className="text-center mt-12 pb-24 opacity-60 hover:opacity-100 transition-opacity">
             <button
@@ -680,7 +444,6 @@ export const App = () => {
             <NavButton active={false} onClick={() => setCurrentView('ai')} icon={MessageSquareMore} label="Elton AI" />
           </div>
         )}
-        {toast && <div className={`fixed bottom-24 right-4 z-50 px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-fade-in ${toast.type === 'error' ? 'bg-rose-500 text-white' : 'bg-nordic-charcoal text-white dark:bg-teal-600'}`}><CheckSquare size={18} /><span className="font-medium text-sm">{toast.message}</span></div>}
       </div>
       {isMagicImportOpen && <div className="fixed inset-0 bg-nordic-charcoal/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"><div className="w-full max-w-2xl"><MagicImport onAddTasks={(t) => handleAddTasks(t as any)} onClose={() => setIsMagicImportOpen(false)} /></div></div>}
       {
@@ -694,7 +457,7 @@ export const App = () => {
               if (updatedProject) {
                 setActiveProject({ ...activeProject, ...updatedProject });
               }
-              await loadUserProjects(currentUser);
+              await loadUserProjects();
             }}
           />
         )
@@ -724,3 +487,11 @@ export const App = () => {
     </div >
   );
 };
+
+export const App = () => (
+  <UserProvider>
+    <ProjectProvider>
+      <AppContent />
+    </ProjectProvider>
+  </UserProvider>
+);

@@ -1,15 +1,15 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Project, TaskStatus, KnowledgeArticle } from '@/types/types';
-import { Coins, CheckCircle2, Wallet, Calendar, MapPin, Flag, ArrowUp, ArrowDown } from 'lucide-react';
+import { TaskStatus, KnowledgeArticle } from '@/types/types';
+import { Coins, CheckCircle2, Wallet, Calendar, MapPin, Flag } from 'lucide-react';
 import { Resources } from './Resources';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { getKnowledgeBase } from '@/services/db';
 import { ProjectFocus } from './ProjectFocus';
 import { ProjectRoadmap } from './ProjectRoadmap';
+import { useProject } from '@/contexts';
 
 interface DashboardProps {
-  project: Project;
   onPhaseClick?: (phase: string) => void;
   onViewTask: (taskId: string) => void;
   onViewShopping: () => void;
@@ -19,8 +19,10 @@ const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('sv-SE', { style: 'currency', currency: 'SEK', maximumFractionDigits: 0 }).format(amount);
 };
 
-export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick, onViewTask, onViewShopping }) => {
-  const { tasks, vehicleData } = project;
+export const Dashboard: React.FC<DashboardProps> = ({ onPhaseClick, onViewTask, onViewShopping }) => {
+  const { activeProject, tasks, vehicleData } = useProject();
+
+  if (!activeProject) return null;
 
   // Load knowledge articles from sub-collection
   const [knowledgeArticles, setKnowledgeArticles] = useState<KnowledgeArticle[]>([]);
@@ -28,14 +30,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick, onV
   useEffect(() => {
     const loadKnowledgeBase = async () => {
       try {
-        const data = await getKnowledgeBase(project.id);
+        const data = await getKnowledgeBase(activeProject.id);
         setKnowledgeArticles(data);
       } catch (error) {
         console.error('Failed to load knowledge base:', error);
       }
     };
     loadKnowledgeBase();
-  }, [project.id]);
+  }, [activeProject.id]);
 
   const stats = useMemo(() => {
     const totalMin = tasks.reduce((sum, t) => sum + (t.estimatedCostMin || 0), 0);
@@ -52,7 +54,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick, onV
     // Safe access to vehicleData properties with fallbacks
     const prodYear = vehicleData?.prodYear ? String(vehicleData.prodYear) : '-';
     const regDate = vehicleData?.regDate || '-';
-    const createdDate = project.created ? format(new Date(project.created), 'd MMM yyyy', { locale: sv }) : '-';
+    const createdDate = activeProject.created ? format(new Date(activeProject.created), 'd MMM yyyy', { locale: sv }) : '-';
 
     const historyEvents = [
       {
@@ -72,7 +74,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick, onV
       {
         date: createdDate,
         title: 'Projektstart',
-        description: project.name,
+        description: activeProject.name,
         type: 'milestone',
         icon: Flag
       }
@@ -90,7 +92,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick, onV
       }));
 
     return [...historyEvents, ...completedTasks];
-  }, [tasks, vehicleData, project]);
+  }, [tasks, vehicleData, activeProject]);
 
   const StatCard = ({ title, value, subtext, icon: Icon, color }: any) => (
     <div className="bg-white dark:bg-nordic-dark-surface p-6 rounded-3xl shadow-sm border border-nordic-ice dark:border-nordic-dark-bg flex items-center space-x-4 transition-all hover:shadow-md h-full">
@@ -108,7 +110,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick, onV
   return (
     <div className="space-y-8 pb-20 animate-fade-in">
       <ProjectFocus
-        project={project}
+        project={activeProject}
         onViewTask={onViewTask}
         onViewShopping={onViewShopping}
       />
@@ -156,8 +158,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ project, onPhaseClick, onV
             {timelineData.map((event, idx) => (
               <div key={idx} className="relative flex flex-col items-center min-w-[160px] snap-center group">
                 <div className={`w-12 h-12 rounded-full border-4 border-white dark:border-nordic-dark-surface shadow-sm flex items-center justify-center mb-4 z-10 transition-transform duration-300 group-hover:scale-110 ${event.type === 'history' ? 'bg-slate-100 dark:bg-nordic-charcoal text-slate-400' :
-                    event.type === 'milestone' ? 'bg-nordic-pink dark:bg-pink-900/40 text-rose-800 dark:text-rose-200' :
-                      'bg-nordic-green dark:bg-green-900/40 text-green-800 dark:text-green-200'
+                  event.type === 'milestone' ? 'bg-nordic-pink dark:bg-pink-900/40 text-rose-800 dark:text-rose-200' :
+                    'bg-nordic-green dark:bg-green-900/40 text-green-800 dark:text-green-200'
                   }`}>
                   <event.icon size={20} />
                 </div>
