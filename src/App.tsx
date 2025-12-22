@@ -21,6 +21,7 @@ import { parseTasksFromInput } from './services/geminiService';
 
 // Components
 import { WaitlistLanding } from './components/WaitlistLanding';
+import { WaitlistLandingC } from './components/WaitlistLandingC';
 import { Roadmap } from './components/Roadmap';
 import { ProjectSelectorPage } from './components/pages/ProjectSelectorPage';
 import { ProjectLayout } from './components/layout/ProjectLayout';
