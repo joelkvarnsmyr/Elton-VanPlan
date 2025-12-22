@@ -3,7 +3,7 @@ import { Check, Loader2, ArrowRight, CheckCircle2, X, Sparkles, Wrench, Camera, 
 import { addToWaitlist } from '@/services/db';
 import { AuthLanding } from './AuthLanding';
 import eltonLogo from '@/assets/eltonlogo.svg';
-import newLogo from '@/assets/Logo.svg';
+import darkLogo from '@/assets/dark_logo.svg';
 import symbolLogo from '@/assets/symbol.svg';
 import hanna1 from '@/assets/hanna1.png';
 import { FeedbackModal } from './modals/FeedbackModal';
@@ -86,7 +86,7 @@ export const WaitlistLanding: React.FC = () => {
             <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white border-b border-stone-200 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <img src={newLogo} alt="VanPlan" className="h-10 w-auto" />
+                        <img src={darkLogo} alt="VanPlan" className="h-10 w-auto" />
                         <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 bg-stone-100 text-stone-500 rounded-full">
                             Beta
                         </span>
