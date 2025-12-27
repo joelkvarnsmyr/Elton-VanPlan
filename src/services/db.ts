@@ -30,7 +30,8 @@ import {
   Contact,
   InspectionFinding,
   VehicleHistoryEvent,
-  MileageReading
+  MileageReading,
+  ChatMessage
 } from '@/types/types';
 // DEMO_PROJECT import removed
 
@@ -46,6 +47,7 @@ const getServiceLogRef = (projectId: string) => collection(db, 'projects', proje
 const getFuelLogRef = (projectId: string) => collection(db, 'projects', projectId, 'fuelLog');
 const getKnowledgeBaseRef = (projectId: string) => collection(db, 'projects', projectId, 'knowledgeBase');
 const getInspectionsRef = (projectId: string) => collection(db, 'projects', projectId, 'inspections');
+const getChatRef = (projectId: string) => doc(db, 'projects', projectId, 'chat', 'history');
 
 
 // --- SEEDING ---
@@ -765,8 +767,8 @@ export const saveChatHistory = async (projectId: string, messages: ChatMessage[]
       content: msg.content,
       timestamp: msg.timestamp
     };
-    if (msg.imageUrl !== undefined) {
-      clean.imageUrl = msg.imageUrl;
+    if ((msg as any).imageUrl !== undefined) {
+      clean.imageUrl = (msg as any).imageUrl;
     }
     return clean;
   });
