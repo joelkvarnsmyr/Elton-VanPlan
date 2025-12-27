@@ -206,9 +206,10 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({
 
           {/* Linked Task */}
           <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Kopplad uppgift</label>
+            <label htmlFor="edit-linked-task" className="block text-xs font-bold text-slate-400 uppercase mb-1">Kopplad uppgift</label>
             {isEditing ? (
               <select
+                id="edit-linked-task"
                 value={editData.linkedTaskId}
                 onChange={(e) => setEditData(prev => ({ ...prev, linkedTaskId: e.target.value }))}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -517,8 +518,9 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
           <div className="flex flex-col sm:flex-row gap-2 mb-3">
             {/* Status filter */}
             <div className="flex-1">
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Status</label>
+              <label htmlFor="filter-status" className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Status</label>
               <select
+                id="filter-status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as 'all' | ShoppingItemStatus)}
                 className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
@@ -532,8 +534,9 @@ export const ShoppingList: React.FC<ShoppingListProps> = ({
 
             {/* Phase filter */}
             <div className="flex-1">
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Fas</label>
+              <label htmlFor="filter-phase" className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Fas</label>
               <select
+                id="filter-phase"
                 value={phaseFilter}
                 onChange={(e) => setPhaseFilter(e.target.value)}
                 className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"

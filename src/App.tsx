@@ -21,7 +21,11 @@ import { parseTasksFromInput } from './services/geminiService';
 
 // Components
 import { WaitlistLanding } from './components/WaitlistLanding';
+import { WaitlistLandingB } from './components/WaitlistLandingB';
 import { WaitlistLandingC } from './components/WaitlistLandingC';
+import { WaitlistLandingD } from './components/WaitlistLandingD';
+import { OnboardingChat } from './components/OnboardingChat';
+import { UnifiedChatInterface } from './components/chat/UnifiedChatInterface';
 import { Roadmap } from './components/Roadmap';
 import { ProjectSelectorPage } from './components/pages/ProjectSelectorPage';
 import { ProjectLayout } from './components/layout/ProjectLayout';
@@ -31,13 +35,15 @@ import { ShoppingListPage } from './components/pages/ShoppingListPage';
 import { VehicleSpecsPage } from './components/pages/VehicleSpecsPage';
 import { AIAssistantPage } from './components/pages/AIAssistantPage';
 import { InspectionPageWrapper } from './components/pages/InspectionPageWrapper';
+import { DevDashboardPage } from './components/pages/DevDashboardPage';
+import { ElectricalSystemPage } from './components/pages/ElectricalSystemPage';
 
 // Types
 import { Project, Task, TaskStatus, VehicleData } from '@/types/types';
 
 const AppContent = () => {
   const { currentUser, isLoading: userLoading, logout } = useUser();
-  const { setActiveProject, showToast } = useProject();
+  const { activeProject, setActiveProject, showToast } = useProject();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -93,6 +99,7 @@ const AppContent = () => {
           getShoppingItems(projectId),
         ]);
         setActiveProject({ ...projData, tasks: tasks || [], shoppingItems: shopping || [] });
+        navigate(`/project/${projectId}`);
       } else {
         showToast('Kunde inte hitta projektet', 'error');
       }
@@ -193,6 +200,41 @@ const AppContent = () => {
     setIsLoading(false);
   };
 
+  const handleCreateV2Project = async (
+    vehicleData: VehicleData,
+    imageBase64?: string,
+    vehicleDescription?: string,
+    aiData?: any
+  ): Promise<string> => {
+    if (!currentUser) throw new Error('No user');
+    setIsLoading(true);
+
+    try {
+      const { createV2Project } = await import('./services/projectSetupService');
+
+      const newProject = await createV2Project(
+        vehicleDescription || vehicleData.model,
+        aiData || {},
+        currentUser.uid,
+        currentUser.email!,
+        imageBase64
+      );
+
+      await loadUserProjects();
+      setActiveProject(newProject);
+      navigate(`/project/${newProject.id}/setup`);
+      showToast('Projekt skapat! Dags att chatta med Elton.');
+      return newProject.id;
+
+    } catch (error) {
+      console.error('Failed to create V2 project:', error);
+      showToast('Kunde inte skapa projektet', 'error');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (userLoading || isLoading) {
     return (
       <div className="min-h-screen bg-nordic-ice dark:bg-nordic-dark-bg flex items-center justify-center">
@@ -208,6 +250,9 @@ const AppContent = () => {
     return (
       <Routes>
         <Route path="/" element={<WaitlistLanding />} />
+        <Route path="/b" element={<WaitlistLandingB />} />
+        <Route path="/c" element={<WaitlistLandingC />} />
+        <Route path="/d" element={<WaitlistLandingD />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
@@ -230,6 +275,7 @@ const AppContent = () => {
             onDeleteProject={handleDeleteProject}
             onLogout={logout}
             onSeed={handleForceSeed}
+            onCreateV2Project={handleCreateV2Project}
           />
         }
       />
@@ -242,6 +288,17 @@ const AppContent = () => {
         <Route path="specs" element={<VehicleSpecsPage />} />
         <Route path="ai" element={<AIAssistantPage />} />
         <Route path="inspection" element={<InspectionPageWrapper />} />
+        <Route path="electrical" element={<ElectricalSystemPage />} />
+        <Route path="dev" element={<DevDashboardPage />} />
+        <Route
+          path="setup"
+          element={
+            <UnifiedChatInterface
+              mode="embedded"
+              onClose={() => { }} // No close action needed for embedded
+            />
+          }
+        />
       </Route>
 
       {/* Default redirects */}

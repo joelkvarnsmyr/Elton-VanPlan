@@ -34,7 +34,111 @@ export interface AIConfig {
   retryCount?: number;
   timeout?: number;
   preferredProvider?: AIProvider;
+  disableTools?: boolean;
 }
+
+// Global Tools Definition
+const TOOLS_DEFINITION = [
+  // @ts-ignore - googleSearchRetrieval is supported in Vertex AI SDK
+  {
+    googleSearchRetrieval: {}
+  },
+  // Project Tools
+  {
+    functionDeclarations: [
+      {
+        name: 'addVehicleHistoryEvent',
+        description: 'Add a significant event to the vehicle history (e.g., service, repair, inspection).',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            date: { type: SchemaType.STRING, description: 'Date of event (ISO format YYYY-MM-DD)' },
+            type: { type: SchemaType.STRING, enum: ['service', 'repair', 'inspection', 'other'], description: 'Type of event' },
+            title: { type: SchemaType.STRING, description: 'Short title of the event' },
+            description: { type: SchemaType.STRING, description: 'Details about the event' },
+            mileage: { type: SchemaType.NUMBER, description: 'Mileage at the time of event (in Swedish mil)' },
+            cost: { type: SchemaType.NUMBER, description: 'Cost of the event in SEK' }
+          },
+          required: ['date', 'type', 'title']
+        }
+      },
+      {
+        name: 'addMileageReading',
+        description: 'Log a new mileage reading.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            date: { type: SchemaType.STRING, description: 'Date of reading (ISO format YYYY-MM-DD)' },
+            mileage: { type: SchemaType.NUMBER, description: 'Current mileage (in Swedish mil)' },
+            source: { type: SchemaType.STRING, enum: ['user', 'inspection', 'other'], description: 'Source of the reading' }
+          },
+          required: ['date', 'mileage']
+        }
+      },
+      {
+        name: 'updateInspectionFinding',
+        description: 'Update an inspection finding provided in the context.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            findingId: { type: SchemaType.STRING, description: 'ID of the finding' },
+            newStatus: { type: SchemaType.STRING, enum: ['open', 'fixed', 'ignored'], description: 'New status' },
+            feedback: { type: SchemaType.STRING, description: 'Notes about the update' }
+          },
+          required: ['findingId']
+        }
+      },
+      {
+        name: 'addTask',
+        description: 'Add a new task to the project.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            title: { type: SchemaType.STRING, description: 'Title of the task' },
+            description: { type: SchemaType.STRING, description: 'Description of what needs to be done' },
+            phase: { type: SchemaType.STRING, description: 'Project phase (e.g., "Fas 1: Akut", "Fas 2: Kaross", "Fas 3: System")' },
+            priority: { type: SchemaType.STRING, enum: ['Låg', 'Medel', 'Hög', 'Kritisk'], description: 'Priority level' },
+            estimatedCostMin: { type: SchemaType.NUMBER, description: 'Minimum estimated cost' },
+            estimatedCostMax: { type: SchemaType.NUMBER, description: 'Maximum estimated cost' }
+          },
+          required: ['title', 'phase']
+        }
+      },
+      {
+        name: 'createPhase',
+        description: 'Create a new project phase.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            name: { type: SchemaType.STRING, description: 'Name of the phase' },
+            description: { type: SchemaType.STRING, description: 'Description of the phase' },
+            order: { type: SchemaType.NUMBER, description: 'Order index of the phase' }
+          },
+          required: ['name', 'order']
+        }
+      },
+      {
+        name: 'setProjectType',
+        description: 'Set the type of the project (e.g., renovation, conversion).',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            type: { type: SchemaType.STRING, enum: ['renovation', 'conversion', 'maintenance', 'mixed'], description: 'Project type' }
+          },
+          required: ['type']
+        }
+      },
+      {
+        name: 'completeSetup',
+        description: 'Mark the project setup as complete.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {},
+        }
+      }
+    ]
+  }
+];
 
 // ===========================
 // HELPER: GET MODEL
@@ -43,77 +147,7 @@ export interface AIConfig {
 const getModel = (config?: AIConfig) => {
   return getGenerativeModel(ai, {
     model: 'gemini-2.5-flash',
-    tools: [
-      // @ts-ignore - googleSearchRetrieval is supported in Vertex AI SDK
-      {
-        googleSearchRetrieval: {
-          disableAttribution: false
-        }
-      },
-      // Project Tools
-      {
-        functionDeclarations: [
-          {
-            name: 'addVehicleHistoryEvent',
-            description: 'Add a significant event to the vehicle history (e.g., service, repair, inspection).',
-            parameters: {
-              type: SchemaType.OBJECT,
-              properties: {
-                date: { type: SchemaType.STRING, description: 'Date of event (ISO format YYYY-MM-DD)' },
-                type: { type: SchemaType.STRING, enum: ['service', 'repair', 'inspection', 'other'], description: 'Type of event' },
-                title: { type: SchemaType.STRING, description: 'Short title of the event' },
-                description: { type: SchemaType.STRING, description: 'Details about the event' },
-                mileage: { type: SchemaType.NUMBER, description: 'Mileage at the time of event (in Swedish mil)' },
-                cost: { type: SchemaType.NUMBER, description: 'Cost of the event in SEK' }
-              },
-              required: ['date', 'type', 'title']
-            }
-          },
-          {
-            name: 'addMileageReading',
-            description: 'Log a new mileage reading.',
-            parameters: {
-              type: SchemaType.OBJECT,
-              properties: {
-                date: { type: SchemaType.STRING, description: 'Date of reading (ISO format YYYY-MM-DD)' },
-                mileage: { type: SchemaType.NUMBER, description: 'Current mileage (in Swedish mil)' },
-                source: { type: SchemaType.STRING, enum: ['user', 'inspection', 'other'], description: 'Source of the reading' }
-              },
-              required: ['date', 'mileage']
-            }
-          },
-          {
-            name: 'updateInspectionFinding',
-            description: 'Update an inspection finding provided in the context.',
-            parameters: {
-              type: SchemaType.OBJECT,
-              properties: {
-                findingId: { type: SchemaType.STRING, description: 'ID of the finding' },
-                newStatus: { type: SchemaType.STRING, enum: ['open', 'fixed', 'ignored'], description: 'New status' },
-                feedback: { type: SchemaType.STRING, description: 'Notes about the update' }
-              },
-              required: ['findingId']
-            }
-          },
-          {
-            name: 'addTask',
-            description: 'Add a new task to the project.',
-            parameters: {
-              type: SchemaType.OBJECT,
-              properties: {
-                title: { type: SchemaType.STRING, description: 'Title of the task' },
-                description: { type: SchemaType.STRING, description: 'Description of what needs to be done' },
-                phase: { type: SchemaType.STRING, description: 'Project phase (e.g., "Fas 1: Akut", "Fas 2: Kaross", "Fas 3: System")' },
-                priority: { type: SchemaType.STRING, enum: ['Låg', 'Medel', 'Hög', 'Kritisk'], description: 'Priority level' },
-                estimatedCostMin: { type: SchemaType.NUMBER, description: 'Minimum estimated cost' },
-                estimatedCostMax: { type: SchemaType.NUMBER, description: 'Maximum estimated cost' }
-              },
-              required: ['title', 'phase']
-            }
-          }
-        ]
-      }
-    ],
+    tools: config?.disableTools ? [] : TOOLS_DEFINITION,
     generationConfig: {
       temperature: config?.temperature ?? 0.7,
       maxOutputTokens: config?.maxTokens ?? 8192,
@@ -146,6 +180,8 @@ export const generateText = async (
     const modelWithSystem = getGenerativeModel(ai, {
       model: 'gemini-2.5-flash',
       systemInstruction: systemPrompt,
+      // Fix: tools were previously missing here
+      tools: config?.disableTools ? [] : TOOLS_DEFINITION,
       generationConfig: {
         temperature: config?.temperature ?? 0.7
       }

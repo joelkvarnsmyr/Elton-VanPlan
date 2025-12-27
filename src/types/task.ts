@@ -63,4 +63,18 @@ export interface Task {
 
     // Dependencies
     dependencies?: string[];
+
+    // ============================================================================
+    // PHASE 1: Team Coordination (Flight Level 2)
+    // ============================================================================
+    assignedTo?: string;      // userId, 'ai' for Elton, or undefined (unassigned)
+    handoffTo?: string;       // userId to pass work to when done
+    handoffNotes?: string;    // Context for the next person
+
+    // ============================================================================
+    // PHASE 2: Hill Chart (Shape Up - Uncertainty Visualization)
+    // ============================================================================
+    hillPosition?: number;    // 0-100 (0=start, 50=peak/known, 100=done)
+    hillUpdatedAt?: string;   // ISO timestamp of last hill position change
+    hillUpdatedBy?: string;   // userId who moved it
 }

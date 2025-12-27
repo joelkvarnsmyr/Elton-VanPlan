@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Task, Link, Comment, Attachment, Subtask, ShoppingItem, VehicleData, TaskStatus, ChatContext } from '@/types/types';
-import { X, ExternalLink, Plus, MessageSquare, Paperclip, Trash2, Send, Save, FileText, Lightbulb, Check, XCircle, ListChecks, CheckCircle2, Circle, BookOpen, Wrench, ShoppingBag, Archive, MessageCircle } from 'lucide-react';
+import { X, ExternalLink, Plus, MessageSquare, Paperclip, Trash2, Send, Save, FileText, Lightbulb, Check, XCircle, ListChecks, CheckCircle2, Circle, BookOpen, Wrench, ShoppingBag, Archive, MessageCircle, Users, Mountain } from 'lucide-react';
 import { KNOWLEDGE_ARTICLES } from '@/constants/constants';
 import { ContextualChat } from './ContextualChat';
 
@@ -43,7 +43,15 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
 
     // Local state edit fields
     const [editedDescription, setEditedDescription] = useState(task.description);
-    const [editedActualCost, setEditedActualCost] = useState(task.actualCost.toString());
+    const [editedActualCost, setEditedActualCost] = useState((task.actualCost ?? 0).toString());
+
+    // PHASE 1: Team Coordination
+    const [editedAssignedTo, setEditedAssignedTo] = useState(task.assignedTo || '');
+    const [editedHandoffTo, setEditedHandoffTo] = useState(task.handoffTo || '');
+    const [editedHandoffNotes, setEditedHandoffNotes] = useState(task.handoffNotes || '');
+
+    // PHASE 2: Hill Chart
+    const [editedHillPosition, setEditedHillPosition] = useState(task.hillPosition ?? 50);
 
     const hasDecisionOptions = task.decisionOptions && task.decisionOptions.length > 0;
 
@@ -105,7 +113,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
         onUpdate({
             ...task,
             description: editedDescription,
-            actualCost: parseInt(editedActualCost) || 0
+            actualCost: parseInt(editedActualCost) || 0,
+            // Include new fields
+            assignedTo: editedAssignedTo || undefined,
+            handoffTo: editedHandoffTo || undefined,
+            handoffNotes: editedHandoffNotes || undefined,
+            hillPosition: editedHillPosition,
+            hillUpdatedAt: task.hillPosition !== editedHillPosition ? new Date().toISOString() : task.hillUpdatedAt
         });
     };
 
@@ -147,7 +161,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
         };
         onUpdate({
             ...task,
-            comments: [...task.comments, comment]
+            comments: [...(task.comments || []), comment]
         });
         setNewComment('');
     };
@@ -161,7 +175,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
         };
         onUpdate({
             ...task,
-            links: [...task.links, link]
+            links: [...(task.links || []), link]
         });
         setNewLinkTitle('');
         setNewLinkUrl('');
@@ -170,7 +184,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
     const handleDeleteLink = (id: string) => {
         onUpdate({
             ...task,
-            links: task.links.filter(l => l.id !== id)
+            links: (task.links || []).filter(l => l.id !== id)
         });
     };
 
@@ -187,7 +201,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
                 };
                 onUpdate({
                     ...task,
-                    attachments: [...task.attachments, attachment]
+                    attachments: [...(task.attachments || []), attachment]
                 });
             };
             reader.readAsDataURL(file);
@@ -197,7 +211,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
     const handleDeleteAttachment = (id: string) => {
         onUpdate({
             ...task,
-            attachments: task.attachments.filter(a => a.id !== id)
+            attachments: (task.attachments || []).filter(a => a.id !== id)
         });
     };
 
@@ -251,7 +265,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
                             onClick={() => setActiveTab('comments')}
                             className={`flex-1 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'comments' ? 'border-nordic-charcoal text-nordic-charcoal dark:border-teal-400 dark:text-teal-400' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
                         >
-                            Kommentarer ({task.comments.length})
+                            Kommentarer ({task.comments?.length || 0})
                         </button>
                     </div>
 
@@ -353,13 +367,99 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
                                     </div>
                                 </div>
 
+                                {/* PHASE 1: Team Coordination */}
+                                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-800">
+                                    <h3 className="font-serif font-bold text-lg text-blue-900 dark:text-blue-200 mb-3 flex items-center gap-2">
+                                        <Users size={18} /> Team & Överlämning
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-blue-400 uppercase mb-1">Tilldelad till</label>
+                                            <select
+                                                value={editedAssignedTo}
+                                                onChange={(e) => setEditedAssignedTo(e.target.value)}
+                                                onBlur={handleSaveDetails}
+                                                className="w-full p-2 bg-white dark:bg-nordic-dark-bg border border-blue-200 dark:border-blue-700 rounded-lg text-sm dark:text-white"
+                                            >
+                                                <option value="">-- Ej tilldelad --</option>
+                                                <option value="ai">🤖 Elton (AI)</option>
+                                                <option value="user1">👤 Jag</option>
+                                                <option value="partner">👥 Partner</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-blue-400 uppercase mb-1">Lämna över till</label>
+                                            <select
+                                                value={editedHandoffTo}
+                                                onChange={(e) => setEditedHandoffTo(e.target.value)}
+                                                onBlur={handleSaveDetails}
+                                                className="w-full p-2 bg-white dark:bg-nordic-dark-bg border border-blue-200 dark:border-blue-700 rounded-lg text-sm dark:text-white"
+                                            >
+                                                <option value="">-- Ingen överlämning --</option>
+                                                <option value="ai">🤖 Elton (AI)</option>
+                                                <option value="user1">👤 Jag</option>
+                                                <option value="partner">👥 Partner</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    {editedHandoffTo && (
+                                        <div className="mt-3">
+                                            <label className="block text-xs font-bold text-blue-400 uppercase mb-1">Överlämningsnoteringar</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Vad behöver nästa person veta?"
+                                                value={editedHandoffNotes}
+                                                onChange={(e) => setEditedHandoffNotes(e.target.value)}
+                                                onBlur={handleSaveDetails}
+                                                className="w-full p-2 bg-white dark:bg-nordic-dark-bg border border-blue-200 dark:border-blue-700 rounded-lg text-sm dark:text-white"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* PHASE 2: Hill Chart Position */}
+                                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-100 dark:border-amber-800">
+                                    <h3 className="font-serif font-bold text-lg text-amber-900 dark:text-amber-200 mb-3 flex items-center gap-2">
+                                        <Mountain size={18} /> Hill Chart Position
+                                    </h3>
+                                    <div className="space-y-3">
+                                        <div className="flex justify-between text-xs font-medium">
+                                            <span className="text-amber-600">🔍 Utforskar</span>
+                                            <span className="text-green-600">⛰️ Lösning klar</span>
+                                            <span className="text-blue-600">🛠️ Exekverar</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="100"
+                                            value={editedHillPosition}
+                                            onChange={(e) => setEditedHillPosition(parseInt(e.target.value))}
+                                            onMouseUp={handleSaveDetails}
+                                            onTouchEnd={handleSaveDetails}
+                                            className="w-full h-2 bg-gradient-to-r from-amber-300 via-green-400 to-blue-300 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                        <div className="text-center">
+                                            <span className="text-2xl font-mono font-bold text-amber-700 dark:text-amber-300">
+                                                {editedHillPosition}%
+                                            </span>
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                {editedHillPosition < 30 ? 'Fortfarande mycket osäkert' :
+                                                    editedHillPosition < 50 ? 'Jobbar på att förstå problemet' :
+                                                        editedHillPosition < 70 ? 'Lösningen börjar ta form' :
+                                                            editedHillPosition < 90 ? 'Vet exakt vad som ska göras' :
+                                                                'Nästan klart!'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Links Section */}
                                 <div>
                                     <h3 className="font-serif font-bold text-lg text-nordic-charcoal dark:text-nordic-ice mb-3 flex items-center gap-2">
                                         <ExternalLink size={18} /> Länkar
                                     </h3>
                                     <div className="space-y-2 mb-3">
-                                        {task.links.map(link => (
+                                        {(task.links || []).map(link => (
                                             <div key={link.id} className="flex items-center justify-between p-3 bg-white dark:bg-nordic-dark-bg border border-slate-200 dark:border-nordic-charcoal rounded-xl group hover:border-teal-200 transition-colors">
                                                 <a href={link.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-teal-700 dark:text-teal-400 font-medium hover:underline truncate">
                                                     <ExternalLink size={14} /> {link.title}
@@ -395,7 +495,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
                                         <Paperclip size={18} /> Filer & Kvitton
                                     </h3>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
-                                        {task.attachments.map(att => (
+                                        {(task.attachments || []).map(att => (
                                             <div key={att.id} className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-nordic-charcoal aspect-square bg-slate-50 dark:bg-nordic-dark-bg flex items-center justify-center">
                                                 {att.type === 'image' ? (
                                                     <img src={att.data} alt={att.name} className="w-full h-full object-cover" />
@@ -616,13 +716,13 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ task, vehicleD
                         {activeTab === 'comments' && (
                             <div className="flex flex-col h-[500px]">
                                 <div className="flex-1 space-y-4 overflow-y-auto pr-2">
-                                    {task.comments.length === 0 && (
+                                    {(task.comments || []).length === 0 && (
                                         <div className="text-center py-10 text-slate-400">
                                             <MessageSquare size={48} className="mx-auto mb-2 opacity-20" />
                                             <p>Inga kommentarer än.</p>
                                         </div>
                                     )}
-                                    {task.comments.map(comment => (
+                                    {(task.comments || []).map(comment => (
                                         <div key={comment.id} className={`p-4 rounded-2xl max-w-[90%] ${comment.author === 'user' ? 'bg-nordic-ice dark:bg-teal-900/30 ml-auto rounded-br-none' : 'bg-white dark:bg-nordic-charcoal border border-slate-100 dark:border-nordic-dark-bg mr-auto rounded-bl-none'}`}>
                                             <p className="text-slate-700 dark:text-slate-200 text-sm leading-relaxed">{comment.text}</p>
                                             <p className="text-[10px] text-slate-400 mt-2 text-right">{new Date(comment.createdAt).toLocaleString()}</p>

@@ -1,24 +1,28 @@
 
 import React, { useState } from 'react';
 import { Project, UserProfile, VehicleData, Task, TaskStatus, CostType, Phase, Priority, PROJECT_PHASES, ProjectType } from '@/types/types';
-import { Plus, Car, ChevronRight, LogOut, Lock, Loader2, Sparkles, Search, CheckCircle2, Image as ImageIcon, Trash2, Mail, Check, X } from 'lucide-react';
+import { Plus, Car, ChevronRight, LogOut, Lock, Loader2, Sparkles, Search, CheckCircle2, Image as ImageIcon, Trash2, Mail, Check, X, UserMinus } from 'lucide-react';
 import { generateProjectProfile, generateVehicleIcon } from '@/services/geminiService';
 import { EMPTY_PROJECT_TEMPLATE } from '@/constants/constants';
-import { acceptProjectInvite, cancelInvite } from '@/services/db';
+import { acceptProjectInvite, cancelInvite, removeMemberFromProject } from '@/services/db';
 import { OnboardingWizard, OnboardingData } from './OnboardingWizard';
 import { CarLogo } from './CarLogo';
+
+import { FEATURE_FLAGS } from '@/config/featureFlags';
+import { OnboardingWizardV2, OnboardingV2Data } from './OnboardingWizardV2';
 
 interface ProjectSelectorProps {
     user: UserProfile;
     projects: Project[];
     onSelectProject: (projectId: string) => void;
-    onCreateProject: (project: Partial<Project>) => void; 
+    onCreateProject: (project: Partial<Project>) => void;
     onLogout: () => void;
     onDeleteProject?: (id: string) => void;
     onSeed?: () => void;
+    onCreateV2Project?: (vehicleData: VehicleData, imageBase64?: string, vehicleDescription?: string, aiData?: any) => Promise<string>;
 }
 
-export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ user, projects, onSelectProject, onCreateProject, onLogout, onDeleteProject, onSeed }) => {
+export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ user, projects, onSelectProject, onCreateProject, onLogout, onDeleteProject, onSeed, onCreateV2Project }) => {
     const [isCreating, setIsCreating] = useState(false);
     const [processingInvite, setProcessingInvite] = useState<string | null>(null);
 
@@ -37,7 +41,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ user, projects
             // Better: The App component should pass a reload function.
             // But since we are inside a "Smart" component now, let's just wait a bit and hope the user refreshes or clicks something.
             // Actually, for MVP, reloading the page is a safe bet to sync everything.
-            window.location.reload(); 
+            window.location.reload();
         } catch (error) {
             console.error("Failed to accept invite", error);
             alert("Kunde inte gå med i projektet.");
@@ -46,13 +50,26 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ user, projects
     };
 
     const handleDeclineInvite = async (project: Project) => {
-        if(!confirm("Vill du avböja inbjudan?")) return;
+        if (!confirm("Vill du avböja inbjudan?")) return;
         setProcessingInvite(project.id);
         try {
             await cancelInvite(project.id, user.email);
             window.location.reload();
         } catch (error) {
             console.error(error);
+        }
+        setProcessingInvite(null);
+    };
+
+    const handleLeaveProject = async (project: Project) => {
+        if (!confirm(`Vill du lämna projektet "${project.name}"? Du kan bli inbjuden igen av ägaren.`)) return;
+        setProcessingInvite(project.id);
+        try {
+            await removeMemberFromProject(project.id, user.uid);
+            window.location.reload();
+        } catch (error) {
+            console.error('Failed to leave project:', error);
+            alert('Kunde inte lämna projektet.');
         }
         setProcessingInvite(null);
     };
@@ -159,7 +176,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ user, projects
                                         </div>
                                     </div>
                                     <div className="flex gap-2 mt-4">
-                                        <button 
+                                        <button
                                             onClick={() => handleAcceptInvite(project)}
                                             disabled={!!processingInvite}
                                             className="flex-1 bg-teal-500 text-white py-2 rounded-xl font-bold text-sm hover:bg-teal-600 transition-colors flex items-center justify-center gap-2"
@@ -167,7 +184,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ user, projects
                                             {processingInvite === project.id ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
                                             Gå med
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={() => handleDeclineInvite(project)}
                                             disabled={!!processingInvite}
                                             className="px-4 bg-slate-100 text-slate-500 py-2 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors"
@@ -193,8 +210,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ user, projects
 
                     {/* Project Cards */}
                     {myProjects.map(project => (
-                        <div 
-                            key={project.id} 
+                        <div
+                            key={project.id}
                             onClick={() => onSelectProject(project.id)}
                             className="bg-white rounded-[32px] p-8 shadow-xl shadow-slate-200/50 border border-white hover:border-teal-200 hover:scale-[1.02] transition-all cursor-pointer relative overflow-hidden group min-h-[250px] flex flex-col justify-between"
                         >
@@ -204,25 +221,51 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ user, projects
                                 </div>
                             )}
 
-                            {!project.isDemo && project.ownerId !== user.uid && (
-                                <div className="absolute top-4 right-4 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                                    Team
-                                </div>
-                            )}
-                            
-                            {!project.isDemo && onDeleteProject && project.ownerId === user.uid && (
-                                <button 
-                                    onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        onDeleteProject(project.id); 
-                                    }}
-                                    className="absolute top-4 right-4 p-2 bg-white rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 shadow-sm transition-all z-10 opacity-0 group-hover:opacity-100"
-                                    title="Radera projekt"
-                                >
-                                    <Trash2 size={16} /> 
-                                </button>
-                            )}
-                            
+                            {(() => {
+                                const isOwner = project.primaryOwnerId === user.uid || project.ownerIds?.includes(user.uid) || project.ownerId === user.uid;
+                                const isTeamProject = (project.memberIds?.length > 0) || (project.ownerIds?.length > 1);
+
+                                return (
+                                    <>
+                                        {/* Team badge - shows if project has multiple members, positioned left */}
+                                        {!project.isDemo && isTeamProject && (
+                                            <div className="absolute top-4 left-4 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                                Team
+                                            </div>
+                                        )}
+
+                                        {/* Delete button - shows if user is owner, positioned right */}
+                                        {!project.isDemo && onDeleteProject && isOwner && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onDeleteProject(project.id);
+                                                }}
+                                                className="absolute top-4 right-4 p-2 bg-white rounded-full text-slate-300 hover:text-rose-500 hover:bg-rose-50 shadow-sm transition-all z-10"
+                                                title="Radera projekt"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
+
+                                        {/* Leave button - shows if user is member but not owner */}
+                                        {!project.isDemo && !isOwner && project.memberIds?.includes(user.uid) && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleLeaveProject(project);
+                                                }}
+                                                disabled={!!processingInvite}
+                                                className="absolute top-4 right-4 p-2 bg-white rounded-full text-slate-300 hover:text-orange-500 hover:bg-orange-50 shadow-sm transition-all z-10"
+                                                title="Lämna projekt"
+                                            >
+                                                <UserMinus size={16} />
+                                            </button>
+                                        )}
+                                    </>
+                                );
+                            })()}
+
                             <div>
                                 <div className="w-16 h-16 bg-nordic-charcoal text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg overflow-hidden border border-slate-100 p-2">
                                     {project.customIcon ? (
@@ -263,10 +306,32 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ user, projects
 
             {/* Onboarding Wizard */}
             {isCreating && (
-                <OnboardingWizard
-                    onComplete={handleOnboardingComplete}
-                    onCancel={() => setIsCreating(false)}
-                />
+                FEATURE_FLAGS.useOnboardingV2 && onCreateV2Project ? (
+                    <OnboardingWizardV2
+                        onComplete={async (data) => {
+                            try {
+                                // Extract vehicleData from aiData or use description
+                                const vehicleData: VehicleData = data.aiData?.vehicleData || {
+                                    make: 'Okänt',
+                                    model: data.vehicleDescription || 'Fordon',
+                                    year: new Date().getFullYear()
+                                };
+
+                                await onCreateV2Project(vehicleData, data.imageBase64, data.vehicleDescription, data.aiData);
+                                setIsCreating(false);
+                            } catch (error) {
+                                console.error("Failed to create V2 project", error);
+                                alert("Något gick fel vid skapandet av projektet.");
+                            }
+                        }}
+                        onCancel={() => setIsCreating(false)}
+                    />
+                ) : (
+                    <OnboardingWizard
+                        onComplete={handleOnboardingComplete}
+                        onCancel={() => setIsCreating(false)}
+                    />
+                )
             )}
         </div>
     );

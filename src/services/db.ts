@@ -742,21 +742,16 @@ export const deleteShoppingItem = async (projectId: string, itemId: string) => {
 
 // --- CHAT HISTORY ---
 
-export interface ChatMessage {
-  role: 'user' | 'model';
-  content: string;
-  imageUrl?: string; // URL to Firebase Storage instead of base64
-  timestamp: string;
-}
-
-const getChatRef = (projectId: string) => doc(db, 'projects', projectId, 'chat', 'history');
-
 export const getChatHistory = async (projectId: string): Promise<ChatMessage[]> => {
   const chatRef = getChatRef(projectId);
   const chatSnap = await getDoc(chatRef);
 
   if (chatSnap.exists()) {
-    return chatSnap.data().messages || [];
+    const data = chatSnap.data();
+    return (data.messages || []).map((msg: any, index: number) => ({
+      ...msg,
+      id: msg.id || `hist-${index}` // Ensure ID exists
+    }));
   }
   return [];
 };

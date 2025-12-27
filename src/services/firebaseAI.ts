@@ -34,14 +34,23 @@ const tools = [{
           title: Schema.string({ description: 'Short title of the task' }),
           description: Schema.string({ description: 'Detailed description' }),
           estimatedCostMax: Schema.number({ description: 'Estimated max cost in SEK' }),
-          phase: Schema.enumString({
-            enum: ['Fas 1: Vår', 'Fas 2: Vår/Sommar', 'Fas 3: Höst/Vinter', 'Backlog'],
-            description: 'Project phase - MUST use exact name from list. Fas 1 = Spring tasks, Fas 2 = Summer driving, Fas 3 = Winter rebuild'
+          // GAP 5 FIX: Changed from hardcoded enum to dynamic string
+          // This allows AI to use custom phase names created during onboarding
+          phase: Schema.string({
+            description: 'Phase name - MUST use exact name from existing phases (e.g. "Fas 1: Rostbehandling") or "Backlog" for unassigned tasks'
           }),
           priority: Schema.enumString({ enum: ['Hög', 'Medel', 'Låg'], description: 'Priority level' }),
           sprint: Schema.string({ description: 'Sprint name' }),
+          // PHASE 1: Team Coordination
+          assignedTo: Schema.string({
+            description: 'Who should do this? User ID for team member, "ai" for Elton, or leave empty for unassigned'
+          }),
+          // PHASE 2: Hill Chart position
+          hillPosition: Schema.number({
+            description: 'Position on Hill Chart: 0-49 = figuring it out (uphill), 50 = known solution (peak), 51-100 = execution (downhill). Default 10 for new complex tasks, 60 for straightforward tasks.'
+          }),
         },
-        optionalProperties: ['estimatedCostMax', 'priority', 'sprint']
+        optionalProperties: ['estimatedCostMax', 'priority', 'sprint', 'assignedTo', 'hillPosition']
       })
     },
     {
@@ -157,17 +166,22 @@ const tools = [{
 /**
  * Get a Gemini model instance configured for chat with tools
  */
-export const getChatModel = () => {
-  return getGenerativeModel(ai, {
+export const getChatModel = (options: { disableTools?: boolean } = {}) => {
+  const modelConfig: any = {
     model: 'gemini-2.5-flash',
-    tools,
     generationConfig: {
       temperature: 0.9,
       topK: 40,
       topP: 0.95,
       maxOutputTokens: 8192,
     }
-  });
+  };
+
+  if (!options.disableTools) {
+    modelConfig.tools = tools;
+  }
+
+  return getGenerativeModel(ai, modelConfig);
 };
 
 /**
@@ -179,7 +193,16 @@ const buildSystemInstruction = (
   currentShoppingList: ShoppingItem[],
   projectName?: string,
   userSkillLevel?: string,
-  projectType?: ProjectType
+  projectType?: ProjectType,
+  // PHASE 3: Strategic context
+  strategicContext?: {
+    vision?: string;
+    principles?: string[];
+    budgetCap?: number;
+    budgetSpent?: number;
+    deadline?: string;
+  },
+  disableTools?: boolean
 ) => {
   const skillLevelContext = userSkillLevel
     ? `\n\n=== ANVÄNDARENS KUNSKAPSNIVÅ ===\n${userSkillLevel === 'beginner'
@@ -198,6 +221,29 @@ const buildSystemInstruction = (
         : 'FÖRVALTNING: Fokus på löpande underhåll och service.'
     }`
     : '';
+
+  let toolInstructions = '';
+  if (disableTools) {
+    toolInstructions = `
+=== DISKUSSIONSLÄGE (INGA ÄNDRINGAR) ===
+Du är just nu i ett rent DISKUSSIONSLÄGE.
+- Du kan INTE utföra några förändringar i projektet.
+- Du har INGA verktyg tillgängliga (ingen addTask, ingen addToShoppingList).
+- Diskutera idéer, ge råd, och bolla tankar fritt.
+- Om användaren ber dig "lägga till" eller "spara" något, påminn dem om att de måste byta till Verkstadsläge för att du ska kunna agera.`;
+  } else {
+    toolInstructions = `
+VIKTIGT - VERKTYGSANVÄNDNING:
+- När användaren ger dig uppgifter, inköp, eller data: ANVÄND ALLTID verktygen (addTask, addToShoppingList, etc.)
+- ALDRIG bara "prata om" att ha sparat något - GÖR DET faktiskt!
+- Om användaren säger "här är en lista" eller "lägg till dessa" - ANVÄND verktyg direkt
+- Bekräfta först vad du kommer göra, ANVÄND sedan verktygen, bekräfta EFTER att de körts
+
+Exempel:
+Användare: "Lägg till uppgift: Byt kamrem"
+Fel: "Jag har sparat uppgiften om kamrem" (gjorde ingenting!)
+Rätt: *använder addTask-verktyget* "Jag har nu lagt till uppgiften i din projektplan!"`;
+  }
 
   const instructionText = `Du är Elton, en AI-mekaniker för ${projectName || 'fordonet'}.
 
@@ -222,22 +268,42 @@ Du MÅSTE använda EXAKT dessa fasnamn när du lägger till uppgifter:
 
 VIKTIGT: Använd EXAKT dessa namn. Lägg INTE till extra text som "(Gotland med garage)" eller "– Nu/Januari".
 
-VIKTIGT - VERKTYGSANVÄNDNING:
-- När användaren ger dig uppgifter, inköp, eller data: ANVÄND ALLTID verktygen (addTask, addToShoppingList, etc.)
-- ALDRIG bara "prata om" att ha sparat något - GÖR DET faktiskt!
-- Om användaren säger "här är en lista" eller "lägg till dessa" - ANVÄND verktyg direkt
-- Bekräfta först vad du kommer göra, ANVÄND sedan verktygen, bekräfta EFTER att de körts
-
-Exempel:
-Användare: "Lägg till uppgift: Byt kamrem"
-Fel: "Jag har sparat uppgiften om kamrem" (gjorde ingenting!)
-Rätt: *använder addTask-verktyget* "Jag har nu lagt till uppgiften i din projektplan!"
+${toolInstructions}
 
 Svara hjälpsamt och personligt.`;
 
+  // Add strategic context if available
+  let strategicSection = '';
+  if (strategicContext) {
+    const parts = [];
+    if (strategicContext.vision) {
+      parts.push(`VISION: ${strategicContext.vision}`);
+    }
+    if (strategicContext.principles && strategicContext.principles.length > 0) {
+      parts.push(`PRINCIPER: ${strategicContext.principles.join(', ')}`);
+    }
+    if (strategicContext.budgetCap) {
+      const spent = strategicContext.budgetSpent || 0;
+      const remaining = strategicContext.budgetCap - spent;
+      const percent = Math.round((spent / strategicContext.budgetCap) * 100);
+      parts.push(`BUDGET: ${spent}/${strategicContext.budgetCap} kr använt (${percent}%) - ${remaining} kr kvar`);
+    }
+    if (strategicContext.deadline) {
+      const deadline = new Date(strategicContext.deadline);
+      const today = new Date();
+      const daysLeft = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      parts.push(`DEADLINE: ${strategicContext.deadline} (${daysLeft} dagar kvar)`);
+    }
+    if (parts.length > 0) {
+      strategicSection = `\n\n=== PROJEKTMÅL (VIKTIGT!) ===\n${parts.join('\n')}\n\nREFERERA TILL DESSA MÅL I DINA SVAR! Om ett förslag överskrider budget eller hotar deadline, VARNA användaren.`;
+    }
+  }
+
+  const fullInstruction = instructionText + strategicSection;
+
   // Firebase AI Logic SDK requires Content format for systemInstruction
   return {
-    parts: [{ text: instructionText }]
+    parts: [{ text: fullInstruction }]
   } as any;
 };
 
@@ -259,9 +325,10 @@ export const streamChatMessage = async (
   projectName?: string,
   userSkillLevel?: string,
   projectType?: ProjectType,
-  customSystemInstruction?: string
+  customSystemInstruction?: string,
+  disableTools?: boolean
 ) => {
-  const model = getChatModel();
+  const model = getChatModel({ disableTools });
 
   // Build system instruction: Use custom if provided, otherwise build standard
   let systemInstruction: any;
@@ -277,7 +344,9 @@ export const streamChatMessage = async (
       currentShoppingList,
       projectName,
       userSkillLevel,
-      projectType
+      projectType,
+      undefined, // strategicContext
+      disableTools
     );
   }
 

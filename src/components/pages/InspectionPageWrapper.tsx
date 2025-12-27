@@ -1,37 +1,33 @@
+
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { InspectionPage } from '../inspection/InspectionPage';
-import { useProject } from '@/contexts/ProjectContext';
+import { useProject } from '@/contexts';
+import { useNavigate } from 'react-router-dom';
 
 export const InspectionPageWrapper: React.FC = () => {
-    const { activeProject } = useProject();
+    const { activeProject, tasks } = useProject();
     const navigate = useNavigate();
 
     if (!activeProject) return null;
+    // If no inspections, maybe redirect or show empty state?
+    // User's App.tsx rendered: {currentView === 'inspection' && activeProject.inspections && activeProject.inspections.length > 0 && <InspectionPage inspection={activeProject.inspections[0] as any} tasks={activeProject.tasks} onViewTask={(taskId) => { setCurrentView('tasks'); }} />}
 
-    if (!activeProject.inspections || activeProject.inspections.length === 0) {
+    const inspection = activeProject.inspections && activeProject.inspections.length > 0 ? activeProject.inspections[0] : null;
+
+    if (!inspection) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center">
-                    <p className="text-slate-500 dark:text-slate-400 mb-4">
-                        Ingen inspektion tillgänglig för detta projekt
-                    </p>
-                    <button
-                        onClick={() => navigate(`/project/${activeProject.id}`)}
-                        className="px-4 py-2 bg-nordic-charcoal dark:bg-teal-600 text-white rounded-lg hover:bg-slate-800 dark:hover:bg-teal-700"
-                    >
-                        Tillbaka till översikt
-                    </button>
-                </div>
+            <div className="p-8 text-center text-slate-500">
+                <p>Inga inspektioner hittades.</p>
+                <button onClick={() => navigate('../ai')} className="mt-4 text-teal-600 font-bold hover:underline">Starta en inspektion med AI</button>
             </div>
         );
     }
 
     return (
         <InspectionPage
-            inspection={activeProject.inspections[0] as any}
-            tasks={activeProject.tasks}
-            onViewTask={(taskId) => navigate(`/project/${activeProject.id}/tasks?taskId=${taskId}`)}
+            inspection={inspection as any} // Forced cast as in App.tsx
+            tasks={tasks}
+            onViewTask={(taskId) => navigate(`../tasks?taskId=${taskId}`)}
         />
     );
 };

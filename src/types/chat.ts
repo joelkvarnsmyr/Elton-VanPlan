@@ -24,3 +24,20 @@ export interface ContextualChatMessage {
     timestamp: string;
     proposedUpdates?: VendorOption[]; // For AI-suggested vendor options
 }
+
+export interface ChatMessage {
+    id: string; // Optional in DB but good for UI
+    role: 'user' | 'model';
+    content: string;
+    timestamp: string;
+    isError?: boolean;
+}
+
+export interface GenericContext {
+    type: 'project' | 'task' | 'shopping' | 'inspection' | 'setup' | 'onboarding';
+    task?: Task;
+    item?: ShoppingItem;
+    finding?: any; // InspectionFinding
+    // For Setup/Onboarding
+    setupStage?: string;
+}

@@ -41,7 +41,7 @@ export const WaitlistLandingB: React.FC = () => {
     };
 
     if (showLogin) {
-        return <AuthLanding />;
+        return <AuthLanding onDemo={() => setShowLogin(false)} />;
     }
 
     if (submitted) {

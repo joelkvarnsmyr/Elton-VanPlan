@@ -214,8 +214,14 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
         audioUrl = await uploadInspectionAudio(inspectorAudioFile, project.id);
       }
 
-      const finding = await analyzeInspectionEvidence(project.id, inspectorZone, { imageUrl, audioUrl });
-      setInspectorFinding(finding);
+      const finding = await analyzeInspectionEvidence(project.id, inspectorZone as 'EXTERIOR' | 'ENGINE' | 'UNDERCARRIAGE' | 'INTERIOR', { imageUrl, audioUrl });
+      // Add required properties for InspectionFinding
+      const completeFinding: InspectionFinding = {
+        ...finding,
+        id: `insp-${Date.now()}`,
+        date: new Date().toISOString(),
+      };
+      setInspectorFinding(completeFinding);
 
       // Post summary into chat as assistant message
       const summaryLines = [
@@ -309,9 +315,21 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
       console.log("Executing tool:", call.name, call.args);
       try {
         if (call.name === 'addTask' && onAddTask) {
-          const newTasks = Array.isArray(call.args.tasks) ? call.args.tasks : [call.args];
-          onAddTask(newTasks);
-          results.push({ name: call.name, result: `Added ${newTasks.length} tasks successfully.` });
+          // Format task properly from AI args
+          const newTask = {
+            title: call.args.title,
+            description: call.args.description || '',
+            status: TaskStatus.TODO,
+            phase: normalizePhaseInput(call.args.phase) || 'Backlog',
+            priority: (call.args.priority as Priority) || Priority.MEDIUM,
+            estimatedCostMin: call.args.estimatedCostMin || 0,
+            estimatedCostMax: call.args.estimatedCostMax || 0,
+            type: TaskType.REPAIR,
+            assignedTo: call.args.assignedTo,
+            hillPosition: call.args.hillPosition,
+          };
+          onAddTask([newTask as any]);
+          results.push({ name: call.name, result: `Added task: "${newTask.title}" to phase "${newTask.phase}"` });
         } else if (call.name === 'updateTask' && onUpdateTask) {
           const task = project.tasks.find(t =>
             t.id === call.args.taskTitleKeywords ||
@@ -481,19 +499,6 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
           const event = { ...call.args };
           onAddHistoryEvent(event);
           results.push({ name: call.name, result: `Added history event: ${call.args.description}` });
-        } else if (call.name === 'addTask' && onAddTask) {
-          const newTask = {
-            title: call.args.title,
-            description: call.args.description || '',
-            status: TaskStatus.TODO,
-            phase: normalizePhaseInput(call.args.phase) || 'Backlog',
-            priority: (call.args.priority as Priority) || Priority.MEDIUM,
-            estimatedCostMin: call.args.estimatedCostMin || 0,
-            estimatedCostMax: call.args.estimatedCostMax || 0,
-            type: TaskType.REPAIR, // Default type
-          };
-          onAddTask([newTask as any]);
-          results.push({ name: call.name, result: `Added task: "${newTask.title}" to phase "${newTask.phase}"` });
         } else if (call.name === 'updateProjectMetadata' && onUpdateProjectMetadata) {
           const { field, value } = call.args;
           onUpdateProjectMetadata(field, value);
@@ -552,12 +557,16 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({
                       MechanicalPhase.P3_FUTURE,
                 priority: Priority.HIGH,
                 type: TaskType.REPAIR,
-                costType: CostType.VARIABLE,
-                estimatedHoursMin: 2,
-                estimatedHoursMax: 8,
+                costType: CostType.OPERATION,
                 estimatedCostMin: 1000,
                 estimatedCostMax: 5000,
-                dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 week from now
+                actualCost: 0,
+                weightKg: 0,
+                tags: ['Inspector', 'Kritiskt'],
+                links: [],
+                comments: [],
+                attachments: [],
+                subtasks: [],
               };
               onAddTask([criticalTask]);
               taskCreated = true;

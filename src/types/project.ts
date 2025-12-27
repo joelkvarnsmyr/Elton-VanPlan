@@ -154,6 +154,14 @@ export interface Project {
     setupComplete?: boolean;
     setupStage?: SetupStage;
     phases?: Phase[];
+
+    // ============================================================================
+    // PHASE 3: Strategic Layer (V2MOM-inspired)
+    // ============================================================================
+    vision?: string;           // "Sommarklar camper för nordkappresan"
+    principles?: string[];     // ["Säkerhet först", "DIY när möjligt"]
+    deadline?: string;         // ISO date "2025-06-01"
+    budgetCap?: number;        // Budget limit in SEK
 }
 
 

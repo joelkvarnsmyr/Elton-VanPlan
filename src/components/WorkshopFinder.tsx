@@ -20,6 +20,7 @@ interface Workshop {
     };
     formatted_phone_number?: string;
     types?: string[];
+    distance?: number; // Computed runtime based on user location
 }
 
 interface WorkshopFinderProps {
@@ -252,11 +253,10 @@ export const WorkshopFinder: React.FC<WorkshopFinderProps> = ({
                         <button
                             key={radius}
                             onClick={() => setSearchRadius(radius * 1000)}
-                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                                searchRadius === radius * 1000
+                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${searchRadius === radius * 1000
                                     ? 'bg-teal-600 text-white'
                                     : 'bg-slate-100 dark:bg-nordic-dark-bg text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-                            }`}
+                                }`}
                         >
                             {radius} km
                         </button>

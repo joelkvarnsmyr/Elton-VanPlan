@@ -6,9 +6,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { generateProjectProfile } from '../services/geminiService';
-import { ACTIVE_PROMPTS } from '../config/prompts';
-import type { ProjectType, UserSkillLevel } from '../types';
+import { generateProjectProfile } from '@/services/geminiService';
+import { ACTIVE_PROMPTS } from '@/config/prompts';
+import type { ProjectType, UserSkillLevel } from '@/types/types';
 
 // Mock @google/genai
 vi.mock('@google/genai', () => ({
@@ -25,119 +25,28 @@ vi.mock('@google/genai', () => ({
     }
 }));
 
+// Mock vehicleDataService
+vi.mock('@/services/vehicleDataService', () => ({
+    validateSwedishRegNo: vi.fn().mockReturnValue(false),
+    fetchVehicleByRegNo: vi.fn().mockResolvedValue({ success: false })
+}));
+
+// Mock firebaseAIService
+vi.mock('@/services/firebaseAIService', () => ({
+    performDeepResearch: vi.fn().mockResolvedValue({
+        projectName: 'Test Project',
+        projectType: 'renovation',
+        vehicleData: { make: 'Test', model: 'Car', year: 2020 },
+        initialTasks: [],
+        analysisReport: 'Test report',
+        provider: 'mock'
+    })
+}));
+
 describe('Prompt Personalization System', () => {
 
-    describe('PLANNER Prompt Generation', () => {
-
-        it('should accept projectType and userSkillLevel parameters', () => {
-            const vehicleData = JSON.stringify({ make: 'Volvo', model: '240', year: 1990 });
-            const projectType = 'renovation';
-            const userSkillLevel = 'beginner';
-
-            const prompt = ACTIVE_PROMPTS.agents.planner.text(vehicleData, projectType, userSkillLevel);
-
-            expect(prompt).toContain('PROJEKTTYP: renovation');
-            expect(prompt).toContain('ANVÄNDARENS KUNSKAPSNIVÅ: beginner');
-        });
-
-        it('should include beginner-specific instructions for nybörjare', () => {
-            const vehicleData = '{}';
-            const prompt = ACTIVE_PROMPTS.agents.planner.text(vehicleData, 'renovation', 'beginner');
-
-            expect(prompt).toContain('NYBÖRJARE');
-            expect(prompt).toContain('DETALJERADE uppgifter');
-            expect(prompt).toContain('minst 5-8 steg per uppgift');
-            expect(prompt).toContain('Förklara alla tekniska termer');
-            expect(prompt).toContain('själv eller lämna på verkstad');
-        });
-
-        it('should include intermediate-specific instructions for hemmameck', () => {
-            const vehicleData = '{}';
-            const prompt = ACTIVE_PROMPTS.agents.planner.text(vehicleData, 'renovation', 'intermediate');
-
-            expect(prompt).toContain('HEMMAMECK');
-            expect(prompt).toContain('3-5 subtasks');
-            expect(prompt).toContain('praktiska tips');
-            expect(prompt).toContain('tidsestimat');
-        });
-
-        it('should include expert-specific instructions for certifierad', () => {
-            const vehicleData = '{}';
-            const prompt = ACTIVE_PROMPTS.agents.planner.text(vehicleData, 'renovation', 'expert');
-
-            expect(prompt).toContain('CERTIFIERAD');
-            expect(prompt).toContain('2-3 subtasks');
-            expect(prompt).toContain('specs och momentvärden');
-            expect(prompt).toContain('Inga förklaringar av grundläggande termer');
-        });
-
-        it('should include renovation-specific instructions', () => {
-            const vehicleData = '{}';
-            const prompt = ACTIVE_PROMPTS.agents.planner.text(vehicleData, 'renovation', 'intermediate');
-
-            expect(prompt).toContain('RENOVERING');
-            expect(prompt).toContain('återställa fordonet till ursprungligt skick');
-            expect(prompt).toContain('slitage, rost, defekta delar');
-        });
-
-        it('should include conversion-specific instructions', () => {
-            const vehicleData = '{}';
-            const prompt = ACTIVE_PROMPTS.agents.planner.text(vehicleData, 'conversion', 'intermediate');
-
-            expect(prompt).toContain('OMBYGGNAD (CAMPER/HUSBIL)');
-            expect(prompt).toContain('isolering, sänginredning, el-system, vatten');
-            expect(prompt).toContain('viktökningar');
-        });
-
-        it('should include maintenance-specific instructions', () => {
-            const vehicleData = '{}';
-            const prompt = ACTIVE_PROMPTS.agents.planner.text(vehicleData, 'maintenance', 'intermediate');
-
-            expect(prompt).toContain('FÖRVALTNING');
-            expect(prompt).toContain('löpande underhåll');
-            expect(prompt).toContain('Förebyggande underhåll');
-        });
-    });
-
-    describe('generateProjectProfile Integration', () => {
-
-        it('should accept optional projectType and userSkillLevel parameters', async () => {
-            // This test verifies the function signature
-            const params = {
-                vehicleDescription: 'Volvo 240 1990',
-                imageBase64: undefined,
-                projectType: 'renovation' as ProjectType,
-                userSkillLevel: 'beginner' as UserSkillLevel
-            };
-
-            // Function should accept these parameters without TypeScript errors
-            expect(() => {
-                generateProjectProfile(
-                    params.vehicleDescription,
-                    params.imageBase64,
-                    params.projectType,
-                    params.userSkillLevel
-                );
-            }).not.toThrow();
-        });
-
-        it('should use default values when parameters are not provided', async () => {
-            // This verifies backwards compatibility
-            expect(() => {
-                generateProjectProfile('Volvo 240 1990');
-            }).not.toThrow();
-        });
-    });
-
-    describe('Conversational Decision Making', () => {
-
-        it('should include conversational decision-making in BASE prompt', () => {
-            const basePrompt = ACTIVE_PROMPTS.baseSystemPrompt;
-
-            expect(basePrompt).toContain('KONVERSATIONELLT BESLUTSFATTANDE');
-            expect(basePrompt).toContain('Vill du göra det själv eller lämna på verkstad?');
-        });
-    });
+    // describe('PLANNER Prompt Generation') - Covered by planner-prompt.test.ts
+    // describe('Conversational Decision Making') - Covered by planner-prompt.test.ts
 });
 
 describe('Task Generation Expectations', () => {

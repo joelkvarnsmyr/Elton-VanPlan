@@ -1,43 +1,28 @@
+
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ProjectSelector } from '../ProjectSelector';
-import { UserProfile, Project } from '@/types/types';
+import { Project, VehicleData } from '@/types/types';
 
 interface ProjectSelectorPageProps {
-    user: UserProfile;
+    user: any;
     projects: Project[];
-    onSelectProject: (projectId: string) => void;
+    onSelectProject: (id: string) => Promise<void>;
     onCreateProject: (project: Partial<Project>) => void;
-    onDeleteProject: (projectId: string) => void;
-    onLogout: () => void;
-    onSeed?: () => void;
+    onDeleteProject: (id: string) => Promise<void>;
+    onLogout: () => Promise<void>;
+    onSeed: () => Promise<void>;
+    onCreateV2Project: (
+        vehicleData: VehicleData,
+        imageBase64?: string,
+        vehicleDescription?: string,
+        aiData?: any
+    ) => Promise<string>;
 }
 
-export const ProjectSelectorPage: React.FC<ProjectSelectorPageProps> = ({
-    user,
-    projects,
-    onSelectProject,
-    onCreateProject,
-    onDeleteProject,
-    onLogout,
-    onSeed,
-}) => {
-    const navigate = useNavigate();
-
-    const handleSelectProject = (projectId: string) => {
-        onSelectProject(projectId);
-        navigate(`/project/${projectId}`);
-    };
-
+export const ProjectSelectorPage: React.FC<ProjectSelectorPageProps> = (props) => {
     return (
         <ProjectSelector
-            user={user}
-            projects={projects}
-            onSelectProject={handleSelectProject}
-            onCreateProject={onCreateProject}
-            onLogout={onLogout}
-            onDeleteProject={onDeleteProject}
-            onSeed={onSeed}
+            {...props}
         />
     );
 };

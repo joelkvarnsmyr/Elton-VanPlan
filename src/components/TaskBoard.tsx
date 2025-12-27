@@ -59,8 +59,9 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, shoppingItems, vehi
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [activeDragTask, setActiveDragTask] = useState<Task | null>(null);
 
-  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 5 } });
-  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } });
+  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 8 } });
+  // Increase delay and tolerance for mobile to allow scrolling before drag activates
+  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } });
   const sensors = useSensors(pointerSensor, touchSensor);
 
   useEffect(() => {

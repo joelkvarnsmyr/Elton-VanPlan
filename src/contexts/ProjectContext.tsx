@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { Project, Task, ShoppingItem, VehicleData, Contact } from '@/types/types';
 import {
     updateTask as dbUpdateTask,
     deleteTask as dbDeleteTask,
+    addTask as dbAddTask,
     addShoppingItem as dbAddShoppingItem,
     updateShoppingItem as dbUpdateShoppingItem,
     deleteShoppingItem as dbDeleteShoppingItem,
@@ -18,6 +19,7 @@ interface ProjectContextType {
     vehicleData: VehicleData | null;
 
     // Task actions
+    addTask: (task: Omit<Task, 'id'>) => Promise<Task>;
     updateTask: (task: Task) => Promise<void>;
     deleteTask: (taskId: string) => Promise<void>;
 
@@ -68,18 +70,43 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         };
     }, [activeProject?.id]);
 
-    const updateTask = async (updatedTask: Task) => {
-        if (!activeProject) return;
-        const originalTasks = activeProject.tasks;
-        setActiveProject({
-            ...activeProject,
-            tasks: activeProject.tasks.map(t => t.id === updatedTask.id ? updatedTask : t)
-        });
+    const activeProjectRef = useRef(activeProject);
+    useEffect(() => { activeProjectRef.current = activeProject; }, [activeProject]);
+
+    const addTask = async (taskData: Omit<Task, 'id'>) => {
+        if (!activeProjectRef.current) return {} as Task;
         try {
-            await dbUpdateTask(activeProject.id, updatedTask.id, updatedTask);
-        } catch (e) {
-            setActiveProject({ ...activeProject, tasks: originalTasks });
-            showToast('Kunde inte spara uppgift', 'error');
+            const newTask = await dbAddTask(activeProjectRef.current.id, taskData);
+            // Context update usually happens via refetch or optimistic update.
+            // For now let's rely on the DB call triggering a state update if we were listening,
+            // OR manually update state.
+            // Since we might not have real-time stream setup in context yet (it just used initial fetch in my mock),
+            // we should update state.
+            const updatedTasks = [...(activeProjectRef.current.tasks || []), newTask];
+            setActiveProject({ ...activeProjectRef.current, tasks: updatedTasks });
+            showToast('Uppgift tillagd!');
+            return newTask;
+        } catch (err) {
+            console.error("Failed to add task", err);
+            showToast("Kunde inte skapa uppgift", "error");
+            throw err;
+        }
+    };
+
+    const updateTask = async (task: Task) => {
+        if (!activeProjectRef.current) return;
+        // Optimistic update first
+        const originalTasks = activeProjectRef.current.tasks;
+        const updatedTasks = activeProjectRef.current.tasks.map(t => t.id === task.id ? task : t);
+        setActiveProject({ ...activeProjectRef.current, tasks: updatedTasks });
+        try {
+            // Save to tasks subcollection (not project document!)
+            await dbUpdateTask(activeProjectRef.current.id, task.id, task);
+        } catch (error) {
+            console.error("Failed to update task", error);
+            // Revert on error
+            setActiveProject({ ...activeProjectRef.current, tasks: originalTasks });
+            showToast("Kunde inte uppdatera uppgift", "error");
         }
     };
 
@@ -215,6 +242,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         tasks: activeProject?.tasks || [],
         shoppingItems: activeProject?.shoppingItems || [],
         vehicleData: activeProject?.vehicleData || null,
+        addTask,
         updateTask,
         deleteTask,
         addShoppingItem,

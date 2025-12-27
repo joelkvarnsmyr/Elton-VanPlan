@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatContext, ContextualChatMessage, ShoppingItem, Task, VendorOption } from '@/types/types';
-import { MessageCircle, X, Loader2, Sparkles, Plus, Send } from 'lucide-react';
+import { MessageCircle, X, Loader2, Sparkles, Plus, Send, Wrench } from 'lucide-react';
 import { generateText } from '@/services/aiService';
 import { addVehicleHistoryEvent, addMileageReading, updateInspectionFinding, addTask } from '@/services/db';
 
@@ -172,6 +172,7 @@ export const ContextualChat: React.FC<ContextualChatProps> = ({
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [proposedOptions, setProposedOptions] = useState<VendorOption[] | null>(null);
+    const [isDiscussionMode, setIsDiscussionMode] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const quickActions = context.type === 'shopping_item'
@@ -234,7 +235,9 @@ export const ContextualChat: React.FC<ContextualChatProps> = ({
             const historyContext = newMessages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
             const fullPrompt = `${historyContext}\n\n(Respond to the last message, using tools if necessary)`;
 
-            const aiResponse = await generateText(systemPrompt, fullPrompt);
+            const aiResponse = await generateText(systemPrompt, fullPrompt, {
+                disableTools: isDiscussionMode
+            });
             const responseText = aiResponse.data;
 
             // Handle Tool Calls
@@ -358,10 +361,18 @@ export const ContextualChat: React.FC<ContextualChatProps> = ({
                 <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600">
                     <div className="flex items-center gap-3">
                         <div className="bg-white/20 p-2 rounded-full">
-                            <MessageCircle size={20} className="text-white" />
+                            {isDiscussionMode ? <MessageCircle size={20} className="text-white" /> : <Wrench size={20} className="text-white" />}
                         </div>
                         <div>
-                            <h3 className="font-bold text-white">ELTON Chat</h3>
+                            <h3 className="font-bold text-white flex items-center gap-2">
+                                ELTON Chat
+                                <button
+                                    onClick={() => setIsDiscussionMode(!isDiscussionMode)}
+                                    className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 transition-colors ml-2 border border-white/30"
+                                >
+                                    {isDiscussionMode ? 'Diskussionsläge' : 'Verkstadsläge'}
+                                </button>
+                            </h3>
                             <p className="text-sm text-white/80 truncate max-w-[280px]">
                                 {contextTitle}
                             </p>
@@ -430,7 +441,7 @@ export const ContextualChat: React.FC<ContextualChatProps> = ({
                 </div>
 
                 {/* Quick Actions */}
-                {messages.length <= 1 && (
+                {!isDiscussionMode && messages.length <= 1 && (
                     <div className="px-4 py-3 border-t border-slate-200 bg-white">
                         <p className="text-xs text-slate-400 mb-2">Snabbfrågor:</p>
                         <div className="flex flex-wrap gap-2">
@@ -460,8 +471,11 @@ export const ContextualChat: React.FC<ContextualChatProps> = ({
                             type="text"
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
-                            placeholder="Skriv ett meddelande..."
-                            className="flex-1 bg-slate-100 rounded-full px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500/50"
+                            placeholder={isDiscussionMode ? "Diskutera med Elton..." : "Beskriv vad du behöver hjälp med..."}
+                            className={`flex-1 rounded-full px-4 py-3 text-sm outline-none focus:ring-2 transition-all 
+                                ${isDiscussionMode
+                                    ? 'bg-indigo-50 text-indigo-900 placeholder-indigo-400 focus:ring-indigo-500/50'
+                                    : 'bg-slate-100 text-slate-800 focus:ring-blue-500/50'}`}
                             disabled={isLoading}
                         />
                         <button

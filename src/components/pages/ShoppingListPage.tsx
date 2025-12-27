@@ -1,32 +1,30 @@
+
 import React from 'react';
 import { ShoppingList } from '../ShoppingList';
-import { useProject } from '@/contexts/ProjectContext';
-import { useVanPlanQueryParams } from '@/hooks/useQueryParams';
+import { useProject, useUser } from '@/contexts';
 import { uploadReceipt } from '@/services/storage';
 
 export const ShoppingListPage: React.FC = () => {
-    const {
-        activeProject,
-        addShoppingItem,
-        updateShoppingItem,
-        deleteShoppingItem,
-    } = useProject();
-    const { taskId: filterByTaskId } = useVanPlanQueryParams();
-
-    if (!activeProject) return null;
+    const { activeProject, addShoppingItem, updateShoppingItem, deleteShoppingItem } = useProject();
+    const { currentUser } = useUser();
 
     const handleUploadReceipt = async (itemId: string, file: File) => {
-        // Note: This needs currentUser which we don't have in context yet
-        // For now, we'll skip the upload functionality
-        console.warn('Receipt upload not yet implemented in routing version');
-    };
-
-    const handleToggle = (id: string) => {
-        const item = activeProject.shoppingItems.find(x => x.id === id);
-        if (item) {
-            updateShoppingItem({ ...item, checked: !item.checked });
+        if (!activeProject || !currentUser) return;
+        try {
+            const downloadURL = await uploadReceipt(file, currentUser.uid, activeProject.id, itemId);
+            const itemToUpdate = activeProject.shoppingItems.find(i => i.id === itemId);
+            if (itemToUpdate) {
+                const updatedItem = { ...itemToUpdate, receiptUrl: downloadURL };
+                await updateShoppingItem(updatedItem);
+                // Toast handled by component or context?
+            }
+        } catch (error) {
+            console.error("Error uploading receipt:", error);
+            // Handle error (maybe pass a toast callback?)
         }
     };
+
+    if (!activeProject) return null;
 
     return (
         <ShoppingList
@@ -34,12 +32,16 @@ export const ShoppingListPage: React.FC = () => {
             tasks={activeProject.tasks}
             vehicleData={activeProject.vehicleData}
             projectId={activeProject.id}
-            onAdd={addShoppingItem}
-            onDelete={deleteShoppingItem}
-            onToggle={handleToggle}
-            onUpdate={updateShoppingItem}
             onUploadReceipt={handleUploadReceipt}
-            filterByTaskId={filterByTaskId || undefined}
+            onAdd={addShoppingItem}
+            onUpdate={updateShoppingItem}
+            onDelete={deleteShoppingItem}
+            onToggle={(id) => {
+                const item = activeProject.shoppingItems.find(i => i.id === id);
+                if (item) {
+                    updateShoppingItem({ ...item, checked: !item.checked });
+                }
+            }}
         />
     );
 };

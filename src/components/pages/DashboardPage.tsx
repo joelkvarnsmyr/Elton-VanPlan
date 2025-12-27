@@ -1,29 +1,31 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dashboard } from '../Dashboard';
-import { useProject } from '@/contexts/ProjectContext';
+import { useProject } from '@/contexts';
 
 export const DashboardPage: React.FC = () => {
-    const { activeProject } = useProject();
     const navigate = useNavigate();
+    // We don't need to pass project data as Dashboard uses useProject() now.
+    // But we need to handle the navigation callbacks.
 
-    if (!activeProject) return null;
-
-    const handlePhaseClick = (phase: string) => {
-        navigate(`/project/${activeProject.id}/tasks?phase=${encodeURIComponent(phase)}`);
+    const handlePhaseClick = (phaseId: string) => {
+        // Navigate to tasks with phase filter
+        // We'll pass the filter via state or search params. 
+        // Let's use search params for better shareability.
+        navigate(`/project/${useProject().activeProject!.id}/tasks?phase=${phaseId}`);
     };
 
     const handleViewTask = (taskId: string) => {
-        navigate(`/project/${activeProject.id}/tasks?taskId=${taskId}`);
+        navigate(`/project/${useProject().activeProject!.id}/tasks?taskId=${taskId}`);
     };
 
     const handleViewShopping = () => {
-        navigate(`/project/${activeProject.id}/shopping`);
+        navigate(`/project/${useProject().activeProject!.id}/shopping`);
     };
 
     return (
         <Dashboard
-            project={activeProject}
             onPhaseClick={handlePhaseClick}
             onViewTask={handleViewTask}
             onViewShopping={handleViewShopping}

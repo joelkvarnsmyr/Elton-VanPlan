@@ -58,22 +58,24 @@ describe('ShoppingList', () => {
     it('renders shopping list with items', () => {
         render(<ShoppingList {...mockProps} />);
 
-        expect(screen.getByText('Motorolja')).toBeInTheDocument();
-        expect(screen.getByText('Bromsbelägg')).toBeInTheDocument();
+        expect(screen.getByText('Motorolja')).toBeTruthy();
+        expect(screen.getByText('Bromsbelägg')).toBeTruthy();
     });
 
     it('displays correct item counts', () => {
         render(<ShoppingList {...mockProps} />);
 
         // 1 out of 2 items checked
-        expect(screen.getByText(/1.*\/.*2.*klara/i)).toBeInTheDocument();
+        // 1 out of 2 items checked
+        const summary = screen.getByText(/klara/i);
+        expect(summary.textContent).toMatch(/1.*2/);
     });
 
     it('shows estimated cost total', () => {
         render(<ShoppingList {...mockProps} />);
 
         // Total: 500 + 800 = 1300
-        expect(screen.getByText(/1.*300/)).toBeInTheDocument();
+        expect(screen.getByText(/1.*300/)).toBeTruthy();
     });
 
     it('filters by status', async () => {
@@ -84,8 +86,8 @@ describe('ShoppingList', () => {
         fireEvent.change(statusFilter, { target: { value: ShoppingItemStatus.RESEARCH } });
 
         // Should show only RESEARCH items
-        expect(screen.getByText('Motorolja')).toBeInTheDocument();
-        expect(screen.queryByText('Bromsbelägg')).not.toBeInTheDocument();
+        expect(screen.getByText('Motorolja')).toBeTruthy();
+        expect(screen.queryByText('Bromsbelägg')).toBeNull();
     });
 
     it('filters by phase', async () => {
@@ -96,8 +98,8 @@ describe('ShoppingList', () => {
         fireEvent.change(phaseFilter, { target: { value: 'Fas 1: Akut' } });
 
         // Should show only items linked to Fas 1 tasks
-        expect(screen.getByText('Motorolja')).toBeInTheDocument();
-        expect(screen.queryByText('Bromsbelägg')).not.toBeInTheDocument();
+        expect(screen.getByText('Motorolja')).toBeTruthy();
+        expect(screen.queryByText('Bromsbelägg')).toBeNull();
     });
 
     it('adds new item', () => {
@@ -133,6 +135,6 @@ describe('ShoppingList', () => {
         fireEvent.click(taskViewButton);
 
         // Should group by task
-        expect(screen.getByText('Test Task')).toBeInTheDocument();
+        expect(screen.getByText('Test Task')).toBeTruthy();
     });
 });

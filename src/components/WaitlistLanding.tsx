@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Loader2, ArrowRight, CheckCircle2, X, Sparkles, Wrench, Camera, MessageSquare, ShoppingCart, FileText, MapPin, Calendar, Database, Users, Cloud, TrendingUp, BookOpen, Zap, GraduationCap, Github, Heart } from 'lucide-react';
 import { addToWaitlist } from '@/services/db';
 import { AuthLanding } from './AuthLanding';
@@ -49,10 +50,20 @@ export const WaitlistLanding: React.FC = () => {
     if (submitted) {
         return (
             <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
-                <div className="max-w-xl w-full bg-white p-12 rounded-[2rem] shadow-xl shadow-stone-200/50 border border-stone-100 text-center">
-                    <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="max-w-xl w-full bg-white p-12 rounded-[2rem] shadow-xl shadow-stone-200/50 border border-stone-100 text-center"
+                >
+                    <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 200, damping: 10, delay: 0.2 }}
+                        className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-6"
+                    >
                         <CheckCircle2 size={32} className="text-green-600" strokeWidth={2} />
-                    </div>
+                    </motion.div>
 
                     <h1 className="font-serif font-medium text-3xl text-stone-800 mb-2">
                         Du är med! 🎉
@@ -63,10 +74,15 @@ export const WaitlistLanding: React.FC = () => {
                     </p>
 
                     {queuePosition !== null && (
-                        <div className="bg-stone-50 rounded-2xl p-6 mb-6">
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.4 }}
+                            className="bg-stone-50 rounded-2xl p-6 mb-6"
+                        >
                             <p className="text-xs text-stone-500 uppercase tracking-wide font-medium mb-2">Din plats i kön</p>
                             <p className="text-4xl font-serif font-bold text-stone-800">#{queuePosition}</p>
-                        </div>
+                        </motion.div>
                     )}
 
                     <p className="text-stone-500 text-sm">
@@ -75,7 +91,7 @@ export const WaitlistLanding: React.FC = () => {
                     <button onClick={() => setSubmitted(false)} className="mt-8 text-sm text-stone-400 hover:text-stone-600">
                         Tillbaka till startsidan
                     </button>
-                </div>
+                </motion.div>
             </div>
         );
     }
@@ -114,20 +130,40 @@ export const WaitlistLanding: React.FC = () => {
                 </div>
 
                 <div className="max-w-4xl mx-auto text-center relative z-10 mt-10">
-                    <span className="inline-block px-4 py-1.5 rounded-full bg-rose-50 text-rose-600 text-sm font-medium mb-6 border border-rose-100 shadow-sm animate-fade-in-up">
+                    <motion.span
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="inline-block px-4 py-1.5 rounded-full bg-rose-50 text-rose-600 text-sm font-medium mb-6 border border-rose-100 shadow-sm"
+                    >
                         ✨ Gör drömmen till verklighet
-                    </span>
+                    </motion.span>
 
-                    <h2 className="text-5xl md:text-7xl font-serif font-medium text-stone-900 mb-8 tracking-tight leading-[1.1] drop-shadow-sm">
+                    <motion.h2
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.1 }}
+                        className="text-5xl md:text-7xl font-serif font-medium text-stone-900 mb-8 tracking-tight leading-[1.1] drop-shadow-sm"
+                    >
                         Resan är målet.<br />
                         <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-orange-400">Vi hjälper dig på vägen.</span>
-                    </h2>
+                    </motion.h2>
 
-                    <p className="text-xl md:text-2xl text-stone-600 mb-12 max-w-2xl mx-auto leading-relaxed font-light">
+                    <motion.p
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        className="text-xl md:text-2xl text-stone-600 mb-12 max-w-2xl mx-auto leading-relaxed font-light"
+                    >
                         Slipp kaoset - verktyget för renovering, fix och full koll som tar drömmen från uppfarten ut i friheten.
-                    </p>
+                    </motion.p>
 
-                    <div className="max-w-md mx-auto">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.6, delay: 0.3 }}
+                        className="max-w-md mx-auto"
+                    >
                         <form onSubmit={handleSubmit} className="bg-white/80 backdrop-blur-xl p-2 pl-6 rounded-full shadow-2xl shadow-stone-200/50 border border-white flex items-center gap-2 transition-all hover:scale-[1.01] focus-within:ring-4 focus-within:ring-rose-500/10">
                             <input
                                 type="email"
@@ -147,16 +183,20 @@ export const WaitlistLanding: React.FC = () => {
                         </form>
 
                         {error && (
-                            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3">
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mt-4 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3"
+                            >
                                 <X className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
                                 <p className="text-sm text-red-700">{error}</p>
-                            </div>
+                            </motion.div>
                         )}
 
                         <p className="text-xs text-stone-500 mt-4 font-medium tracking-wide uppercase">
                             Gå med 120+ andra drömmare i kön
                         </p>
-                    </div>
+                    </motion.div>
                 </div>
             </section>
 
@@ -164,17 +204,31 @@ export const WaitlistLanding: React.FC = () => {
             <section className="px-6 py-24 bg-stone-50">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16">
-                        <h3 className="text-3xl md:text-4xl font-serif text-stone-800 mb-4">
-                            För dig, oavsett var du är i resan
-                        </h3>
-                        <p className="text-lg text-stone-600 max-w-2xl mx-auto font-light">
-                            Inga förkunskaper krävs. Bara en vilja att skapa.
-                        </p>
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.6 }}
+                        >
+                            <h3 className="text-3xl md:text-4xl font-serif text-stone-800 mb-4">
+                                För dig, oavsett var du är i resan
+                            </h3>
+                            <p className="text-lg text-stone-600 max-w-2xl mx-auto font-light">
+                                Inga förkunskaper krävs. Bara en vilja att skapa.
+                            </p>
+                        </motion.div>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-8">
                         {/* Nybörjare - Pink/Rose */}
-                        <div className="bg-gradient-to-br from-pink-100 to-rose-100 p-8 rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-rose-200/50 transition-all hover:-translate-y-1 border border-rose-200/50">
+                        <motion.div
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.5, delay: 0.1 }}
+                            whileHover={{ y: -5 }}
+                            className="bg-gradient-to-br from-pink-100 to-rose-100 p-8 rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-rose-200/50 transition-all border border-rose-200/50"
+                        >
                             <div className="w-14 h-14 bg-white/80 backdrop-blur text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-md">
                                 <Sparkles size={28} strokeWidth={2} />
                             </div>
@@ -183,10 +237,17 @@ export const WaitlistLanding: React.FC = () => {
                                 Aldrig hållit i en skiftnyckel? Ingen fara. Vi översätter verkstadsspråk till ren svenska och guidar dig tryggt framåt.
                             </p>
                             <span className="text-sm font-bold text-rose-700">Perfekt för nybörjare</span>
-                        </div>
+                        </motion.div>
 
                         {/* Hemmamekaniker - Green/Teal */}
-                        <div className="bg-gradient-to-br from-green-100 to-teal-100 p-8 rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-teal-200/50 transition-all hover:-translate-y-1 border border-teal-200/50">
+                        <motion.div
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.5, delay: 0.2 }}
+                            whileHover={{ y: -5 }}
+                            className="bg-gradient-to-br from-green-100 to-teal-100 p-8 rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-teal-200/50 transition-all border border-teal-200/50"
+                        >
                             <div className="w-14 h-14 bg-white/80 backdrop-blur text-teal-600 rounded-2xl flex items-center justify-center mb-6 shadow-md">
                                 <Wrench size={28} strokeWidth={2} />
                             </div>
@@ -195,10 +256,17 @@ export const WaitlistLanding: React.FC = () => {
                                 Få struktur på kaoset. Inköpslistor som skapar sig själva och en budget som faktiskt håller.
                             </p>
                             <span className="text-sm font-bold text-teal-700">För dig som vill ha ordning</span>
-                        </div>
+                        </motion.div>
 
                         {/* Expert - Blue/Cyan */}
-                        <div className="bg-gradient-to-br from-blue-100 to-cyan-100 p-8 rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-cyan-200/50 transition-all hover:-translate-y-1 border border-cyan-200/50">
+                        <motion.div
+                            initial={{ opacity: 0, y: 30 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.5, delay: 0.3 }}
+                            whileHover={{ y: -5 }}
+                            className="bg-gradient-to-br from-blue-100 to-cyan-100 p-8 rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-cyan-200/50 transition-all border border-cyan-200/50"
+                        >
                             <div className="w-14 h-14 bg-white/80 backdrop-blur text-cyan-600 rounded-2xl flex items-center justify-center mb-6 shadow-md">
                                 <Zap size={28} strokeWidth={2} />
                             </div>
@@ -207,7 +275,7 @@ export const WaitlistLanding: React.FC = () => {
                                 Dokumentera varje skruv för att maxa värdet. Din digitala servicebok som imponerar på både köpare och besiktning.
                             </p>
                             <span className="text-sm font-bold text-cyan-700">Maximalt värde</span>
-                        </div>
+                        </motion.div>
                     </div>
                 </div>
             </section>
@@ -217,7 +285,13 @@ export const WaitlistLanding: React.FC = () => {
             {/* VÅR HISTORIA - Text with Elton logo, NO IMAGE */}
             <section className="px-6 py-24 bg-gradient-to-b from-white to-stone-50 overflow-hidden">
                 <div className="max-w-4xl mx-auto">
-                    <div className="text-center mb-12">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                        className="text-center mb-12"
+                    >
                         <div className="flex justify-center mb-4">
                             <img src={eltonLogo} alt="Elton" className="h-16 w-auto opacity-80" />
                         </div>
@@ -225,9 +299,15 @@ export const WaitlistLanding: React.FC = () => {
                         <h3 className="text-3xl md:text-5xl font-serif text-stone-800 mb-6">
                             Från rosthål till <span className="text-rose-500">rullande frihet</span>
                         </h3>
-                    </div>
+                    </motion.div>
 
-                    <div className="space-y-6 text-lg text-stone-700 leading-relaxed">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        className="space-y-6 text-lg text-stone-700 leading-relaxed"
+                    >
                         <p>
                             Vad händer när en 25-årig husbilsdröm krockar med en gammal skåpbil, där den ena av oss ser inredningsmagi och den andra ser mekaniska måsten? Vi möttes i en gemensam längtan, men glappet mellan vision och verklighet kändes lika stort som hålet i bilens rostiga balk.
                         </p>
@@ -240,7 +320,7 @@ export const WaitlistLanding: React.FC = () => {
                         <p>
                             Det hjälper oss att bryta ner det omöjliga berget till hanterbara steg och ger en tydlig strategi, så att man vågar ta sig an jobbet med självförtroende oavsett kunskapsnivå. VanPlan är kartan som gör att du går från att drömma på Pinterest till att faktiskt vrida om nyckeln – oavsett om du är proffs eller aldrig hållit i en skiftnyckel förut. Vi gör drömmen genomförbar, en skruv i taget.
                         </p>
-                    </div>
+                    </motion.div>
                 </div>
             </section>
 
@@ -250,7 +330,12 @@ export const WaitlistLanding: React.FC = () => {
             <section className="px-6 py-32 bg-gradient-to-br from-purple-50 via-white to-rose-50">
                 <div className="max-w-7xl mx-auto">
                     <div className="grid lg:grid-cols-2 gap-16 items-center">
-                        <div>
+                        <motion.div
+                            initial={{ opacity: 0, x: -30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.8 }}
+                        >
                             <span className="text-purple-600 font-semibold text-sm uppercase tracking-wider mb-4 block">Din Elton-projektledare</span>
                             <h3 className="text-5xl md:text-6xl font-serif font-bold text-stone-900 mb-6 leading-tight">
                                 Från köpbesiktning till färdig camper.
@@ -268,12 +353,18 @@ export const WaitlistLanding: React.FC = () => {
                                     <span className="text-sm font-medium">Steg-för-steg</span>
                                 </div>
                             </div>
-                        </div>
-                        <div className="relative">
+                        </motion.div>
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.8 }}
+                            className="relative"
+                        >
                             <div className="aspect-square bg-gradient-to-br from-purple-100 to-rose-100 rounded-[3rem] flex items-center justify-center shadow-2xl shadow-purple-200/50">
                                 <BookOpen className="text-purple-400" size={120} strokeWidth={1} />
                             </div>
-                        </div>
+                        </motion.div>
                     </div>
                 </div>
             </section>
@@ -282,7 +373,14 @@ export const WaitlistLanding: React.FC = () => {
             <section className="px-6 py-24 bg-white">
                 <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-8">
                     {/* Automatisk fordonsdata */}
-                    <div className="bg-gradient-to-br from-indigo-50 to-cyan-50 rounded-[3rem] p-12 hover:shadow-2xl hover:shadow-indigo-100 transition-all">
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                        whileHover={{ y: -5 }}
+                        className="bg-gradient-to-br from-indigo-50 to-cyan-50 rounded-[3rem] p-12 hover:shadow-2xl hover:shadow-indigo-100 transition-all"
+                    >
                         <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-lg">
                             <Camera className="text-indigo-600" size={32} />
                         </div>
@@ -293,10 +391,17 @@ export const WaitlistLanding: React.FC = () => {
                             Ta kort på registreringsskylten eller ange regnummer – vi hämtar automatiskt alla fordonsdata: modell, årsmodell, vikt, tekniska specifikationer.
                         </p>
                         <p className="text-sm text-indigo-600 font-semibold">Elton vet direkt om du har en LT31 från '76 eller en modern Sprinter →</p>
-                    </div>
+                    </motion.div>
 
                     {/* Scanna kvitton */}
-                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-[3rem] p-12 hover:shadow-2xl hover:shadow-emerald-100 transition-all">
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        whileHover={{ y: -5 }}
+                        className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-[3rem] p-12 hover:shadow-2xl hover:shadow-emerald-100 transition-all"
+                    >
                         <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-lg">
                             <FileText className="text-emerald-600" size={32} />
                         </div>
@@ -307,7 +412,7 @@ export const WaitlistLanding: React.FC = () => {
                             Fotografera kvitton från bildelar. Elton läser produktnamn, pris och datum – allt sparas automatiskt i budgeten.
                         </p>
                         <p className="text-sm text-emerald-600 font-semibold">Sluta leta kvitton i handskfacket →</p>
-                    </div>
+                    </motion.div>
                 </div>
             </section>
 
@@ -315,12 +420,24 @@ export const WaitlistLanding: React.FC = () => {
             <section className="px-6 py-32 bg-stone-50 overflow-hidden">
                 <div className="max-w-6xl mx-auto">
                     <div className="grid lg:grid-cols-2 gap-16 items-center">
-                        <div className="relative order-2 lg:order-1">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            whileInView={{ opacity: 1, scale: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.8 }}
+                            className="relative order-2 lg:order-1"
+                        >
                             <div className="aspect-[4/3] bg-gradient-to-br from-rose-100 to-orange-100 rounded-[3rem] flex items-center justify-center shadow-2xl shadow-rose-200/50">
                                 <Camera className="text-rose-400" size={100} strokeWidth={1} />
                             </div>
-                        </div>
-                        <div className="order-1 lg:order-2">
+                        </motion.div>
+                        <motion.div
+                            initial={{ opacity: 0, x: 30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.8 }}
+                            className="order-1 lg:order-2"
+                        >
                             <span className="text-rose-600 font-semibold text-sm uppercase tracking-wider mb-4 block">Köpbesiktning</span>
                             <h3 className="text-4xl md:text-5xl font-serif font-bold text-stone-900 mb-6 leading-tight">
                                 Undvik dyra misstag innan du köper.
@@ -331,7 +448,7 @@ export const WaitlistLanding: React.FC = () => {
                             <p className="text-stone-500 italic">
                                 "Elton upptäckte rostskador som skulle ha kostat 50 000 kr att laga. Jag tackade nej till köpet."
                             </p>
-                        </div>
+                        </motion.div>
                     </div>
                 </div>
             </section>
@@ -339,55 +456,69 @@ export const WaitlistLanding: React.FC = () => {
             {/* SUPPORTING FEATURES GRID */}
             <section className="px-6 py-24 bg-white">
                 <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                        className="text-center mb-16"
+                    >
                         <h3 className="text-4xl md:text-5xl font-serif font-bold text-stone-900 mb-4">
                             Och mycket mer.
                         </h3>
                         <p className="text-xl text-stone-600 max-w-2xl mx-auto">
                             Allt du behöver för att lyckas med ditt projekt.
                         </p>
-                    </div>
+                    </motion.div>
 
                     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <CompactFeatureCard
                             icon={<Sparkles className="text-purple-600" size={24} />}
                             title="Elton skriver om uppgifter"
                             description="Från 'BYTA OLJA' till begripliga steg-för-steg checklistor."
+                            delay={0.1}
                         />
                         <CompactFeatureCard
                             icon={<Calendar className="text-cyan-600" size={24} />}
                             title="Säsongspåminnelser"
                             description="Vinterförvaring? Vårcheck? Elton skapar checklistor baserat på din bil."
+                            delay={0.2}
                         />
                         <CompactFeatureCard
                             icon={<BookOpen className="text-amber-600" size={24} />}
                             title="Elton lär sig din bil"
                             description="Ladda upp verkstadshandbok – Elton svarar på frågor om din modell."
+                            delay={0.3}
                         />
                         <CompactFeatureCard
                             icon={<ShoppingCart className="text-teal-600" size={24} />}
                             title="Smarta inköpslistor"
                             description="Elton föreslår exakt vilka delar du behöver för ditt projekt."
+                            delay={0.4}
                         />
                         <CompactFeatureCard
                             icon={<MapPin className="text-indigo-600" size={24} />}
                             title="Hitta rätt verkstad"
                             description="Förslag på lokala verkstäder specialiserade på din bilmodell."
+                            delay={0.5}
                         />
                         <CompactFeatureCard
                             icon={<TrendingUp className="text-purple-600" size={24} />}
                             title="Tidslinje & Fasplanering"
                             description="Elton identifierar beroenden – vad måste göras först."
+                            delay={0.6}
                         />
                         <CompactFeatureCard
                             icon={<Cloud className="text-cyan-600" size={24} />}
                             title="Alltid säkert i molnet"
                             description="All data backupas automatiskt. Tappar du telefonen? Inga problem."
+                            delay={0.7}
                         />
                         <CompactFeatureCard
                             icon={<GraduationCap className="text-teal-600" size={24} />}
                             title="Forskningsbaserad metodik"
                             description="Smarta mål, tydliga uppgifter i rätt ordning."
+                            delay={0.8}
                         />
                     </div>
                 </div>
@@ -397,7 +528,14 @@ export const WaitlistLanding: React.FC = () => {
             <section className="px-6 py-32 bg-gradient-to-br from-stone-50 to-rose-50">
                 <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12">
                     {/* Samarbeta */}
-                    <div className="bg-white rounded-[3rem] p-12 shadow-xl shadow-stone-200/50">
+                    <motion.div
+                        initial={{ opacity: 0, x: -30 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8 }}
+                        whileHover={{ y: -5 }}
+                        className="bg-white rounded-[3rem] p-12 shadow-xl shadow-stone-200/50"
+                    >
                         <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mb-6">
                             <Users className="text-rose-600" size={32} />
                         </div>
@@ -415,10 +553,17 @@ export const WaitlistLanding: React.FC = () => {
                             </div>
                             <span className="font-medium">Bygg tillsammans</span>
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* Servicehistorik */}
-                    <div className="bg-white rounded-[3rem] p-12 shadow-xl shadow-stone-200/50">
+                    <motion.div
+                        initial={{ opacity: 0, x: 30 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8 }}
+                        whileHover={{ y: -5 }}
+                        className="bg-white rounded-[3rem] p-12 shadow-xl shadow-stone-200/50"
+                    >
                         <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
                             <Database className="text-blue-600" size={32} />
                         </div>
@@ -431,13 +576,19 @@ export const WaitlistLanding: React.FC = () => {
                         <p className="text-sm text-blue-600 font-semibold">
                             Maximera försäljningspriset med professionell dokumentation →
                         </p>
-                    </div>
+                    </motion.div>
                 </div>
             </section>
 
             {/* EMERGENCY FEATURE - Full Width Banner */}
             <section className="px-6 py-20 bg-gradient-to-r from-amber-500 to-orange-500">
-                <div className="max-w-5xl mx-auto text-center text-white">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6 }}
+                    className="max-w-5xl mx-auto text-center text-white"
+                >
                     <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center mx-auto mb-6">
                         <Zap className="text-white" size={32} />
                     </div>
@@ -447,12 +598,18 @@ export const WaitlistLanding: React.FC = () => {
                     <p className="text-xl opacity-90 max-w-2xl mx-auto">
                         Fastnat i Danmark? Elton hjälper dig hitta närmaste verkstad, kollar ditt försäkringsavtal för täckning och hyrbilsvillkor, och ger dig rätt telefonnummer att ringa.
                     </p>
-                </div>
+                </motion.div>
             </section>
 
             {/* CTA FOOTER */}
             <section className="px-6 py-24 bg-white border-t border-stone-100">
-                <div className="max-w-2xl mx-auto text-center">
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8 }}
+                    className="max-w-2xl mx-auto text-center"
+                >
                     <h3 className="text-4xl font-serif text-stone-800 mb-6">
                         Redo att starta motorn?
                     </h3>
@@ -491,18 +648,22 @@ export const WaitlistLanding: React.FC = () => {
                             Villkor
                         </button>
                     </div>
-                </div>
+                </motion.div>
             </section>
 
             {/* MODALS */}
             {showLogin && (
                 <div className="fixed inset-0 bg-stone-900/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="relative w-full max-w-6xl max-h-[90vh] overflow-auto bg-white rounded-[2rem] shadow-2xl">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="relative w-full max-w-6xl max-h-[90vh] overflow-auto bg-white rounded-[2rem] shadow-2xl"
+                    >
                         <button onClick={() => setShowLogin(false)} className="absolute top-6 right-6 z-10 p-2 bg-white hover:bg-stone-50 rounded-full shadow-sm transition-all border border-stone-100">
                             <X size={24} className="text-stone-500" />
                         </button>
                         <AuthLanding onDemo={() => setShowLogin(false)} />
-                    </div>
+                    </motion.div>
                 </div>
             )}
 
@@ -549,16 +710,24 @@ interface CompactFeatureCardProps {
     icon: React.ReactNode;
     title: string;
     description: string;
+    delay?: number;
 }
 
-const CompactFeatureCard: React.FC<CompactFeatureCardProps> = ({ icon, title, description }) => {
+const CompactFeatureCard: React.FC<CompactFeatureCardProps> = ({ icon, title, description, delay = 0 }) => {
     return (
-        <div className="bg-stone-50 rounded-2xl p-6 hover:bg-white hover:shadow-lg transition-all">
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: delay }}
+            whileHover={{ y: -5, boxShadow: "0 10px 30px -10px rgba(0,0,0,0.1)" }}
+            className="bg-stone-50 rounded-2xl p-6 hover:bg-white transition-all"
+        >
             <div className="mb-4">
                 {icon}
             </div>
             <h5 className="font-bold text-lg text-stone-900 mb-2">{title}</h5>
             <p className="text-sm text-stone-600 leading-relaxed">{description}</p>
-        </div>
+        </motion.div>
     );
 };

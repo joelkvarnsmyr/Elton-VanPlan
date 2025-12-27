@@ -7,6 +7,7 @@ interface InspectionDetailProps {
     area: DetailedInspectionArea;
     tasks?: Task[]; // All tasks for linking
     vehicleData: VehicleData; // Needed for chat context
+    projectId: string;
     onClose: () => void;
     onConvertToTask?: (finding: DetailedInspectionFinding) => void;
     onViewTask?: (taskId: string) => void;
@@ -16,6 +17,7 @@ export const InspectionDetail: React.FC<InspectionDetailProps> = ({
     area,
     tasks = [],
     vehicleData,
+    projectId,
     onClose,
     onConvertToTask,
     onViewTask
@@ -235,6 +237,7 @@ export const InspectionDetail: React.FC<InspectionDetailProps> = ({
                         inspectionArea: area,
                         vehicleData: vehicleData,
                     }}
+                    projectId={projectId}
                     onClose={() => setSelectedFindingForChat(null)}
                 />
             )}
