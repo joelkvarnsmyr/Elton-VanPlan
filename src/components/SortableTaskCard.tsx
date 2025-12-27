@@ -5,6 +5,9 @@ import { Task, TaskStatus, Priority, TaskType, DifficultyLevel } from '@/types/t
 import { TaskCard, TaskCardProps } from './TaskCard';
 
 export const SortableTaskCard: React.FC<TaskCardProps> = (props) => {
+    // Guard against missing task or task.id (can happen with malformed AI-created tasks)
+    const taskId = props.task?.id || `temp-${Date.now()}`;
+
     const {
         attributes,
         listeners,
@@ -12,7 +15,7 @@ export const SortableTaskCard: React.FC<TaskCardProps> = (props) => {
         transform,
         transition,
         isDragging
-    } = useSortable({ id: props.task.id });
+    } = useSortable({ id: taskId });
 
     const style = {
         transform: transform ? CSS.Transform.toString(transform) : undefined,
