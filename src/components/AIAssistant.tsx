@@ -709,7 +709,7 @@ ${diagnosis.severity === 'CRITICAL' ? `⚠️ **KRITISKT** - ${taskCreated ? 'Up
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] bg-white dark:bg-nordic-dark-surface rounded-2xl border border-slate-200 dark:border-nordic-dark-bg shadow-sm overflow-hidden animate-fade-in">
+    <div className="flex flex-col h-[calc(100vh-220px)] sm:h-[calc(100vh-140px)] bg-white dark:bg-nordic-dark-surface rounded-2xl border border-slate-200 dark:border-nordic-dark-bg shadow-sm overflow-hidden animate-fade-in">
       <div className="bg-gradient-to-r from-nordic-ice to-white dark:from-nordic-charcoal dark:to-nordic-dark-surface p-4 border-b border-slate-100 dark:border-nordic-dark-bg flex items-center justify-between">
         <div className="flex items-center space-x-3">
           {onClose && (
