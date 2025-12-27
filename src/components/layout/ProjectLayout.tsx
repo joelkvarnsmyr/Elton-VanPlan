@@ -4,7 +4,6 @@ import { Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { LayoutDashboard, CheckSquare, MessageSquareMore, Wrench, ShoppingBag, ClipboardList, Fuel, BookOpen, Users, LogOut, ChevronLeft, Database, Sun, Moon, Save, Sparkles, Lock, Zap } from 'lucide-react';
 import { useProject, useUser } from '@/contexts';
 import { ChatProvider } from '@/context/ChatContext';
-import { UnifiedChatInterface } from '../chat/UnifiedChatInterface';
 import { MagicImport } from '../MagicImport';
 import { ProjectMembers } from '../ProjectMembers';
 import { FuelLog } from '../FuelLog';
@@ -118,7 +117,6 @@ export const ProjectLayout: React.FC<ProjectLayoutProps> = ({ currentUser }) => 
     return (
         <ChatProvider initialProjectId={activeProject.id}>
             <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-nordic-dark-bg text-nordic-ice' : 'bg-nordic-ice text-slate-800'}`}>
-                <UnifiedChatInterface mode="floating" />
                 {/* HEADER */}
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center justify-between mb-8">
