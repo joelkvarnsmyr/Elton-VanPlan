@@ -71,8 +71,9 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({
             return `${base} fixed inset-y-0 right-0 w-[400px] shadow-2xl z-50 animate-slide-in-right ${className}`;
         }
         if (mode === 'floating') {
-            if (isMinimized) return `${base} fixed bottom-4 right-4 w-72 h-14 rounded-full shadow-lg cursor-pointer z-50 hover:bg-slate-50`;
-            return `${base} fixed bottom-4 right-4 w-[450px] h-[600px] rounded-2xl shadow-2xl z-50 ${className}`;
+            // Use bottom-20 (80px) to clear mobile bottom navigation
+            if (isMinimized) return `${base} fixed bottom-20 right-4 w-72 h-14 rounded-full shadow-lg cursor-pointer z-50 hover:bg-slate-50`;
+            return `${base} fixed bottom-20 right-4 w-[450px] max-w-[calc(100vw-2rem)] h-[600px] max-h-[calc(100vh-120px)] rounded-2xl shadow-2xl z-50 ${className}`;
         }
         // embedded
         return `${base} w-full h-full min-h-[500px] rounded-xl border ${className}`;
@@ -141,8 +142,8 @@ export const UnifiedChatInterface: React.FC<UnifiedChatInterfaceProps> = ({
                     <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div
                             className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.role === 'user'
-                                    ? 'bg-teal-600 text-white rounded-br-none'
-                                    : 'bg-white dark:bg-nordic-charcoal text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-bl-none shadow-sm'
+                                ? 'bg-teal-600 text-white rounded-br-none'
+                                : 'bg-white dark:bg-nordic-charcoal text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-slate-700 rounded-bl-none shadow-sm'
                                 }`}
                         >
                             <ReactMarkdown className="prose dark:prose-invert max-w-none text-sm leading-relaxed">
